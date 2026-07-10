@@ -1,217 +1,152 @@
 <script lang="ts">
   import { onMount } from "svelte";
-  import {
-    connect,
-    subscribeEntities,
-    callService,
-    type Connection,
-    type HassEntities,
-  } from "./lib/ha";
-  import { TOGGLEABLE_DOMAINS } from "./lib/config";
-  import EntityCard from "./lib/EntityCard.svelte";
+  import { ha } from "./lib/store.svelte";
+  import Home from "./views/Home.svelte";
+  import Energy from "./views/Energy.svelte";
+  import Water from "./views/Water.svelte";
+  import Security from "./views/Security.svelte";
+  import Climate from "./views/Climate.svelte";
 
-  type Status = "connecting" | "connected" | "error";
+  type Tab = "home" | "energy" | "water" | "security" | "climate";
 
-  let status = $state<Status>("connecting");
-  let error = $state("");
-  let entities = $state<HassEntities>({});
-  let search = $state("");
-  let connection: Connection | undefined;
+  const TABS: { id: Tab; icon: string; label: string }[] = [
+    { id: "home", icon: "🏠", label: "Home" },
+    { id: "energy", icon: "⚡", label: "Energy" },
+    { id: "water", icon: "💧", label: "Water" },
+    { id: "security", icon: "🛡️", label: "Security" },
+    { id: "climate", icon: "🌡️", label: "Climate" },
+  ];
 
-  // Domains worth surfacing by default; search still spans everything.
-  const FEATURED = new Set([
-    "light",
-    "switch",
-    "fan",
-    "cover",
-    "lock",
-    "climate",
-    "input_boolean",
-    "binary_sensor",
-    "sensor",
-    "media_player",
-  ]);
+  let tab = $state<Tab>("home");
 
-  const domainOf = (id: string) => id.split(".")[0];
-
-  const nameOf = (e: HassEntities[string]) =>
-    (e.attributes.friendly_name as string) ?? e.entity_id;
-
-  const list = $derived.by(() => {
-    const q = search.trim().toLowerCase();
-    return Object.values(entities)
-      .filter((e) => {
-        if (q) {
-          return (
-            e.entity_id.toLowerCase().includes(q) ||
-            nameOf(e).toLowerCase().includes(q)
-          );
-        }
-        return FEATURED.has(domainOf(e.entity_id));
-      })
-      .sort((a, b) => {
-        // "On" toggleables float to the top, then alphabetical by name.
-        const rank = (e: HassEntities[string]) =>
-          TOGGLEABLE_DOMAINS.has(domainOf(e.entity_id)) && e.state === "on"
-            ? 0
-            : 1;
-        const r = rank(a) - rank(b);
-        return r !== 0 ? r : nameOf(a).localeCompare(nameOf(b));
-      });
-  });
-
-  const total = $derived(Object.keys(entities).length);
-  const onCount = $derived(
-    Object.values(entities).filter(
-      (e) => TOGGLEABLE_DOMAINS.has(domainOf(e.entity_id)) && e.state === "on",
-    ).length,
-  );
-
-  async function toggle(entityId: string) {
-    const domain = domainOf(entityId);
-    if (!connection || !TOGGLEABLE_DOMAINS.has(domain)) return;
-    await callService(connection, domain, "toggle", { entity_id: entityId });
-  }
-
-  onMount(async () => {
-    try {
-      const c = await connect();
-      connection = c.connection;
-      subscribeEntities(connection, (ents) => {
-        entities = ents;
-      });
-      status = "connected";
-    } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
-      status = "error";
-    }
-  });
+  onMount(() => ha.init());
 </script>
 
-<header class="top">
-  <div>
-    <h1>HA Portal</h1>
-    <p class="sub">
-      {#if status === "connected"}
-        <span class="dot ok"></span>
-        {onCount} on · {total} entities
-      {:else if status === "connecting"}
-        <span class="dot pending"></span> connecting…
-      {:else}
-        <span class="dot bad"></span> disconnected
-      {/if}
-    </p>
+{#if ha.status === "error"}
+  <div class="center">
+    <div class="panel">
+      <strong>Couldn't connect to Home Assistant</strong>
+      <p>{ha.error}</p>
+      <button onclick={() => location.reload()}>Retry</button>
+    </div>
   </div>
-</header>
-
-{#if status === "error"}
-  <div class="panel error">
-    <strong>Couldn't connect.</strong>
-    <p>{error}</p>
-    <button onclick={() => location.reload()}>Retry</button>
+{:else if ha.status === "connecting"}
+  <div class="center">
+    <div class="spinner"></div>
+    <p class="dim">Connecting to Home Assistant…</p>
   </div>
-{:else if status === "connecting"}
-  <div class="panel">Talking to Home Assistant…</div>
 {:else}
-  <input
-    class="search"
-    type="search"
-    placeholder="Search all entities…"
-    bind:value={search}
-    autocomplete="off"
-  />
+  <main class="wrap">
+    {#if tab === "home"}<Home />
+    {:else if tab === "energy"}<Energy />
+    {:else if tab === "water"}<Water />
+    {:else if tab === "security"}<Security />
+    {:else if tab === "climate"}<Climate />{/if}
+  </main>
 
-  {#if list.length === 0}
-    <div class="panel">No entities match “{search}”.</div>
-  {:else}
-    <div class="grid">
-      {#each list as entity (entity.entity_id)}
-        <EntityCard
-          {entity}
-          toggleable={TOGGLEABLE_DOMAINS.has(domainOf(entity.entity_id))}
-          onToggle={() => toggle(entity.entity_id)}
-        />
+  <nav>
+    <div class="nav-inner">
+      {#each TABS as t}
+        <button class="tab" class:active={tab === t.id} onclick={() => (tab = t.id)}>
+          <span class="ti">{t.icon}</span>
+          <span class="tl">{t.label}</span>
+        </button>
       {/each}
     </div>
-  {/if}
+  </nav>
 {/if}
 
 <style>
-  .top {
+  .center {
+    min-height: 100dvh;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    margin-bottom: 22px;
+    justify-content: center;
+    gap: 16px;
+    padding: 24px;
   }
-  h1 {
-    margin: 0;
-    font-size: 26px;
-    letter-spacing: -0.02em;
+  .dim {
+    color: var(--text-2);
   }
-  .sub {
-    margin: 6px 0 0;
-    color: var(--text-dim);
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .dot {
-    width: 8px;
-    height: 8px;
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--fill-strong);
+    border-top-color: var(--brand);
     border-radius: 50%;
-    display: inline-block;
+    animation: spin 0.8s linear infinite;
   }
-  .dot.ok {
-    background: #4cd964;
-    box-shadow: 0 0 8px #4cd964;
-  }
-  .dot.pending {
-    background: var(--on);
-  }
-  .dot.bad {
-    background: #ff5b5b;
-  }
-  .search {
-    width: 100%;
-    padding: 14px 16px;
-    margin-bottom: 20px;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    color: var(--text);
-    font-size: 15px;
-    outline: none;
-  }
-  .search:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-soft);
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
   .panel {
     background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
+    border: 1px solid var(--error);
+    border-radius: var(--r-hero);
     padding: 24px;
-    color: var(--text-dim);
+    max-width: 440px;
+    text-align: center;
   }
-  .panel.error {
-    border-color: #5a2530;
-  }
-  .panel.error strong {
-    color: var(--text);
+  .panel p {
+    color: var(--text-2);
+    font-size: 14px;
   }
   .panel button {
-    margin-top: 12px;
-    background: var(--accent);
-    color: white;
-    border: none;
-    border-radius: var(--radius-sm);
-    padding: 10px 18px;
+    margin-top: 8px;
+    background: var(--brand);
+    color: #fff;
+    border-radius: var(--r-tile);
+    padding: 10px 20px;
     font-weight: 600;
+  }
+
+  nav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: color-mix(in srgb, var(--bg) 88%, transparent);
+    backdrop-filter: blur(16px);
+    border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 10;
+  }
+  .nav-inner {
+    max-width: 560px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-around;
+    padding: 6px 8px;
+  }
+  .tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    padding: 8px 12px;
+    border-radius: 12px;
+    color: var(--muted);
+    flex: 1;
+    transition: color 0.15s ease, background 0.15s ease;
+  }
+  .tab .ti {
+    font-size: 20px;
+    filter: grayscale(0.6) opacity(0.65);
+    transition: filter 0.15s ease;
+  }
+  .tab .tl {
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+  }
+  .tab.active {
+    color: var(--brand);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
+  }
+  .tab.active .ti {
+    filter: none;
   }
 </style>

@@ -1,18 +1,34 @@
 :root {
-  --bg: #0b0f1a;
-  --bg-elevated: #131a2a;
-  --card: #172033;
-  --card-hover: #1d283f;
-  --card-active: #1e3a5f;
-  --border: #223049;
-  --text: #e8edf6;
-  --text-dim: #8b98b0;
-  --accent: #4d8dff;
-  --accent-soft: rgba(77, 141, 255, 0.15);
-  --on: #ffce54;
-  --on-soft: rgba(255, 206, 84, 0.14);
-  --radius: 16px;
-  --radius-sm: 10px;
+  /* Surfaces — refined "cb" palette from the design handoff */
+  --bg: #0a0c10;
+  --card: #13161d;
+  --card-hover: #181c25;
+  --border: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.1);
+  --fill: rgba(255, 255, 255, 0.03);
+  --fill-strong: rgba(255, 255, 255, 0.06);
+  --divider: rgba(255, 255, 255, 0.05);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px -22px rgba(0, 0, 0, 0.8);
+
+  /* Text */
+  --text: #eef2f8;
+  --text-2: #8b93a6;
+  --muted: #6b7486;
+
+  /* Accents / semantics */
+  --brand: #7aa2ff;
+  --success: #46d493;
+  --warning: #f5b942;
+  --error: #f2685f;
+  --water: #38bdf8;
+  --solar: #f5c451;
+
+  /* Shape */
+  --r-hero: 18px;
+  --r: 14px;
+  --r-tile: 13px;
+  --r-pill: 999px;
+
   color-scheme: dark;
 }
 
@@ -28,27 +44,69 @@ body {
 }
 
 body {
-  background: radial-gradient(1200px 800px at 70% -10%, #16233d 0%, var(--bg) 55%);
-  background-attachment: fixed;
+  background: var(--bg);
   color: var(--text);
   font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
-    sans-serif;
+    -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-}
-
-#app {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: max(24px, env(safe-area-inset-top)) 20px 64px;
 }
 
 button {
   font-family: inherit;
   cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
 }
 
 input {
   font-family: inherit;
+}
+
+/* ---- Type ramp (from design-tokens.md) ---- */
+.t-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.t-foot {
+  font-size: 10.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* ---- Layout primitives ---- */
+.wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 16px calc(72px + env(safe-area-inset-bottom));
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-hero);
+  box-shadow: var(--shadow);
+}
+
+.hr {
+  height: 1px;
+  background: var(--divider);
+  margin: 18px 0 15px;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 0 12px calc(80px + env(safe-area-inset-bottom));
+  }
 }
