@@ -27,6 +27,34 @@ export function greeting(hour: number): string {
   return "Good evening";
 }
 
+/**
+ * Bucket a cumulative-daily sensor's history (resets at midnight) into
+ * per-day peak values for the last `days` days, oldest → newest.
+ */
+export function dailyMax(
+  points: { t: number; v: number }[],
+  days = 7,
+): { label: string; value: number | null }[] {
+  const peaks = new Map<number, number>();
+  for (const p of points) {
+    const d = new Date(p.t);
+    d.setHours(0, 0, 0, 0);
+    const key = d.getTime();
+    peaks.set(key, Math.max(peaks.get(key) ?? 0, p.v));
+  }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const out: { label: string; value: number | null }[] = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 86_400_000);
+    out.push({
+      label: i === 0 ? "Today" : d.toLocaleDateString(undefined, { weekday: "short" }),
+      value: peaks.has(d.getTime()) ? peaks.get(d.getTime())! : null,
+    });
+  }
+  return out;
+}
+
 /** Map a temperature to a comfort colour. */
 export function tempColor(t: number | null): string {
   if (t == null) return "var(--muted)";

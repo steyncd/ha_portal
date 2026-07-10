@@ -4,17 +4,21 @@
   import Home from "./views/Home.svelte";
   import Energy from "./views/Energy.svelte";
   import Water from "./views/Water.svelte";
-  import Security from "./views/Security.svelte";
   import Climate from "./views/Climate.svelte";
+  import Security from "./views/Security.svelte";
+  import Traffic from "./views/Traffic.svelte";
+  import System from "./views/System.svelte";
 
-  type Tab = "home" | "energy" | "water" | "security" | "climate";
+  type Tab = "home" | "energy" | "water" | "climate" | "security" | "traffic" | "system";
 
   const TABS: { id: Tab; icon: string; label: string }[] = [
     { id: "home", icon: "🏠", label: "Home" },
     { id: "energy", icon: "⚡", label: "Energy" },
     { id: "water", icon: "💧", label: "Water" },
-    { id: "security", icon: "🛡️", label: "Security" },
     { id: "climate", icon: "🌡️", label: "Climate" },
+    { id: "security", icon: "🛡️", label: "Security" },
+    { id: "traffic", icon: "🚗", label: "Traffic" },
+    { id: "system", icon: "🖥️", label: "System" },
   ];
 
   let tab = $state<Tab>("home");
@@ -36,24 +40,32 @@
     <p class="dim">Connecting to Home Assistant…</p>
   </div>
 {:else}
+  <header class="topbar">
+    <div class="bar-inner">
+      <div class="brand">
+        <span class="logo">◆</span>
+        HA Portal
+        <span class="live" title="Live"></span>
+      </div>
+      <nav class="tabs">
+        {#each TABS as t}
+          <button class="tab" class:active={tab === t.id} onclick={() => (tab = t.id)}>
+            <span class="ti">{t.icon}</span><span class="tl">{t.label}</span>
+          </button>
+        {/each}
+      </nav>
+    </div>
+  </header>
+
   <main class="wrap">
     {#if tab === "home"}<Home />
     {:else if tab === "energy"}<Energy />
     {:else if tab === "water"}<Water />
+    {:else if tab === "climate"}<Climate />
     {:else if tab === "security"}<Security />
-    {:else if tab === "climate"}<Climate />{/if}
+    {:else if tab === "traffic"}<Traffic />
+    {:else if tab === "system"}<System />{/if}
   </main>
-
-  <nav>
-    <div class="nav-inner">
-      {#each TABS as t}
-        <button class="tab" class:active={tab === t.id} onclick={() => (tab = t.id)}>
-          <span class="ti">{t.icon}</span>
-          <span class="tl">{t.label}</span>
-        </button>
-      {/each}
-    </div>
-  </nav>
 {/if}
 
 <style>
@@ -103,50 +115,80 @@
     font-weight: 600;
   }
 
-  nav {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: color-mix(in srgb, var(--bg) 88%, transparent);
-    backdrop-filter: blur(16px);
-    border-top: 1px solid var(--border);
-    padding-bottom: env(safe-area-inset-bottom);
-    z-index: 10;
+  .topbar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: color-mix(in srgb, var(--bg) 85%, transparent);
+    backdrop-filter: blur(18px);
+    border-bottom: 1px solid var(--border);
+    padding-top: env(safe-area-inset-top);
   }
-  .nav-inner {
-    max-width: 560px;
+  .bar-inner {
+    max-width: 1240px;
     margin: 0 auto;
+    padding: 10px 12px;
     display: flex;
-    justify-content: space-around;
-    padding: 6px 8px;
+    align-items: center;
+    gap: 16px;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.2px;
+    flex-shrink: 0;
+  }
+  .logo {
+    color: var(--brand);
+    font-size: 13px;
+  }
+  .live {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+  }
+  .tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tabs::-webkit-scrollbar {
+    display: none;
   }
   .tab {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
-    gap: 3px;
-    padding: 8px 12px;
-    border-radius: 12px;
-    color: var(--muted);
-    flex: 1;
-    transition: color 0.15s ease, background 0.15s ease;
+    gap: 7px;
+    padding: 8px 14px;
+    border-radius: var(--r-pill);
+    color: var(--text-2);
+    white-space: nowrap;
+    font-size: 13px;
+    font-weight: 600;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .tab:hover {
+    color: var(--text);
   }
   .tab .ti {
-    font-size: 20px;
-    filter: grayscale(0.6) opacity(0.65);
-    transition: filter 0.15s ease;
-  }
-  .tab .tl {
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.2px;
+    font-size: 15px;
+    filter: grayscale(0.5) opacity(0.7);
   }
   .tab.active {
-    color: var(--brand);
-    background: color-mix(in srgb, var(--brand) 12%, transparent);
+    color: var(--text);
+    background: color-mix(in srgb, var(--brand) 16%, transparent);
   }
   .tab.active .ti {
     filter: none;
+  }
+  .tab.active {
+    color: var(--brand);
   }
 </style>

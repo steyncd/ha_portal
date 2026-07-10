@@ -58,9 +58,36 @@ export const E = {
 
   // Cameras / traffic
   vehiclesToday: "sensor.vehicles_today",
+  vehiclesWeek: "sensor.vehicles_this_week",
+  vehiclesMonth: "sensor.vehicles_this_month",
   pedestriansToday: "sensor.pedestrians_today",
+  pedestriansWeek: "sensor.pedestrians_this_week",
+  pedestriansMonth: "sensor.pedestrians_this_month",
   gateDetections: "counter.frigate_main_gate_detections_today",
+  personDetections: "counter.frigate_person_detections_today",
+  vehicleDetections: "counter.frigate_vehicle_detections_today",
+  lastPlate: "sensor.main_gate_ai_last_recognized_plate",
   trafficIntensity: "sensor.sidewalk_traffic_intensity",
+  trafficMorning: "sensor.sidewalk_morning_traffic",
+  trafficAfternoon: "sensor.sidewalk_afternoon_traffic",
+  trafficEvening: "sensor.sidewalk_evening_traffic",
+  trafficNight: "sensor.sidewalk_night_traffic",
+
+  // System / network / health
+  routerCpu: "sensor.fibre_router_cpu_usage",
+  routerMem: "sensor.fibre_router_memory_usage",
+  routerDevices: "sensor.fibre_router_devices_connected",
+  routerDown: "sensor.fibre_router_download_speed",
+  routerUp: "sensor.fibre_router_upload_speed",
+  routerUptime: "sensor.fibre_router_uptime",
+  lowBatteryDevices: "sensor.low_battery_devices",
+  monitoredLoads: "sensor.total_monitored_loads",
+  unmonitoredLoads: "sensor.estimated_unmonitored_loads",
+  printer: "sensor.brother_dcp_t720dw",
+  inkBk: "sensor.brother_dcp_t720dw_bk",
+  inkC: "sensor.brother_dcp_t720dw_c",
+  inkM: "sensor.brother_dcp_t720dw_m",
+  inkY: "sensor.brother_dcp_t720dw_y",
 
   // Pumps
   waterPump: "switch.water_pump",
@@ -138,4 +165,17 @@ export const ZONES: ZoneDef[] = [
   { id: "binary_sensor.helloliam_alarm_zone_023_beam_patio", label: "Patio Beam" },
   { id: "binary_sensor.helloliam_alarm_zone_030_beam_garage", label: "Garage Beam" },
   { id: "binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", label: "Gate→Back Beam" },
+];
+
+export const DECO_NODES: { id: string; label: string }[] = [
+  { id: "device_tracker.kitchen_deco", label: "Kitchen" },
+  { id: "device_tracker.main_living_room_deco", label: "Living Room" },
+  { id: "device_tracker.study_deco", label: "Study" },
+];
+
+export const INK: { id: string; label: string; color: string }[] = [
+  { id: "sensor.brother_dcp_t720dw_bk", label: "Black", color: "#e8edf4" },
+  { id: "sensor.brother_dcp_t720dw_c", label: "Cyan", color: "#22d3ee" },
+  { id: "sensor.brother_dcp_t720dw_m", label: "Magenta", color: "#e879f9" },
+  { id: "sensor.brother_dcp_t720dw_y", label: "Yellow", color: "#facc15" },
 ];

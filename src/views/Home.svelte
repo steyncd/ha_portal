@@ -8,6 +8,7 @@
   import Section from "../lib/components/Section.svelte";
   import Tile from "../lib/components/Tile.svelte";
   import Pill from "../lib/components/Pill.svelte";
+  import PowerFlow from "../lib/components/PowerFlow.svelte";
 
   const now = new Date();
   const dateStr = now.toLocaleDateString(undefined, {
@@ -62,7 +63,7 @@
   // --- KPI values ---
   const soc = $derived(ha.num(E.batterySoc));
   const battP = $derived(ha.num(E.batteryPower));
-  const battFlow = $derived(power(battP));
+  const battFlow = $derived(power(Math.abs(battP ?? 0)));
   const pv = $derived(power(ha.num(E.pvPower)));
   const indep = $derived(ha.num(E.gridIndepToday));
   const tank = $derived(ha.num(E.tankLevel));
@@ -123,6 +124,17 @@
       onclick={() => ha.toggle(E.boreholePump)}
     />
   </div>
+</Section>
+
+<!-- Live power flow -->
+<Section title="Power Flow">
+  <PowerFlow
+    pv={ha.num(E.pvPower)}
+    battP={ha.num(E.batteryPower)}
+    gridP={ha.num(E.gridPower)}
+    load={ha.num(E.loads)}
+    soc={ha.num(E.batterySoc)}
+  />
 </Section>
 
 <!-- Hero KPIs -->

@@ -13,16 +13,31 @@ client and HA's OAuth login flow (no tokens to paste).
 - **Firebase Hosting** — static hosting
 - **Nabu Casa** — secure remote access to HA (already set up)
 
+## Views
+
+Seven views, modern dark "cb" design system, live data + history charts:
+
+- **Home** — greeting, quick actions (arm/disarm, all-lights-off, pumps), live
+  power-flow diagram, at-a-glance KPI gauges, light controls, comfort strip
+- **Energy** — animated power flow, battery/solar 24h area charts, 7-day solar
+  yield bars, power stats, appliance switches
+- **Water** — tank gauge + 48h level trend, water-used & borehole 7-day bars, pumps
+- **Climate** — indoor average + 24h trend, per-room temp/humidity with sparklines
+- **Security** — alarm status, two-tap arm/disarm, live zone grid
+- **Traffic** — vehicle/pedestrian counts, sidewalk traffic by time of day, analytics
+- **System** — internet, router CPU/memory gauges, mesh nodes, printer ink, health
+
 ## Local development
 
 ```bash
 npm install
-npm run dev
+npm run dev        # live — connects to your real Home Assistant
+npm run dev:mock   # offline — runs against the mock dataset, no HA needed
 ```
 
-Open http://localhost:5173. On first load you'll be redirected to Home Assistant
-to log in; after that, tokens are cached in `localStorage` and it connects
-silently.
+Open http://localhost:5173. On first (live) load you'll be redirected to Home
+Assistant to log in; after that, tokens are cached in `localStorage` and it
+connects silently. Mock mode is also reachable in any build via `?mock=1`.
 
 > **First-time auth note:** HA's OAuth (IndieAuth) only allows redirects back to
 > the same origin that requested login. `http://localhost:5173` and your
