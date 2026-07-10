@@ -53,7 +53,7 @@
   .kpi {
     position: relative;
     overflow: hidden;
-    padding: 20px;
+    padding: 22px;
   }
   .kpi::before {
     content: "";
@@ -61,14 +61,31 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 4px;
-    background: var(--ac);
+    height: 3px;
+    background: linear-gradient(90deg, var(--ac), color-mix(in srgb, var(--ac) 30%, transparent));
+  }
+  /* soft accent glow bleeding from the top-left corner */
+  .kpi::after {
+    content: "";
+    position: absolute;
+    top: -40%;
+    left: -10%;
+    width: 55%;
+    height: 90%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--ac) 22%, transparent), transparent 70%);
+    pointer-events: none;
   }
   .body {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 14px;
+    position: relative;
+    z-index: 1;
+  }
+  .foots {
+    position: relative;
+    z-index: 1;
   }
   .head {
     display: flex;

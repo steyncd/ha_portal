@@ -38,19 +38,24 @@
     gap: 4px;
     text-align: left;
     width: 100%;
-    padding: 13px 14px;
-    min-height: 84px;
+    padding: 15px 16px;
+    min-height: 88px;
     background: var(--fill);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--r-tile);
     color: var(--text);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
     transition:
-      background 0.15s ease,
-      border-color 0.15s ease,
-      transform 0.07s ease;
+      background 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.08s ease;
   }
   .tile:not(:disabled):hover {
     background: var(--card-hover);
+    border-color: var(--border-strong);
   }
   .tile:not(:disabled):active {
     transform: scale(0.97);
@@ -60,11 +65,15 @@
     cursor: not-allowed;
   }
   .tile.on {
-    background: color-mix(in srgb, var(--ac) 14%, transparent);
-    border-color: color-mix(in srgb, var(--ac) 55%, transparent);
+    background: color-mix(in srgb, var(--ac) 20%, transparent);
+    border-color: color-mix(in srgb, var(--ac) 65%, transparent);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--ac) 30%, transparent),
+      0 8px 26px -10px color-mix(in srgb, var(--ac) 70%, transparent),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
   }
   .ic {
-    font-size: 21px;
+    font-size: 22px;
     line-height: 1;
     filter: grayscale(0.5) opacity(0.7);
   }

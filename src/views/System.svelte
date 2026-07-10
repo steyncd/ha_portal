@@ -111,7 +111,10 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 14px 16px;
+    padding: 15px 16px;
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow);
   }
   .ndot {
     width: 9px;

@@ -259,9 +259,13 @@
   }
   h1 {
     margin: 0;
-    font-size: 30px;
-    font-weight: 700;
-    letter-spacing: -0.6px;
+    font-size: 32px;
+    font-weight: 800;
+    letter-spacing: -0.8px;
+    background: linear-gradient(120deg, #ffffff 30%, #c4b5fd 75%, #a78bfa 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
   .date {
     margin: 4px 0 0;
@@ -292,10 +296,13 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
-    padding: 14px;
+    padding: 15px;
     background: var(--card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--r);
+    box-shadow: var(--shadow);
   }
   .rt {
     font-size: 21px;

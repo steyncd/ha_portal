@@ -136,10 +136,13 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    padding: 13px 15px;
+    padding: 14px 16px;
     background: var(--card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--r);
+    box-shadow: var(--shadow);
   }
   .zone.active {
     border-color: color-mix(in srgb, var(--warning) 50%, transparent);

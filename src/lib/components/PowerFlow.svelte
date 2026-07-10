@@ -97,13 +97,13 @@
     display: block;
   }
   .node {
-    fill: var(--card);
-    stroke: color-mix(in srgb, var(--c, var(--border-strong)) 55%, transparent);
+    fill: rgba(16, 14, 30, 0.72);
+    stroke: color-mix(in srgb, var(--c, var(--border-strong)) 60%, transparent);
     stroke-width: 2;
   }
   .house {
-    fill: color-mix(in srgb, var(--warning) 10%, var(--card));
-    stroke: color-mix(in srgb, var(--warning) 45%, transparent);
+    fill: rgba(40, 30, 20, 0.7);
+    stroke: color-mix(in srgb, var(--warning) 50%, transparent);
   }
   .ic {
     font-size: 22px;

@@ -1,32 +1,41 @@
 :root {
-  /* Surfaces — refined "cb" palette from the design handoff */
-  --bg: #0a0c10;
-  --card: #13161d;
-  --card-hover: #181c25;
-  --border: rgba(255, 255, 255, 0.06);
-  --border-strong: rgba(255, 255, 255, 0.1);
-  --fill: rgba(255, 255, 255, 0.03);
-  --fill-strong: rgba(255, 255, 255, 0.06);
-  --divider: rgba(255, 255, 255, 0.05);
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 16px 36px -22px rgba(0, 0, 0, 0.8);
+  /* Aurora Glass — violet/indigo */
+  --bg: #08070f;
 
-  /* Text */
-  --text: #eef2f8;
-  --text-2: #8b93a6;
-  --muted: #6b7486;
+  /* Glass surfaces (translucent — sit over the aurora backdrop) */
+  --card: rgba(255, 255, 255, 0.055);
+  --card-hover: rgba(255, 255, 255, 0.1);
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --fill: rgba(255, 255, 255, 0.045);
+  --fill-strong: rgba(255, 255, 255, 0.1);
+  --divider: rgba(255, 255, 255, 0.08);
+  --glass-blur: blur(22px) saturate(150%);
+  --shadow: 0 10px 34px -12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  --shadow-lift: 0 18px 50px -16px rgba(76, 40, 160, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 
-  /* Accents / semantics */
-  --brand: #7aa2ff;
-  --success: #46d493;
-  --warning: #f5b942;
-  --error: #f2685f;
+  /* Text (cool, violet-tinted) */
+  --text: #f3f2fb;
+  --text-2: #b7b4cc;
+  --muted: #837f9a;
+
+  /* Accent — violet/indigo */
+  --brand: #a78bfa;
+  --brand-2: #818cf8;
+  --grad: linear-gradient(135deg, #818cf8 0%, #a855f7 100%);
+  --glow: rgba(139, 92, 246, 0.55);
+
+  /* Semantics (brightened for glass) */
+  --success: #34d399;
+  --warning: #fbbf24;
+  --error: #fb7185;
   --water: #38bdf8;
-  --solar: #f5c451;
+  --solar: #fbbf24;
 
-  /* Shape */
-  --r-hero: 18px;
-  --r: 14px;
-  --r-tile: 13px;
+  /* Shape — larger, softer */
+  --r-hero: 24px;
+  --r: 18px;
+  --r-tile: 16px;
   --r-pill: 999px;
 
   color-scheme: dark;
@@ -44,12 +53,61 @@ body {
 }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(900px 600px at 12% -8%, rgba(99, 102, 241, 0.3), transparent 60%),
+    radial-gradient(820px 640px at 112% -2%, rgba(168, 85, 247, 0.28), transparent 55%),
+    radial-gradient(780px 780px at 50% 120%, rgba(56, 89, 214, 0.22), transparent 55%),
+    var(--bg);
+  background-attachment: fixed;
   color: var(--text);
   font-family:
     -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* Drifting aurora orbs for depth */
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+body::before {
+  width: 46vw;
+  height: 46vw;
+  top: -12vw;
+  left: -8vw;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.4), transparent 70%);
+  animation: drift1 26s ease-in-out infinite alternate;
+}
+body::after {
+  width: 40vw;
+  height: 40vw;
+  bottom: -14vw;
+  right: -6vw;
+  background: radial-gradient(circle, rgba(168, 85, 247, 0.34), transparent 70%);
+  animation: drift2 32s ease-in-out infinite alternate;
+}
+@keyframes drift1 {
+  to {
+    transform: translate(8vw, 6vw) scale(1.15);
+  }
+}
+@keyframes drift2 {
+  to {
+    transform: translate(-7vw, -5vw) scale(1.1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after {
+    animation: none;
+  }
 }
 
 button {
@@ -64,11 +122,11 @@ input {
   font-family: inherit;
 }
 
-/* ---- Type ramp (from design-tokens.md) ---- */
+/* ---- Type ramp ---- */
 .t-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.6px;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -83,16 +141,19 @@ input {
 .wrap {
   max-width: 1240px;
   margin: 0 auto;
-  padding: 0 16px calc(48px + env(safe-area-inset-bottom));
+  padding: 0 18px calc(56px + env(safe-area-inset-bottom));
 }
 
 .grid {
   display: grid;
-  gap: 12px;
+  gap: 14px;
 }
 
+/* Frosted glass surface */
 .card {
   background: var(--card);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
   border: 1px solid var(--border);
   border-radius: var(--r-hero);
   box-shadow: var(--shadow);
@@ -107,6 +168,6 @@ input {
 
 @media (max-width: 640px) {
   .wrap {
-    padding: 0 12px calc(56px + env(safe-area-inset-bottom));
+    padding: 0 14px calc(64px + env(safe-area-inset-bottom));
   }
 }

@@ -182,13 +182,13 @@
     filter: grayscale(0.5) opacity(0.7);
   }
   .tab.active {
-    color: var(--text);
-    background: color-mix(in srgb, var(--brand) 16%, transparent);
+    color: #fff;
+    background: linear-gradient(135deg, color-mix(in srgb, var(--brand-2) 32%, transparent), color-mix(in srgb, var(--brand) 32%, transparent));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in srgb, var(--brand) 45%, transparent),
+      0 6px 20px -8px var(--glow);
   }
   .tab.active .ti {
     filter: none;
-  }
-  .tab.active {
-    color: var(--brand);
   }
 </style>

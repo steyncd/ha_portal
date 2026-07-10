@@ -129,10 +129,13 @@
     gap: 10px;
   }
   .mini {
-    padding: 14px;
+    padding: 15px;
     background: var(--card);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
     border: 1px solid var(--border);
     border-radius: var(--r);
+    box-shadow: var(--shadow);
   }
   .mv {
     font-size: 18px;
