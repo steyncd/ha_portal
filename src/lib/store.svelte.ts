@@ -173,10 +173,19 @@ class HAStore {
     return this.#svc("alarm_control_panel", "alarm_disarm", { entity_id });
   }
 
-  /** Set a light's brightness (%) and optional rgb colour. */
-  lightSet(entity_id: string, opts: { brightness_pct?: number; rgb_color?: [number, number, number] }) {
+  /** Set a light's brightness (%), rgb colour, or colour temperature (K). */
+  lightSet(
+    entity_id: string,
+    opts: {
+      brightness_pct?: number;
+      rgb_color?: [number, number, number];
+      color_temp_kelvin?: number;
+    },
+  ) {
     if (this.#mock) {
-      this.#setMock(entity_id, (opts.brightness_pct ?? 100) > 0 ? "on" : "off");
+      // In mock, reflect brightness in state; colour-only changes keep it on.
+      const on = opts.brightness_pct == null || opts.brightness_pct > 0;
+      this.#setMock(entity_id, on ? "on" : "off");
       return;
     }
     return this.#svc("light", "turn_on", { entity_id, ...opts });

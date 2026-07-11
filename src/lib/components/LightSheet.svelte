@@ -6,6 +6,14 @@
   const id = $derived(lightSheet.id);
   const on = $derived(id ? ha.isOn(id) : false);
 
+  // Capabilities from supported_color_modes (absent in mock → assume full).
+  const modes = $derived((id ? ha.attr(id, "supported_color_modes") : null) as string[] | null);
+  const unknown = $derived(!Array.isArray(modes));
+  const has = (m: string) => Array.isArray(modes) && modes.includes(m);
+  const canColor = $derived(unknown || has("rgb") || has("rgbw") || has("rgbww") || has("hs") || has("xy"));
+  const canTemp = $derived(unknown || has("color_temp"));
+  const canDim = $derived(unknown || canColor || canTemp || has("brightness"));
+
   // brightness 0-255 → %
   const brightPct = $derived.by(() => {
     if (!id) return 100;
@@ -17,26 +25,52 @@
   let dragPct = $state<number | null>(null);
   const shownPct = $derived(dragPct ?? brightPct);
 
-  const SWATCHES: { c: string; rgb: [number, number, number] }[] = [
-    { c: "#fff4d6", rgb: [255, 244, 214] },
-    { c: "#ffd9a0", rgb: [255, 217, 160] },
-    { c: "#ffffff", rgb: [255, 255, 255] },
-    { c: "#a78bfa", rgb: [167, 139, 250] },
-    { c: "#38bdf8", rgb: [56, 189, 248] },
-    { c: "#34d399", rgb: [52, 211, 153] },
-    { c: "#fb7185", rgb: [251, 113, 133] },
-    { c: "#fbbf24", rgb: [251, 191, 36] },
-  ];
+  // Clear the transient drag value whenever a different light opens, so the
+  // slider reflects the new light's real state instead of the last one's.
+  $effect(() => {
+    lightSheet.id;
+    dragPct = null;
+  });
 
-  const isLight = $derived(id?.startsWith("light.") ?? false);
-
+  // Debounce the service call so dragging doesn't flood HA with dozens of
+  // calls (which made brightness jumpy); the final value is committed on release.
+  let timer: ReturnType<typeof setTimeout> | undefined;
   function setBright(e: Event) {
     const v = Number((e.target as HTMLInputElement).value);
     dragPct = v;
+    clearTimeout(timer);
+    timer = setTimeout(() => { if (id) ha.lightSet(id, { brightness_pct: v }); }, 110);
+  }
+  function commitBright(e: Event) {
+    const v = Number((e.target as HTMLInputElement).value);
+    clearTimeout(timer);
+    dragPct = v;
     if (id) ha.lightSet(id, { brightness_pct: v });
   }
-  function pick(rgb: [number, number, number]) {
-    if (id && isLight) ha.lightSet(id, { rgb_color: rgb });
+
+  const COLORS: { c: string; rgb: [number, number, number] }[] = [
+    { c: "#ff5c5c", rgb: [255, 92, 92] },
+    { c: "#fbbf24", rgb: [251, 191, 36] },
+    { c: "#34d399", rgb: [52, 211, 153] },
+    { c: "#38bdf8", rgb: [56, 189, 248] },
+    { c: "#a78bfa", rgb: [167, 139, 250] },
+    { c: "#fb7185", rgb: [251, 113, 133] },
+  ];
+  const WHITES: { c: string; k: number; label: string }[] = [
+    { c: "#ffb56b", k: 2200, label: "Candle" },
+    { c: "#ffd9a0", k: 2700, label: "Warm" },
+    { c: "#fff4e6", k: 4000, label: "Neutral" },
+    { c: "#eaf2ff", k: 6000, label: "Cool" },
+  ];
+
+  function pickColor(rgb: [number, number, number]) {
+    if (id) ha.lightSet(id, { rgb_color: rgb });
+  }
+  function pickWhite(k: number) {
+    if (!id) return;
+    const lo = (ha.attr(id, "min_color_temp_kelvin") as number) ?? 2000;
+    const hi = (ha.attr(id, "max_color_temp_kelvin") as number) ?? 6500;
+    ha.lightSet(id, { color_temp_kelvin: Math.min(hi, Math.max(lo, k)) });
   }
 </script>
 
@@ -56,17 +90,33 @@
 
       <div class="block">
         <div class="row"><span class="lbl">Brightness</span><span class="pct">{shownPct}%</span></div>
-        <input type="range" min="1" max="100" value={shownPct} oninput={setBright} disabled={!isLight} />
-        {#if !isLight}<div class="note">This is a switch — on/off only.</div>{/if}
+        <input type="range" min="1" max="100" value={shownPct} oninput={setBright} onchange={commitBright} disabled={!canDim} />
+        {#if !canDim}<div class="note">This light is on/off only.</div>{/if}
       </div>
 
-      {#if isLight}
+      {#if canColor}
         <div class="lbl" style="margin-bottom:11px">Colour</div>
         <div class="swatches">
-          {#each SWATCHES as s}
-            <button class="sw" style="background:{s.c}" onclick={() => pick(s.rgb)} aria-label="colour"></button>
+          {#each COLORS as s}
+            <button class="sw" style="background:{s.c}" onclick={() => pickColor(s.rgb)} aria-label="colour {s.c}"></button>
           {/each}
         </div>
+      {/if}
+
+      {#if canTemp}
+        <div class="lbl" style="margin:{canColor ? '18px' : '0'} 0 11px">White</div>
+        <div class="whites">
+          {#each WHITES as w}
+            <button class="white" onclick={() => pickWhite(w.k)}>
+              <span class="wsw" style="background:{w.c}"></span>
+              <span class="wlbl">{w.label}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+
+      {#if !canColor && !canTemp}
+        <div class="note">Brightness only — no colour control.</div>
       {/if}
     </div>
   </div>
@@ -170,5 +220,33 @@
   }
   .sw:hover {
     box-shadow: 0 0 0 2px #fff;
+  }
+  .whites {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 9px;
+  }
+  .white {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 6px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+  }
+  .white:hover {
+    background: rgba(255, 255, 255, 0.09);
+  }
+  .wsw {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25);
+  }
+  .wlbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-2);
   }
 </style>
