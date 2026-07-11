@@ -161,16 +161,29 @@ class HAStore {
     return this.#svc("homeassistant", "turn_off", { entity_id });
   }
   armAway(entity_id: string) {
-    if (this.#mock) return this.#setMock([entity_id, "alarm_control_panel.olarm_alarm"], "armed_away");
+    if (this.#mock) return this.#setMock(entity_id, "armed_away");
     return this.#svc("alarm_control_panel", "alarm_arm_away", { entity_id });
   }
   armHome(entity_id: string) {
-    if (this.#mock) return this.#setMock([entity_id, "alarm_control_panel.olarm_alarm"], "armed_home");
+    if (this.#mock) return this.#setMock(entity_id, "armed_home");
     return this.#svc("alarm_control_panel", "alarm_arm_home", { entity_id });
   }
+  armNight(entity_id: string) {
+    if (this.#mock) return this.#setMock(entity_id, "armed_night");
+    return this.#svc("alarm_control_panel", "alarm_arm_night", { entity_id });
+  }
   disarm(entity_id: string) {
-    if (this.#mock) return this.#setMock([entity_id, "alarm_control_panel.olarm_alarm"], "disarmed");
+    if (this.#mock) return this.#setMock(entity_id, "disarmed");
     return this.#svc("alarm_control_panel", "alarm_disarm", { entity_id });
+  }
+  /** Press a button entity (e.g. a per-zone bypass / unbypass button). */
+  pressButton(entity_id: string) {
+    if (this.#mock) return;
+    return this.#svc("button", "press", { entity_id });
+  }
+  /** Optimistically set an entity's state in mock mode only (no-op live). */
+  mockSet(entity_id: string, state: string) {
+    if (this.#mock) this.#setMock(entity_id, state);
   }
 
   /** Set a light's brightness (%), rgb colour, or colour temperature (K). */

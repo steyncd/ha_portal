@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#08070f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#eef4fc}
+  a{color:#818cf8;text-decoration:none}a:hover{color:#a5b4fc}
+  .me-rm *{animation:none !important}
+  @keyframes drift1{to{transform:translate(60px,44px) scale(1.15)}}
+  @keyframes drift2{to{transform:translate(-52px,-38px) scale(1.1)}}
+  @keyframes ringdraw{from{stroke-dashoffset:var(--c)}}
+</style>
+</helmet>
+
+<div style="position:fixed;inset:0;z-index:0;background:radial-gradient(900px 620px at 8% -10%,color-mix(in srgb,var(--acc,#a78bfa) 26%,transparent),transparent 60%),radial-gradient(820px 640px at 116% 0%,color-mix(in srgb,var(--acc2,#818cf8) 22%,transparent),transparent 55%),#08070f;pointer-events:none"></div>
+<div style="position:fixed;width:44vw;height:44vw;top:-14vw;left:-8vw;z-index:0;border-radius:50%;filter:blur(90px);opacity:.5;background:radial-gradient(circle,var(--acc,#a78bfa),transparent 70%);animation:drift1 26s ease-in-out infinite alternate;pointer-events:none"></div>
+<div style="position:fixed;width:38vw;height:38vw;bottom:-14vw;right:-6vw;z-index:0;border-radius:50%;filter:blur(90px);opacity:.4;background:radial-gradient(circle,var(--acc2,#818cf8),transparent 70%);animation:drift2 32s ease-in-out infinite alternate;pointer-events:none"></div>
+
+<div style="position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:24px;display:flex;flex-direction:column;gap:14px">
+
+  <!-- profile + headline -->
+  <div style="background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:24px;padding:22px 24px;display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+    <span style="width:64px;height:64px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,var(--acc2,#818cf8),var(--acc,#a78bfa));display:grid;place-items:center;font-size:24px;font-weight:800;color:#0b1017">C</span>
+    <div style="flex:1;min-width:200px">
+      <div style="font-size:22px;font-weight:800;letter-spacing:-.4px">Christo</div>
+      <div style="font-size:13px;color:#c3d1e0;margin-top:3px">Admin · <span style="color:#34d399">Home now</span> · Main bedroom</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.05)"><span style="font-size:15px">💍</span><span style="font-size:12.5px;color:#c3d1e0">Oura ring</span><span style="font-size:12.5px;font-weight:700;color:#34d399">{{ ringBatt }}%</span></div>
+  </div>
+
+  <!-- today's headline insight -->
+  <div style="border-radius:20px;padding:17px 20px;background:linear-gradient(120deg,color-mix(in srgb,var(--acc,#a78bfa) 16%,transparent),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc,#a78bfa) 26%,transparent);display:flex;align-items:center;gap:15px;flex-wrap:wrap">
+    <span style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--acc,#a78bfa)">✦ Today</span>
+    <span style="font-size:14px;font-weight:600;color:#f4f8fc">{{ headline }}</span>
+    <span style="font-size:12.5px;color:#aebccd">{{ headlineSub }}</span>
+  </div>
+
+  <!-- three scores -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <sc-for list="{{ scores }}" as="s" hint-placeholder-count="3">
+      <div style="flex:1 1 240px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:20px 22px;display:flex;align-items:center;gap:17px">
+        <div style="width:84px;height:84px;flex-shrink:0;border-radius:50%;background:{{ s.ring }};display:grid;place-items:center">
+          <div style="width:64px;height:64px;border-radius:50%;background:#0b1017;display:grid;place-items:center;font-size:23px;font-weight:800;color:{{ s.color }}">{{ s.val }}</div>
+        </div>
+        <div style="min-width:0">
+          <div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:700">{{ s.name }}</span><span style="font-size:14px">{{ s.crown }}</span></div>
+          <div style="font-size:12px;color:#aebccd;margin-top:2px">{{ s.status }}</div>
+          <span style="display:inline-flex;align-items:center;margin-top:8px;padding:3px 9px;border-radius:999px;background:{{ s.deltaBg }};font-size:11px;font-weight:700;color:{{ s.deltaColor }}">{{ s.delta }}</span>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <!-- sleep + readiness contributors -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <!-- sleep -->
+    <div style="flex:1.5 1 380px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><span style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd">Last night's sleep</span><span style="font-size:12px;color:#818cf8;font-weight:600">{{ bed }}</span></div>
+      <div style="display:flex;align-items:flex-end;gap:13px;margin:8px 0 16px"><div style="font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:.9">{{ totalSleep }}</div><div style="font-size:12px;color:#aebccd;padding-bottom:6px">asleep · {{ timeInBed }} in bed</div></div>
+      {{ hypnogram }}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 20px;margin:16px 0 2px">
+        <sc-for list="{{ stages }}" as="st" hint-placeholder-count="4">
+          <div style="display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;flex-shrink:0;border-radius:3px;background:{{ st.color }}"></span><span style="font-size:12px;color:#c3d1e0;flex:1">{{ st.name }}</span><span style="font-size:12px;font-weight:700;color:#eef4fc">{{ st.dur }}</span></div>
+        </sc-for>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:15px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;color:#aebccd">
+        <span>Efficiency <b style="color:#eef4fc">{{ efficiency }}%</b></span>
+        <span>Restful <b style="color:#eef4fc">{{ restful }}%</b></span>
+        <span>Latency <b style="color:#eef4fc">{{ latency }}</b></span>
+        <span>Resting HR <b style="color:#eef4fc">{{ restingHR }} bpm</b></span>
+      </div>
+    </div>
+    <!-- readiness contributors (Oura) -->
+    <div style="flex:1 1 320px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:22px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px"><span style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd">Readiness contributors</span><span style="font-size:12px;color:#34d399;font-weight:600">7 signals</span></div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <sc-for list="{{ contributors }}" as="c" hint-placeholder-count="7">
+          <div style="display:flex;align-items:center;gap:12px">
+            <span style="width:132px;flex-shrink:0;font-size:12.5px;color:#dbe6f0">{{ c.name }}</span>
+            <div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.08);position:relative;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ c.w }};background:{{ c.color }};border-radius:999px"></div></div>
+            <span style="width:98px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:flex-end;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:{{ c.color }}"></span><span style="font-size:10.5px;font-weight:700;color:{{ c.color }}">{{ c.status }}</span></span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- activity rings + vitals -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <!-- activity rings (Apple) -->
+    <div style="flex:1 1 320px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:22px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd;margin-bottom:16px">Activity today</div>
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+        <div style="width:172px;flex-shrink:0">{{ activityRings }}</div>
+        <div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:15px">
+          <sc-for list="{{ activityLegend }}" as="a" hint-placeholder-count="3">
+            <div style="display:flex;align-items:baseline;gap:11px"><span style="width:11px;height:11px;flex-shrink:0;border-radius:50%;background:{{ a.color }};box-shadow:0 0 9px {{ a.color }};align-self:center"></span><span style="flex:1;font-size:12.5px;color:#c3d1e0">{{ a.name }}</span><span style="font-size:16px;font-weight:800;color:#f2f7fc">{{ a.val }}</span><span style="font-size:11px;color:#8ea3b8">/ {{ a.goal }} {{ a.unit }}</span></div>
+          </sc-for>
+          <div style="margin-top:1px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#aebccd">{{ steps }} steps · {{ totalCal }} kcal burned</div>
+        </div>
+      </div>
+    </div>
+    <!-- heart & vitals -->
+    <div style="flex:1 1 320px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:22px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd;margin-bottom:18px">Heart &amp; vitals</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:18px 14px">
+        <sc-for list="{{ vitals }}" as="v" hint-placeholder-count="8">
+          <div><div style="font-size:20px;font-weight:800;color:#f2f7fc">{{ v.v }}</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">{{ v.k }}</div></div>
+        </sc-for>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7-day trends with deltas -->
+  <div style="display:flex;gap:14px;flex-wrap:wrap">
+    <div style="flex:1 1 300px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd">Sleep score · 7 days</span><span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:{{ sleepDeltaBg }};font-size:11px;font-weight:700;color:{{ sleepDeltaColor }}">{{ sleepDelta }}</span></div>
+      {{ sleepTrend }}
+    </div>
+    <div style="flex:1 1 300px;background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd">Steps · 7 days</span><span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:{{ stepsDeltaBg }};font-size:11px;font-weight:700;color:{{ stepsDeltaColor }}">{{ stepsDelta }}</span></div>
+      {{ stepsTrend }}
+    </div>
+  </div>
+
+  <!-- favourites (home controls) -->
+  <sc-if value="{{ showFavourites }}" hint-placeholder-val="{{ true }}">
+    <div style="background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px;padding:20px">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd;margin-bottom:13px">My favourites</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:9px">
+        <sc-for list="{{ favList }}" as="f" hint-placeholder-count="4">
+          <button onClick="{{ f.toggle }}" style="position:relative;display:flex;align-items:center;gap:10px;padding:13px 14px;border-radius:13px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+            <span style="position:absolute;inset:0;border-radius:13px;background:color-mix(in srgb,var(--acc,#a78bfa) 15%,transparent);box-shadow:inset 0 0 0 1.5px var(--acc,#a78bfa);opacity:{{ f.glow }};pointer-events:none"></span>
+            <span style="position:relative;font-size:16px">{{ f.icon }}</span><span style="position:relative;font-size:12.5px;font-weight:600;color:#f2f7fc">{{ f.name }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </div>
+  </sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;$preview&quot;: { &quot;width&quot;: 1180, &quot;height&quot;: 1640 },
+  &quot;accent&quot;: { &quot;editor&quot;: &quot;color&quot;, &quot;default&quot;: &quot;#a78bfa&quot;, &quot;options&quot;: [&quot;#a78bfa&quot;, &quot;#34d399&quot;, &quot;#38bdf8&quot;, &quot;#fb923c&quot;, &quot;#fb7185&quot;, &quot;#cbd5e1&quot;], &quot;tsType&quot;: &quot;string&quot;, &quot;section&quot;: &quot;Theme&quot; },
+  &quot;showFavourites&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: true, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Content&quot; },
+  &quot;reduceMotion&quot;: { &quot;editor&quot;: &quot;boolean&quot;, &quot;default&quot;: false, &quot;tsType&quot;: &quot;boolean&quot;, &quot;section&quot;: &quot;Motion&quot; }
+}">
+class Component extends DCLogic {
+  A2 = { "#a78bfa":"#818cf8", "#34d399":"#10b981", "#38bdf8":"#22d3ee", "#fb923c":"#f59e0b", "#fb7185":"#f472b6", "#cbd5e1":"#94a3b8" };
+
+  state = { favs: { study:true, bedroom:false, goodnight:false, morning:false } };
+
+  componentDidMount(){ this._theme(); }
+  componentDidUpdate(){ this._theme(); }
+  _theme(){
+    const a = this.props.accent || "#a78bfa";
+    const a2 = this.A2[a] || "#818cf8";
+    const r = document.documentElement.style;
+    r.setProperty("--acc", a);
+    r.setProperty("--acc2", a2);
+    document.documentElement.classList.toggle("me-rm", !!this.props.reduceMotion);
+  }
+  toggleFav(k){ this.setState(s => ({ favs: { ...s.favs, [k]: !s.favs[k] } })); }
+
+  // concentric Move / Exercise / Stand rings (Apple)
+  _rings(){
+    const h = React.createElement;
+    const rings = [
+      { v:420, goal:500, color:"#fb2d55" },
+      { v:34,  goal:45,  color:"#a3f335" },
+      { v:9,   goal:12,  color:"#2fe6de" },
+    ];
+    const cx=90, cy=90, sw=15, gap=6, r0=80;
+    const kids = [];
+    rings.forEach((rg,i) => {
+      const rad = r0 - i*(sw+gap);
+      const circ = 2*Math.PI*rad;
+      const pct = Math.min(1, rg.v/rg.goal);
+      kids.push(h("circle",{ key:"t"+i, cx, cy, r:rad, fill:"none", stroke:"rgba(255,255,255,.08)", strokeWidth:sw }));
+      kids.push(h("circle",{ key:"p"+i, cx, cy, r:rad, fill:"none", stroke:rg.color, strokeWidth:sw, strokeLinecap:"round",
+        strokeDasharray:circ.toFixed(1), strokeDashoffset:(circ*(1-pct)).toFixed(1),
+        transform:`rotate(-90 ${cx} ${cy})`, style:{ filter:`drop-shadow(0 0 5px ${rg.color})` } }));
+    });
+    return h("svg",{ viewBox:"0 0 180 180", style:{ width:"100%", maxWidth:"172px", display:"block" } }, kids);
+  }
+
+  // sleep hypnogram — stage over time (Oura / Apple)
+  _hypno(){
+    const h = React.createElement;
+    const segs = [["Light",26],["Deep",34],["Light",20],["REM",24],["Light",30],["Deep",22],["Light",38],["Awake",8],["REM",32],["Light",42],["Deep",17],["Light",36],["REM",30],["Light",24],["Awake",14],["REM",26]];
+    const lane = { Awake:0, REM:1, Light:2, Deep:3 };
+    const col = { Awake:"rgba(255,255,255,.30)", REM:"#22d3ee", Light:"#7dd3fc", Deep:"#6366f1" };
+    const w=560, top=6, laneH=27, laneGap=6, pad=52;
+    const total = segs.reduce((a,s)=>a+s[1],0);
+    const kids = [];
+    ["Awake","REM","Light","Deep"].forEach((nm,i)=>{ const y = top + i*(laneH+laneGap) + laneH/2;
+      kids.push(h("text",{ key:"l"+i, x:pad-10, y:y+3.5, fontSize:10, fontWeight:600, fill:"#8ea3b8", textAnchor:"end" }, nm)); });
+    let x = pad;
+    segs.forEach((s,i)=>{ const wd = (s[1]/total)*(w-pad-8); const y = top + lane[s[0]]*(laneH+laneGap);
+      kids.push(h("rect",{ key:"s"+i, x:x.toFixed(1), y, width:Math.max(0,wd-1.5).toFixed(1), height:laneH, rx:5, fill:col[s[0]] }));
+      x += wd; });
+    const H = top + 4*(laneH+laneGap);
+    kids.push(h("text",{ key:"ta", x:pad, y:H+7, fontSize:10, fill:"#8ea3b8", textAnchor:"start" }, "22:32"));
+    kids.push(h("text",{ key:"tb", x:w, y:H+7, fontSize:10, fill:"#8ea3b8", textAnchor:"end" }, "06:23"));
+    return h("svg",{ viewBox:`0 0 ${w} ${H+12}`, style:{ width:"100%", height:"auto", display:"block" } }, kids);
+  }
+
+  _area(vals, color, opt){
+    const h = React.createElement, o = Object.assign({ w:320, ht:90, pad:6, forceMax:0, dot:true }, opt||{});
+    const n = vals.length;
+    const max = Math.max(...vals, o.forceMax, 0.0001);
+    const min = 0, rng = (max-min)||1;
+    const X = i => o.pad + (n<=1?0:i*(o.w-2*o.pad)/(n-1));
+    const Y = v => (o.ht-o.pad) - (v-min)/rng*(o.ht-2*o.pad);
+    const line = vals.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+    const area = `M${X(0).toFixed(1)} ${o.ht} ` + vals.map((v,i)=>`L${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ") + ` L${X(n-1).toFixed(1)} ${o.ht} Z`;
+    const kids = [
+      h("path",{ key:"a", d:area, fill:`color-mix(in srgb, ${color} 20%, transparent)` }),
+      h("path",{ key:"l", d:line, fill:"none", stroke:color, strokeWidth:2.6, strokeLinecap:"round", strokeLinejoin:"round" }),
+    ];
+    if (o.dot){ const i=n-1; kids.push(h("circle",{ key:"d", cx:X(i), cy:Y(vals[i]), r:3.6, fill:color, stroke:"#0b1017", strokeWidth:2 })); }
+    return h("svg",{ viewBox:`0 0 ${o.w} ${o.ht}`, preserveAspectRatio:"none", style:{ width:"100%", height:o.ht+"px", display:"block" } }, kids);
+  }
+
+  _bars(vals, color, opt){
+    const h = React.createElement, o = Object.assign({ w:320, ht:90, pad:8, labels:[] }, opt||{});
+    const n = vals.length, max = Math.max(...vals, 1);
+    const slot = (o.w-2*o.pad)/n, bw = Math.min(slot*0.56, 26), base = o.ht-16;
+    const kids = [];
+    vals.forEach((v,i)=>{ const cx = o.pad + slot*i + slot/2, hgt = (v/max)*(base-6), y = base-hgt, today = i===n-1;
+      kids.push(h("rect",{ key:"b"+i, x:(cx-bw/2).toFixed(1), y:y.toFixed(1), width:bw.toFixed(1), height:Math.max(2,hgt).toFixed(1), rx:5, fill:color, opacity: today?1:0.4 }));
+      if (o.labels[i]) kids.push(h("text",{ key:"x"+i, x:cx, y:o.ht-3, fontSize:9.5, fill: today?"#cdd9e6":"#7f8fa1", fontWeight: today?700:400, textAnchor:"middle" }, o.labels[i]));
+    });
+    return h("svg",{ viewBox:`0 0 ${o.w} ${o.ht}`, style:{ width:"100%", height:"auto", display:"block" } }, kids);
+  }
+
+  band(p){ if (p>=85) return { c:"#34d399", s:"Optimal" }; if (p>=70) return { c:"#818cf8", s:"Good" }; return { c:"#fbbf24", s:"Pay attention" }; }
+
+  renderVals(){
+    const acc = this.props.accent || "#a78bfa";
+    this._acc = acc;
+    const ringCss = (pct,c) => `conic-gradient(${c} ${(Math.min(100,pct)*3.6).toFixed(1)}deg, rgba(255,255,255,.10) 0)`;
+    const upBg = "color-mix(in srgb,#34d399 18%,transparent)", upFg = "#34d399";
+    const dnBg = "rgba(255,255,255,.06)", dnFg = "#aebccd";
+
+    const scoreDefs = [
+      { name:"Sleep", val:82, color:"#818cf8", status:"Solid night", d:3 },
+      { name:"Readiness", val:80, color:"#34d399", status:"Balanced", d:-2 },
+      { name:"Activity", val:79, color:"#fb923c", status:"On track", d:5 },
+    ];
+    const scores = scoreDefs.map(s => ({
+      name:s.name, val:s.val, color:s.color, ring:ringCss(s.val, s.color),
+      crown: s.val>=85 ? "👑" : "",
+      status:s.status,
+      delta: (s.d>=0?"▲ ":"▼ ") + Math.abs(s.d) + " vs avg",
+      deltaBg: s.d>=0?upBg:dnBg, deltaColor: s.d>=0?upFg:dnFg,
+    }));
+
+    const contribDefs = [
+      ["Resting heart rate", 92], ["HRV balance", 78], ["Body temperature", 95],
+      ["Recovery index", 88], ["Sleep", 82], ["Sleep balance", 80], ["Previous day activity", 64],
+    ];
+    const contributors = contribDefs.map(([name,p]) => { const b = this.band(p); return { name, w:p+"%", color:b.c, status:b.s }; });
+
+    const activityLegend = [
+      { name:"Move", color:"#fb2d55", val:420, goal:500, unit:"CAL" },
+      { name:"Exercise", color:"#a3f335", val:34, goal:45, unit:"MIN" },
+      { name:"Stand", color:"#2fe6de", val:9, goal:12, unit:"HR" },
+    ];
+
+    const stages = [
+      { name:"Deep", dur:"1h 13m", color:"#6366f1" },
+      { name:"REM", dur:"1h 58m", color:"#22d3ee" },
+      { name:"Light", dur:"3h 36m", color:"#7dd3fc" },
+      { name:"Awake", dur:"1h 02m", color:"rgba(255,255,255,.30)" },
+    ];
+
+    const vitals = [
+      ["Resting HR","52 bpm"], ["HRV","52 ms"], ["SpO\u2082","95%"], ["Respiratory","14.2 /min"],
+      ["Body temp","\u22120.2\u00b0"], ["Cardio age","37 yr"], ["Sleeping HR","56 bpm"], ["Current HR","64 bpm"],
+    ].map(([k,v]) => ({ k, v }));
+
+    const sleep7 = [76,81,68,84,79,86,82];
+    const steps7 = [6120,8450,3980,7200,9100,5400,6420];
+    const days = ["Fri","Sat","Sun","Mon","Tue","Wed","Thu"];
+    const avg = a => a.reduce((x,y)=>x+y,0)/a.length;
+    const sD = Math.round(sleep7[6] - avg(sleep7));
+    const stD = Math.round(steps7[6] - avg(steps7));
+
+    const F = this.state.favs;
+    const favDefs = [["study","Study Lamp","📖"],["bedroom","Bedroom","🛏️"],["goodnight","Goodnight","🌙"],["morning","Morning","☀️"]];
+    const favList = favDefs.map(([k,name,icon]) => ({ name, icon, glow:F[k]?1:0, toggle:()=>this.toggleFav(k) }));
+
+    return {
+      ringBatt: 72,
+      headline: "Recovered and ready — a balanced day ahead.",
+      headlineSub: "HRV steady at 52 ms · resting HR 52 bpm · body temp normal.",
+      scores, contributors, activityLegend, stages, vitals, favList,
+      showFavourites: this.props.showFavourites !== false,
+      bed: "22:32 – 06:23", totalSleep: "6h 48m", timeInBed: "7h 50m",
+      efficiency: 87, restful: 88, latency: "20 min", restingHR: 52,
+      steps: "6,420", totalCal: "2,389",
+      activityRings: this._rings(),
+      hypnogram: this._hypno(),
+      sleepTrend: this._area(sleep7, "#818cf8", { forceMax:100, ht:84 }),
+      stepsTrend: this._bars(steps7, "#fb923c", { labels:days, ht:96 }),
+      sleepDelta: (sD>=0?"▲ ":"▼ ") + Math.abs(sD) + " vs avg", sleepDeltaBg: sD>=0?upBg:dnBg, sleepDeltaColor: sD>=0?upFg:dnFg,
+      stepsDelta: (stD>=0?"▲ ":"▼ ") + Math.abs(stD) + " vs avg", stepsDeltaBg: stD>=0?upBg:dnBg, stepsDeltaColor: stD>=0?upFg:dnFg,
+    };
+  }
+}
+</script>
+</body>
+</html>

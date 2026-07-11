@@ -50,6 +50,9 @@ export const E = {
   alarmMain: "alarm_control_panel.olarm_alarm",
   alarmBeams: "alarm_control_panel.olarm_beams",
   alarmArmTarget: "alarm_control_panel.helloliam_alarm_area_01_huis",
+  // The two controllable HelloLiam areas (arm home/away/night + disarm, no code).
+  alarmHome: "alarm_control_panel.helloliam_alarm_area_01_huis",
+  alarmBeamsArea: "alarm_control_panel.helloliam_alarm_area_02_beams",
   alarmAcPower: "binary_sensor.helloliam_alarm_ac_power",
   bypassedZones: "sensor.alarm_bypassed_zones_2",
 
@@ -293,20 +296,50 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
 // Flat list (derived) — used by the Energy view's live-draw grid.
 export const APPLIANCES: Appliance[] = APPLIANCE_AREAS.flatMap((a) => a.items);
 
-export type ZoneDef = { id: string; label: string };
+// A security zone with its live state, current bypass status, and the
+// press-buttons that bypass / restore it (the proper per-zone bypass wiring).
+export type AlarmZone = {
+  n: string;
+  label: string;
+  id: string;
+  bypass: string;
+  bypassBtn: string;
+  unbypassBtn: string;
+};
 
-// Security zones worth surfacing (beams + key doors/PIRs).
-export const ZONES: ZoneDef[] = [
-  { id: "binary_sensor.helloliam_alarm_zone_013_front_door", label: "Front Door" },
-  { id: "binary_sensor.helloliam_alarm_zone_020_door_kitchen", label: "Kitchen Door" },
-  { id: "binary_sensor.helloliam_alarm_zone_024_door_lounge", label: "Lounge Door" },
-  { id: "binary_sensor.helloliam_alarm_zone_016_lounge_windows", label: "Lounge Windows" },
-  { id: "binary_sensor.helloliam_alarm_zone_015_beam_driveway", label: "Driveway Beam" },
-  { id: "binary_sensor.helloliam_alarm_zone_018_beam_pool", label: "Pool Beam" },
-  { id: "binary_sensor.helloliam_alarm_zone_022_beam_back_garden", label: "Back Garden Beam" },
-  { id: "binary_sensor.helloliam_alarm_zone_023_beam_patio", label: "Patio Beam" },
-  { id: "binary_sensor.helloliam_alarm_zone_030_beam_garage", label: "Garage Beam" },
-  { id: "binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", label: "Gate→Back Beam" },
+// All 31 HelloLiam alarm zones (generated from the live entity registry).
+export const ALARM_ZONES: AlarmZone[] = [
+  { n: "001", label: "Panic", id: "binary_sensor.helloliam_alarm_zone_001_panic", bypass: "binary_sensor.helloliam_alarm_zone_001_bypass_panic", bypassBtn: "button.helloliam_alarm_zone_001_bypass_panic", unbypassBtn: "button.helloliam_alarm_zone_001_unbypass_panic" },
+  { n: "002", label: "PIR · Guest Room", id: "binary_sensor.helloliam_alarm_zone_002_pir_guest_room", bypass: "binary_sensor.helloliam_alarm_zone_002_bypass_pir_guest_room", bypassBtn: "button.helloliam_alarm_zone_002_bypass_pir_guest_room", unbypassBtn: "button.helloliam_alarm_zone_002_unbypass_pir_guest_room" },
+  { n: "003", label: "PIR · Kids Room", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", bypass: "binary_sensor.helloliam_alarm_zone_003_bypass_pir_kids_room", bypassBtn: "button.helloliam_alarm_zone_003_bypass_pir_kids_room", unbypassBtn: "button.helloliam_alarm_zone_003_unbypass_pir_kids_room" },
+  { n: "004", label: "REMOTE P1 P2", id: "binary_sensor.helloliam_alarm_zone_004_remote_p1_p2", bypass: "binary_sensor.helloliam_alarm_zone_004_bypass_remote_p1_p2", bypassBtn: "button.helloliam_alarm_zone_004_bypass_remote_p1_p2", unbypassBtn: "button.helloliam_alarm_zone_004_unbypass_remote_p1_p2" },
+  { n: "005", label: "REMOTE P1", id: "binary_sensor.helloliam_alarm_zone_005_remote_p1", bypass: "binary_sensor.helloliam_alarm_zone_005_bypass_remote_p1", bypassBtn: "button.helloliam_alarm_zone_005_bypass_remote_p1", unbypassBtn: "button.helloliam_alarm_zone_005_unbypass_remote_p1" },
+  { n: "006", label: "Beam · Gate To Back", id: "binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", bypass: "binary_sensor.helloliam_alarm_zone_006_bypass_beam_gate_to_back", bypassBtn: "button.helloliam_alarm_zone_006_bypass_beam_gate_to_back", unbypassBtn: "button.helloliam_alarm_zone_006_unbypass_beam_gate_to_back" },
+  { n: "007", label: "PIR · TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", bypass: "binary_sensor.helloliam_alarm_zone_007_bypass_pir_tv_room", bypassBtn: "button.helloliam_alarm_zone_007_bypass_pir_tv_room", unbypassBtn: "button.helloliam_alarm_zone_007_unbypass_pir_tv_room" },
+  { n: "008", label: "PIR · Lounge", id: "binary_sensor.helloliam_alarm_zone_008_pir_lounge", bypass: "binary_sensor.helloliam_alarm_zone_008_bypass_pir_lounge", bypassBtn: "button.helloliam_alarm_zone_008_bypass_pir_lounge", unbypassBtn: "button.helloliam_alarm_zone_008_unbypass_pir_lounge" },
+  { n: "009", label: "PIR · Kitchen", id: "binary_sensor.helloliam_alarm_zone_009_pir_kitchen", bypass: "binary_sensor.helloliam_alarm_zone_009_bypass_pir_kitchen", bypassBtn: "button.helloliam_alarm_zone_009_bypass_pir_kitchen", unbypassBtn: "button.helloliam_alarm_zone_009_unbypass_pir_kitchen" },
+  { n: "010", label: "PIR · Garage", id: "binary_sensor.helloliam_alarm_zone_010_pir_garage", bypass: "binary_sensor.helloliam_alarm_zone_010_bypass_pir_garage", bypassBtn: "button.helloliam_alarm_zone_010_bypass_pir_garage", unbypassBtn: "button.helloliam_alarm_zone_010_unbypass_pir_garage" },
+  { n: "011", label: "Beam · Back Gas", id: "binary_sensor.helloliam_alarm_zone_011_beam_back_gas", bypass: "binary_sensor.helloliam_alarm_zone_011_bypass_beam_back_gas", bypassBtn: "button.helloliam_alarm_zone_011_bypass_beam_back_gas", unbypassBtn: "button.helloliam_alarm_zone_011_unbypass_beam_back_gas" },
+  { n: "012", label: "Beam · Store Room", id: "binary_sensor.helloliam_alarm_zone_012_beam_store_room", bypass: "binary_sensor.helloliam_alarm_zone_012_bypass_beam_store_room", bypassBtn: "button.helloliam_alarm_zone_012_bypass_beam_store_room", unbypassBtn: "button.helloliam_alarm_zone_012_unbypass_beam_store_room" },
+  { n: "013", label: "Front Door", id: "binary_sensor.helloliam_alarm_zone_013_front_door", bypass: "binary_sensor.helloliam_alarm_zone_013_bypass_front_door", bypassBtn: "button.helloliam_alarm_zone_013_bypass_front_door", unbypassBtn: "button.helloliam_alarm_zone_013_unbypass_front_door" },
+  { n: "014", label: "PIR · Front Door", id: "binary_sensor.helloliam_alarm_zone_014_pir_front_door", bypass: "binary_sensor.helloliam_alarm_zone_014_bypass_pir_front_door", bypassBtn: "button.helloliam_alarm_zone_014_bypass_pir_front_door", unbypassBtn: "button.helloliam_alarm_zone_014_unbypass_pir_front_door" },
+  { n: "015", label: "Beam · Driveway", id: "binary_sensor.helloliam_alarm_zone_015_beam_driveway", bypass: "binary_sensor.helloliam_alarm_zone_015_bypass_beam_driveway", bypassBtn: "button.helloliam_alarm_zone_015_bypass_beam_driveway", unbypassBtn: "button.helloliam_alarm_zone_015_unbypass_beam_driveway" },
+  { n: "016", label: "Lounge Windows", id: "binary_sensor.helloliam_alarm_zone_016_lounge_windows", bypass: "binary_sensor.helloliam_alarm_zone_016_bypass_lounge_windows", bypassBtn: "button.helloliam_alarm_zone_016_bypass_lounge_windows", unbypassBtn: "button.helloliam_alarm_zone_016_unbypass_lounge_windows" },
+  { n: "017", label: "Beam · Bedroom Windows", id: "binary_sensor.helloliam_alarm_zone_017_beam_bedroom_windows", bypass: "binary_sensor.helloliam_alarm_zone_017_bypass_beam_bedroom_windows", bypassBtn: "button.helloliam_alarm_zone_017_bypass_beam_bedroom_windows", unbypassBtn: "button.helloliam_alarm_zone_017_unbypass_beam_bedroom_windows" },
+  { n: "018", label: "Beam · Pool", id: "binary_sensor.helloliam_alarm_zone_018_beam_pool", bypass: "binary_sensor.helloliam_alarm_zone_018_bypass_beam_pool", bypassBtn: "button.helloliam_alarm_zone_018_bypass_beam_pool", unbypassBtn: "button.helloliam_alarm_zone_018_unbypass_beam_pool" },
+  { n: "019", label: "PIR · Roof", id: "binary_sensor.helloliam_alarm_zone_019_pir_roof", bypass: "binary_sensor.helloliam_alarm_zone_019_bypass_pir_roof", bypassBtn: "button.helloliam_alarm_zone_019_bypass_pir_roof", unbypassBtn: "button.helloliam_alarm_zone_019_unbypass_pir_roof" },
+  { n: "020", label: "Door · Kitchen", id: "binary_sensor.helloliam_alarm_zone_020_door_kitchen", bypass: "binary_sensor.helloliam_alarm_zone_020_bypass_door_kitchen", bypassBtn: "button.helloliam_alarm_zone_020_bypass_door_kitchen", unbypassBtn: "button.helloliam_alarm_zone_020_unbypass_door_kitchen" },
+  { n: "021", label: "PIR · Passage", id: "binary_sensor.helloliam_alarm_zone_021_pir_passage", bypass: "binary_sensor.helloliam_alarm_zone_021_bypass_pir_passage", bypassBtn: "button.helloliam_alarm_zone_021_bypass_pir_passage", unbypassBtn: "button.helloliam_alarm_zone_021_unbypass_pir_passage" },
+  { n: "022", label: "Beam · Back Garden", id: "binary_sensor.helloliam_alarm_zone_022_beam_back_garden", bypass: "binary_sensor.helloliam_alarm_zone_022_bypass_beam_back_garden", bypassBtn: "button.helloliam_alarm_zone_022_bypass_beam_back_garden", unbypassBtn: "button.helloliam_alarm_zone_022_unbypass_beam_back_garden" },
+  { n: "023", label: "Beam · Patio", id: "binary_sensor.helloliam_alarm_zone_023_beam_patio", bypass: "binary_sensor.helloliam_alarm_zone_023_bypass_beam_patio", bypassBtn: "button.helloliam_alarm_zone_023_bypass_beam_patio", unbypassBtn: "button.helloliam_alarm_zone_023_unbypass_beam_patio" },
+  { n: "024", label: "Door · Lounge", id: "binary_sensor.helloliam_alarm_zone_024_door_lounge", bypass: "binary_sensor.helloliam_alarm_zone_024_bypass_door_lounge", bypassBtn: "button.helloliam_alarm_zone_024_bypass_door_lounge", unbypassBtn: "button.helloliam_alarm_zone_024_unbypass_door_lounge" },
+  { n: "025", label: "PIR · Main Room", id: "binary_sensor.helloliam_alarm_zone_025_pir_main_room", bypass: "binary_sensor.helloliam_alarm_zone_025_bypass_pir_main_room", bypassBtn: "button.helloliam_alarm_zone_025_bypass_pir_main_room", unbypassBtn: "button.helloliam_alarm_zone_025_unbypass_pir_main_room" },
+  { n: "026", label: "Zone 26", id: "binary_sensor.helloliam_alarm_zone_026_zone_26", bypass: "binary_sensor.helloliam_alarm_zone_026_bypass_zone_26", bypassBtn: "button.helloliam_alarm_zone_026_bypass_zone_26", unbypassBtn: "button.helloliam_alarm_zone_026_unbypass_zone_26" },
+  { n: "027", label: "Zone 27", id: "binary_sensor.helloliam_alarm_zone_027_zone_27", bypass: "binary_sensor.helloliam_alarm_zone_027_bypass_zone_27", bypassBtn: "button.helloliam_alarm_zone_027_bypass_zone_27", unbypassBtn: "button.helloliam_alarm_zone_027_unbypass_zone_27" },
+  { n: "028", label: "Zone 28", id: "binary_sensor.helloliam_alarm_zone_028_zone_28", bypass: "binary_sensor.helloliam_alarm_zone_028_bypass_zone_28", bypassBtn: "button.helloliam_alarm_zone_028_bypass_zone_28", unbypassBtn: "button.helloliam_alarm_zone_028_unbypass_zone_28" },
+  { n: "029", label: "Zone 29", id: "binary_sensor.helloliam_alarm_zone_029_zone_29", bypass: "binary_sensor.helloliam_alarm_zone_029_bypass_zone_29", bypassBtn: "button.helloliam_alarm_zone_029_bypass_zone_29", unbypassBtn: "button.helloliam_alarm_zone_029_unbypass_zone_29" },
+  { n: "030", label: "Beam · Garage", id: "binary_sensor.helloliam_alarm_zone_030_beam_garage", bypass: "binary_sensor.helloliam_alarm_zone_030_bypass_beam_garage", bypassBtn: "button.helloliam_alarm_zone_030_bypass_beam_garage", unbypassBtn: "button.helloliam_alarm_zone_030_unbypass_beam_garage" },
+  { n: "031", label: "Zone 31", id: "binary_sensor.helloliam_alarm_zone_031_zone_31", bypass: "binary_sensor.helloliam_alarm_zone_031_bypass_zone_31", bypassBtn: "button.helloliam_alarm_zone_031_bypass_zone_31", unbypassBtn: "button.helloliam_alarm_zone_031_unbypass_zone_31" },
 ];
 
 export const DECO_NODES: { id: string; label: string }[] = [
