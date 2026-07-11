@@ -368,3 +368,47 @@ sliders**; **scenes** (Goodnight/Movie/Away); a **Cameras** view with live thumb
 
 *Unlike Home Assistant, there are no card/render constraints — design for the web, not for
 Lovelace.*
+
+---
+
+## 10. Technology, hosting & the deliverable format that implements best
+
+### Stack
+| Layer | Choice |
+|---|---|
+| Framework | **Svelte 5** (runes: `$state`, `$derived`, `$props`, snippets) + **TypeScript** |
+| Build | **Vite 6** |
+| Styling | **Plain CSS**, scoped per-component, with **CSS custom properties** (design tokens in `src/app.css`). **No Tailwind, no CSS framework, no UI/component library.** |
+| Data | `home-assistant-js-websocket` → a small reactive store (`src/lib/store.svelte.ts`) that streams entity states and fetches history |
+| Charts / gauges | **Hand-rolled inline SVG** (no charting library) — AreaChart, BarChart, RingGauge, TankGauge, PowerFlow |
+| Icons | Currently **emoji**. Open to a crisp **inline-SVG** icon set (see below). |
+| Fonts | **System font stack only** — no web fonts loaded |
+| Hosting | **Firebase Hosting** — static, single-page app, **100% client-side** (no server, no SSR, no backend). The browser talks straight to Home Assistant over WSS. |
+| Bundle | Tiny — whole app ≈ **34 kB gzipped**. Keep it lean. |
+
+### What this means for the design
+- **Client-side only.** Anything that needs a server (server-side data joins, secrets, cron) is out of scope. All data is live HA state + history, in the browser.
+- **Responsive, two targets.** Design **desktop** (content max-width ~**1240px**) and **mobile** (~**375–430px**). Current nav is a sticky top pill bar; propose whatever fits.
+- **Dark, glassy.** Everything sits on the Aurora backdrop; surfaces are translucent. Keep text legible over glass + moving orbs.
+
+### Preferred deliverable format (what I can implement fastest & most faithfully)
+
+Please deliver, **per screen**, a **single self-contained HTML file** (desktop + a mobile
+variant), plus any shared tokens:
+
+1. **Vanilla HTML + CSS**, all styles in one inline `<style>` block. **No Tailwind / no utility-class frameworks / no build step / no external CDNs, fonts, scripts, or images** — everything inline or as `data:` URIs. (This maps 1:1 onto Svelte components; utility-class soup or a framework mockup means I have to reverse-engineer it.)
+2. **A `:root` design-tokens block** using **these exact variable names** so I can drop it into `app.css`:
+   `--bg, --card, --border, --border-strong, --fill, --fill-strong, --divider, --glass-blur,
+   --shadow, --text, --text-2, --muted, --brand, --brand-2, --grad, --glow, --success, --warning,
+   --error, --water, --solar, --r-hero, --r, --r-tile, --r-pill`. (Values in §2 — change them if you're evolving the palette, just keep the names.)
+3. **System font stack** — `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif`. No Google Fonts.
+4. **Charts & gauges as inline SVG** (that's how they're built). Give the actual SVG structure — donut gauges, area paths with gradient fills, bar groups, the power-flow node/link diagram. Use `currentColor`/CSS vars so I can theme them.
+5. **Icons as inline SVG**, monochrome, `stroke="currentColor"` / `fill="currentColor"` (Lucide/Phosphor-style is great). If you'd rather keep emoji, that's fine too — just be consistent. **No icon fonts or CDN icon links.**
+6. **Show every state** for interactive elements: default, **hover**, **active/pressed**, **on/"lit"** (with the accent glow), **disabled**, and **loading/empty** (no-data) — as separate snippets or annotated variants. I need these to build real components.
+7. **Motion** via CSS `transition`/`@keyframes`; wrap non-essential motion in `@media (prefers-reduced-motion: reduce)`.
+8. **Reuse the component names** where possible (KpiCard, Tile, PowerFlow, RingGauge, TankGauge, AreaChart, BarChart, Pill, BarRow, Section) so the mockup and the codebase line up.
+9. **Realistic content** — use the sample values/entity names in §4, not lorem ipsum, so layouts are sized for real data (long room names, 5-digit litres, negative watts, etc.).
+
+> TL;DR: **one self-contained HTML/CSS file per screen, vanilla CSS with our token names,
+> inline SVG for charts/icons, all states shown, no frameworks or external assets.** That
+> translates almost directly into our Svelte components.
