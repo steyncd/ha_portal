@@ -67,6 +67,11 @@ class HAStore {
   isOn(id: string) {
     return this.entities[id]?.state === "on";
   }
+  /** True when the entity exists and is reporting a real (non-offline) state. */
+  available(id: string) {
+    const s = this.entities[id]?.state;
+    return s != null && s !== "unavailable" && s !== "unknown";
+  }
   unit(id: string): string {
     return (this.attr(id, "unit_of_measurement") as string) ?? "";
   }

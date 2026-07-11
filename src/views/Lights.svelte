@@ -26,7 +26,7 @@
     (ha.attr(l.id, "entity_id") as unknown[] | undefined)?.length ?? l.members ?? 0;
 
   function setArea(lights: LightDef[], on: boolean, name: string) {
-    const ids = singles(lights).map((l) => l.id).filter((id) => ha.exists(id));
+    const ids = singles(lights).map((l) => l.id).filter((id) => ha.available(id));
     if (!ids.length) return;
     if (on) ha.turnOn(ids);
     else ha.turnOff(ids);
@@ -62,27 +62,29 @@
       <div class="grid">
         {#each area.lights as l}
           {@const grp = isGroup(l.id)}
-          {@const exists = ha.exists(l.id)}
-          <div class="ltile" class:on={ha.isOn(l.id)} class:group={grp} class:dead={!exists}>
+          {@const avail = ha.available(l.id)}
+          <div class="ltile" class:on={ha.isOn(l.id)} class:group={grp} class:dead={!avail}>
             {#if grp}<span class="gbadge">⧉ Group</span>{/if}
             <div
               class="ltap"
               role="button"
               tabindex="0"
-              onclick={() => exists && ha.toggle(l.id)}
-              onkeydown={(e) => { if (exists && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ha.toggle(l.id); } }}
+              onclick={() => avail && ha.toggle(l.id)}
+              onkeydown={(e) => { if (avail && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ha.toggle(l.id); } }}
             >
               <span class="mi">{l.icon}</span>
               <span class="mn">{l.label}</span>
               <span class="qs">
                 {#if grp}
                   Controls {groupCount(l)} lights
+                {:else if !avail}
+                  Unavailable
                 {:else}
-                  {exists ? (ha.isOn(l.id) ? "On" : "Off") : "N/A"}
+                  {ha.isOn(l.id) ? "On" : "Off"}
                 {/if}
               </span>
             </div>
-            {#if dimmable(l.id) && exists}
+            {#if dimmable(l.id) && avail}
               <button class="tune" onclick={() => lightSheet.open(l.id, l.label)} aria-label="brightness & colour">⋯</button>
             {/if}
           </div>

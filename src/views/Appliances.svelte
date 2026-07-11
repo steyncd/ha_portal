@@ -38,14 +38,18 @@
         {#each area.items as a}
           {@const p = ha.num(a.power)}
           {@const on = ha.isOn(a.sw)}
-          {@const exists = ha.exists(a.sw)}
-          <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!exists}>
+          {@const avail = ha.available(a.sw)}
+          <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!avail}>
             <span class="aicn">{a.icon}</span>
             <span class="al">
               <span class="anm">{a.label}</span>
-              <span class="aw">{p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span>
+              <span class="aw">{!avail ? "Offline" : p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span>
             </span>
-            <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
+            {#if !avail}
+              <span class="apill">N/A</span>
+            {:else}
+              <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
+            {/if}
           </button>
         {/each}
       </div>
