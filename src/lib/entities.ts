@@ -134,7 +134,7 @@ export const E = {
   ouraRestful: "sensor.oura_restfulness",
   ouraLatency: "sensor.oura_sleep_latency",
   ouraSleepHR: "sensor.oura_average_sleep_heart_rate",
-  ouraSleepHRV: "sensor.oura_average_hrv",
+  ouraSleepHRV: "sensor.oura_average_sleep_hrv",
   ouraCurrentHR: "sensor.oura_current_heart_rate",
   ouraRestingHR: "sensor.oura_lowest_sleep_heart_rate",
   ouraSteps: "sensor.oura_steps",

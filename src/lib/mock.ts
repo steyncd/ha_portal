@@ -222,7 +222,7 @@ const ROWS: Row[] = [
   ["sensor.oura_restfulness", "78", { unit_of_measurement: "%" }],
   ["sensor.oura_sleep_latency", "720", { unit_of_measurement: "s" }],
   ["sensor.oura_average_sleep_heart_rate", "54", { unit_of_measurement: "bpm" }],
-  ["sensor.oura_average_hrv", "42", { unit_of_measurement: "ms" }],
+  ["sensor.oura_average_sleep_hrv", "42", { unit_of_measurement: "ms" }],
   ["sensor.oura_current_heart_rate", "62", { unit_of_measurement: "bpm" }],
   ["sensor.oura_lowest_sleep_heart_rate", "51", { unit_of_measurement: "bpm" }],
   ["sensor.oura_steps", "6400"],
