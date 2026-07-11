@@ -150,6 +150,15 @@ export const E = {
   ouraBedStart: "sensor.oura_bedtime_start",
   ouraBedEnd: "sensor.oura_bedtime_end",
   ouraTempDev: "sensor.oura_temperature_deviation",
+  ouraSpo2: "sensor.oura_spo2_average",
+  ouraWorkoutType: "sensor.oura_last_workout_type",
+  ouraWorkoutIntensity: "sensor.oura_last_workout_intensity",
+  ouraWorkoutDuration: "sensor.oura_last_workout_duration",
+  ouraWorkoutDistance: "sensor.oura_last_workout_distance",
+  ouraWorkoutCalories: "sensor.oura_last_workout_calories",
+  ouraWorkoutsToday: "sensor.oura_workouts_today",
+  ouraMedActivityMin: "sensor.oura_medium_activity_met_minutes",
+  ouraHighActivityMin: "sensor.oura_high_activity_met_minutes",
 } as const;
 
 export type SceneDef = { id: string; label: string; icon: string };

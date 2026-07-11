@@ -307,6 +307,18 @@ const ROWS: Row[] = [
   ["sensor.oura_ring_battery_level", "68", { unit_of_measurement: "%" }],
   ["sensor.oura_bedtime_start", "2026-07-10T22:40:00+02:00"],
   ["sensor.oura_temperature_deviation", "0.2", { unit_of_measurement: "°C" }],
+  ["sensor.oura_spo2_average", "96.4", { unit_of_measurement: "%" }],
+  ["sensor.oura_last_workout_type", "walking"],
+  ["sensor.oura_last_workout_intensity", "moderate"],
+  ["sensor.oura_last_workout_duration", "27", { unit_of_measurement: "min" }],
+  ["sensor.oura_last_workout_distance", "2204", { unit_of_measurement: "m" }],
+  ["sensor.oura_last_workout_calories", "146", { unit_of_measurement: "kcal" }],
+  ["sensor.oura_workouts_today", "1"],
+  ["sensor.oura_medium_activity_met_minutes", "127", { unit_of_measurement: "min" }],
+  ["sensor.oura_high_activity_met_minutes", "0", { unit_of_measurement: "min" }],
+  ["input_boolean.oura_readiness_actions_enabled", "on"],
+  ["input_boolean.oura_activity_nudge_enabled", "on"],
+  ["input_boolean.printer_ink_notifications", "on"],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
