@@ -342,15 +342,19 @@ const ROWS: Row[] = [
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
-  ROWS.map(([id, state, attrs]) => [
-    id,
-    {
-      entity_id: id,
-      state,
-      attributes: { friendly_name: id, ...(attrs ?? {}) },
-      last_changed: "",
-      last_updated: "",
-      context: { id: "", user_id: null, parent_id: null },
-    },
-  ]),
+  ROWS.map(([id, state, attrs], i) => {
+    // stagger last_changed over the past few hours so the Overview logbook demos
+    const ts = new Date(Date.now() - (i * 137_000 + 60_000)).toISOString();
+    return [
+      id,
+      {
+        entity_id: id,
+        state,
+        attributes: { friendly_name: id, ...(attrs ?? {}) },
+        last_changed: ts,
+        last_updated: ts,
+        context: { id: "", user_id: null, parent_id: null },
+      },
+    ];
+  }),
 ) as unknown as HassEntities;
