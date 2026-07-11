@@ -121,6 +121,50 @@ class HAStore {
     }
   }
 
+  /**
+   * Fetch a string-state history for an entity (e.g. recognised plates),
+   * newest first, with consecutive duplicates collapsed.
+   */
+  async historyStates(
+    entityId: string,
+    hours = 24,
+  ): Promise<{ t: number; s: string }[]> {
+    if (this.#mock) {
+      const cur = this.state(entityId);
+      if (!cur || cur === "None" || cur === "unknown") return [];
+      const now = Date.now();
+      return [cur, "CA 214-882", "WK 09-JHB", "CA 118-540"].map((s, i) => ({ t: now - i * 5400_000, s }));
+    }
+    if (!this.#conn) return [];
+    const end = new Date();
+    const start = new Date(end.getTime() - hours * 3_600_000);
+    try {
+      const res = (await this.#conn.sendMessagePromise({
+        type: "history/history_during_period",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        entity_ids: [entityId],
+        minimal_response: true,
+        no_attributes: true,
+      })) as Record<string, Array<Record<string, unknown>>>;
+      const arr = res?.[entityId] ?? [];
+      const out: { t: number; s: string }[] = [];
+      let prev = "";
+      for (const p of arr) {
+        const s = String((p.s ?? p.state) ?? "").trim();
+        const lu = p.lu as number | undefined;
+        const lc = (p.last_changed ?? p.lc) as string | number | undefined;
+        const t = typeof lu === "number" ? lu * 1000 : typeof lc === "number" ? lc * 1000 : lc ? Date.parse(lc) : NaN;
+        if (!s || s === "None" || s === "unknown" || s === "unavailable" || s === prev || !Number.isFinite(t)) continue;
+        prev = s;
+        out.push({ t, s });
+      }
+      return out.reverse();
+    } catch {
+      return [];
+    }
+  }
+
   /** Synthetic wobble around the current value, for ?mock=1 demos. */
   #synth(entityId: string, hours: number): { t: number; v: number }[] {
     const base = this.num(entityId) ?? 50;

@@ -202,7 +202,7 @@ const ROWS: Row[] = [
   ["counter.frigate_main_gate_detections_today", "22"],
   ["counter.frigate_person_detections_today", "1"],
   ["counter.frigate_vehicle_detections_today", "21"],
-  ["sensor.main_gate_ai_last_recognized_plate", "None"],
+  ["sensor.main_gate_ai_last_recognized_plate", "CA 371-905"],
   ["sensor.sidewalk_traffic_intensity", "Moderate"],
   ["sensor.sidewalk_morning_traffic", "19"],
   ["sensor.sidewalk_afternoon_traffic", "9"],
