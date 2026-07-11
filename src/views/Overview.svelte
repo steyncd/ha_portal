@@ -46,12 +46,49 @@
     prefs.save();
   }
 
-  const activity = $derived([
-    { icon: "🕳️", color: "var(--water)", title: `Borehole · ${n(ha.num(E.boreholeToday))} L today`, sub: "to storage" },
-    { icon: "☀️", color: "var(--solar)", title: `Solar ${n(ha.num(E.solarYieldToday), 1)} kWh today`, sub: "self-generated" },
-    { icon: "🛡️", color: "var(--success)", title: `Alarm ${ha.state(E.alarmMain) ?? "—"}`, sub: "no active zones" },
-    { icon: "💧", color: "var(--water)", title: `Water ${n(ha.num(E.waterUsedToday))} L used`, sub: "today" },
-  ]);
+  // relative time from an ISO timestamp
+  function ago(iso: string | undefined): string {
+    if (!iso) return "";
+    const ms = Date.now() - Date.parse(iso);
+    if (!Number.isFinite(ms)) return "";
+    const m = Math.round(ms / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.round(m / 60);
+    if (h < 24) return `${h}h ago`;
+    return `${Math.round(h / 24)}d ago`;
+  }
+  const lc = (id: string) => ha.entities[id]?.last_changed;
+
+  // real timestamped logbook, built from meaningful entities' last state change
+  const LOG_SRC: { id: string; icon: string; color: string; title: (s: string) => string; sub: string }[] = [
+    { id: E.alarmMain, icon: "🛡️", color: "var(--success)", title: (s) => `Alarm ${s}`, sub: "security" },
+    { id: "binary_sensor.helloliam_alarm_zone_013_front_door", icon: "🚪", color: "var(--warning)", title: (s) => `Front door ${s === "on" ? "opened" : "closed"}`, sub: "access" },
+    { id: E.boreholePump, icon: "🕳️", color: "var(--water)", title: (s) => `Borehole pump ${s === "on" ? "started" : "stopped"}`, sub: "water" },
+    { id: E.waterPump, icon: "💧", color: "var(--water)", title: (s) => `Water pump ${s === "on" ? "started" : "stopped"}`, sub: "water" },
+    { id: E.poolPump, icon: "🏊", color: "var(--water)", title: (s) => `Pool pump ${s === "on" ? "started" : "stopped"}`, sub: "water" },
+    { id: E.occupancy, icon: "🏠", color: "var(--acc)", title: (s) => `Home ${s.toLowerCase()}`, sub: "presence" },
+    { id: "switch.kitchen_lights", icon: "🍳", color: "var(--warning)", title: (s) => `Kitchen lights ${s}`, sub: "lighting" },
+  ];
+  const activity = $derived(
+    LOG_SRC
+      .filter((e) => ha.exists(e.id) && lc(e.id))
+      .map((e) => ({ icon: e.icon, color: e.color, title: e.title(ha.state(e.id) ?? "—"), sub: e.sub, t: lc(e.id)! }))
+      .sort((a, b) => Date.parse(b.t) - Date.parse(a.t))
+      .slice(0, 5),
+  );
+
+  // attention items — only shown when something actually needs attention
+  const attention = $derived.by(() => {
+    const items: string[] = [];
+    const lb = ha.num(E.lowBatteryDevices) ?? 0;
+    if (lb > 0) items.push(`${lb} device${lb === 1 ? "" : "s"} low on battery`);
+    if ((ha.num(E.pvPower) ?? 999) < 40) items.push("PV asleep — hold heavy appliances");
+    if (ha.state(E.tankLowAlert) === "on") items.push("Water tank low");
+    if (ha.state(E.alarmMain) === "triggered") items.push("⚠ Alarm triggered");
+    if (ha.state(E.alarmAcPower) === "off") items.push("Alarm on backup power");
+    return items;
+  });
 
   const FC = [["Now", "🌙", 16], ["21h", "🌫️", 12], ["23h", "🌫️", 11], ["01h", "🌫️", 10], ["03h", "❄️", 8], ["06h", "❄️", 7]];
 </script>
@@ -78,17 +115,26 @@
   </div>
 </div>
 
-<div class="attention">
-  <span class="atag">⚡ Attention</span>
-  <span>{n(ha.num(E.lowBatteryDevices))} device low on battery</span><span class="dot">·</span>
-  <span class="d2">{(ha.num(E.pvPower) ?? 0) < 40 ? "PV asleep — hold heavy appliances" : "Good solar — run appliances now"}</span><span class="dot">·</span>
-  <span class="ok">{ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak 🎉</span>
-</div>
+{#if attention.length}
+  <div class="attention">
+    <span class="atag">⚡ Attention</span>
+    {#each attention as a, i}
+      {#if i > 0}<span class="dot">·</span>{/if}
+      <span class="d2">{a}</span>
+    {/each}
+  </div>
+{:else}
+  <div class="attention calm">
+    <span class="atag ok">✓ All clear</span>
+    <span class="d2">Everything's running smoothly</span><span class="dot">·</span>
+    <span class="ok">{ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak 🎉</span>
+  </div>
+{/if}
 
 <div class="masonry">
   <!-- power flow -->
-  <div class="w card">
-    <div class="wh"><span class="lb">Power flow</span><span class="ok">{n(ha.num(E.gridIndepToday))}% independent</span></div>
+  <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
+    <div class="wh"><span class="lb">Power flow</span><span class="ok">{n(ha.num(E.gridIndepToday))}% independent →</span></div>
     <PowerFlow />
     <div class="center-sub">Battery → home · grid idle</div>
   </div>
@@ -113,7 +159,7 @@
   </div>
 
   <!-- tank -->
-  <div class="w card tankw">
+  <div class="w card tankw tap" role="button" tabindex="0" onclick={() => onnav("water")} onkeydown={(e) => e.key === "Enter" && onnav("water")}>
     <div class="tank"><div class="fill" style="height:{ha.num(E.tankLevel) ?? 0}%"></div></div>
     <div><div class="lb">Water tank</div><div class="big2">{n(ha.num(E.tankLevel))}%</div><div class="sub2">{n(ha.num(E.tankDays))} days · {n(ha.num(E.tankVolume))} L</div></div>
   </div>
@@ -184,8 +230,8 @@
 
   <!-- security & presence -->
   {#if prefs.widgets.security}
-    <div class="w card">
-      <div class="lb" style="margin-bottom:12px">Security & presence</div>
+    <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("security")} onkeydown={(e) => e.key === "Enter" && onnav("security")}>
+      <div class="lb" style="margin-bottom:12px">Security & presence →</div>
       <div class="clist">
         <div class="sprow"><span>✅</span>{ha.state(E.alarmMain) ?? "—"} · zones clear</div>
         <div class="sprow"><span>🏠</span>{ha.state(E.occupancy) ?? "Home"}</div>
@@ -203,8 +249,10 @@
         <div class="log">
           <span class="lic" style="background:color-mix(in srgb,{e.color} 17%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{e.color} 36%,transparent)">{e.icon}</span>
           <div class="lt"><div class="ltt">{e.title}</div><div class="lts">{e.sub}</div></div>
+          <span class="lta">{ago(e.t)}</span>
         </div>
       {/each}
+      {#if activity.length === 0}<div class="lts" style="padding:10px 0">No recent changes.</div>{/if}
     </div>
   {/if}
 
@@ -240,7 +288,9 @@
   .ci { font-size: 15px; width: 20px; text-align: center; }
   .cn { flex: 1; font-size: 12.5px; }
   .attention { padding: 15px 18px; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 12%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 26%, transparent); margin-bottom: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+  .attention.calm { background: linear-gradient(180deg, color-mix(in srgb, var(--success) 9%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 22%, transparent); }
   .atag { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--warning); }
+  .atag.ok { color: var(--success); }
   .dot { color: var(--muted-2); }
   .d2 { color: var(--dim); }
   .ok { color: var(--success); font-weight: 600; font-size: 12px; }
@@ -249,6 +299,10 @@
   @media (max-width: 1000px) { .masonry { column-count: 2; } }
   @media (max-width: 640px) { .masonry { column-count: 1; } }
   .w { break-inside: avoid; margin: 0 0 14px; padding: 18px; }
+  .tap { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
+  .tap:hover { box-shadow: inset 0 0 0 1px var(--line); transform: translateY(-1px); }
+  .tap:focus-visible { box-shadow: 0 0 0 2px var(--acc); outline: none; }
+  .lta { font-size: 10.5px; color: var(--muted-2); white-space: nowrap; align-self: center; }
   .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .center-sub { font-size: 12px; color: var(--dim); text-align: center; margin-top: 4px; }
   .sub2 { font-size: 12px; color: var(--dim); }
