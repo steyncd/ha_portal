@@ -9,9 +9,11 @@
   import Water from "./views/Water.svelte";
   import Irrigation from "./views/Irrigation.svelte";
   import Climate from "./views/Climate.svelte";
+  import Appliances from "./views/Appliances.svelte";
   import Security from "./views/Security.svelte";
   import Cameras from "./views/Cameras.svelte";
   import Traffic from "./views/Traffic.svelte";
+  import Lights from "./views/Lights.svelte";
   import System from "./views/System.svelte";
   import Me from "./views/Me.svelte";
   import Settings from "./views/Settings.svelte";
@@ -114,9 +116,11 @@
         {:else if view === "water"}<Water />
         {:else if view === "irrigation"}<Irrigation />
         {:else if view === "climate"}<Climate />
+        {:else if view === "appliances"}<Appliances />
         {:else if view === "security"}<Security />
         {:else if view === "cameras"}<Cameras />
         {:else if view === "traffic"}<Traffic />
+        {:else if view === "lights"}<Lights />
         {:else if view === "system"}<System />
         {:else if view === "me"}<Me />
         {:else if view === "settings"}<Settings ontv={() => (tv = true)} />{/if}

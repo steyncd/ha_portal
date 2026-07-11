@@ -30,8 +30,8 @@ const DEFAULTS: Stored = {
   density: "comfortable",
   collapsed: false,
   viewsOn: {
-    energy: true, water: true, irrigation: true, climate: true,
-    cameras: true, traffic: true, system: true, me: true,
+    energy: true, water: true, irrigation: true, climate: true, appliances: true,
+    cameras: true, traffic: true, lights: true, system: true, me: true,
   },
   widgets: {
     scenes: true, lights: true, energyToday: true,

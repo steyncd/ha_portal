@@ -89,10 +89,11 @@ export const E = {
   inkM: "sensor.brother_dcp_t720dw_m",
   inkY: "sensor.brother_dcp_t720dw_y",
 
-  // Pumps
+  // Pumps & heater
   waterPump: "switch.water_pump",
   poolPump: "switch.pool_pump",
   boreholePump: "switch.borehole_pump",
+  heater: "switch.study_heater",
 
   notices: "sensor.home_notices",
 
@@ -217,25 +218,62 @@ export const OUTDOOR_LIGHTS: LightDef[] = [
   { id: "light.study_yard_light", label: "Study Yard", icon: "🌳" },
 ];
 
-// All light-ish entities we can safely blanket "turn off".
-export const ALL_LIGHTS = [
-  ...INDOOR_LIGHTS.map((l) => l.id),
-  ...OUTDOOR_LIGHTS.map((l) => l.id),
+export type LightArea = { name: string; icon: string; lights: LightDef[] };
+
+// Lights grouped into logical areas — source of truth for the Lights page.
+export const LIGHT_AREAS: LightArea[] = [
+  { name: "Kitchen", icon: "🍳", lights: [
+    { id: "switch.kitchen_lights", label: "Ceiling", icon: "🍳" },
+    { id: "switch.kitchen_under_counter_lights", label: "Under Counter", icon: "🔆" },
+  ] },
+  { name: "Living & Lounge", icon: "🛋️", lights: [
+    { id: "switch.living_room_lamp", label: "Living Room", icon: "🛋️" },
+    { id: "switch.tv_room_lamp", label: "TV Room", icon: "📺" },
+    { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "💡" },
+  ] },
+  { name: "Bedrooms", icon: "🛏️", lights: [
+    { id: "switch.main_bedroom_lamp", label: "Main Bedroom", icon: "🛏️" },
+    { id: "group.room_lamps", label: "Room Lamps", icon: "💡" },
+  ] },
+  { name: "Study", icon: "📚", lights: [
+    { id: "light.study_lamp", label: "Study Lamp", icon: "📚" },
+  ] },
+  { name: "Outdoor & Yard", icon: "🌳", lights: [
+    { id: "light.street_lights", label: "Street", icon: "🛣️" },
+    { id: "switch.driveway_lights_switch", label: "Driveway", icon: "🚗" },
+    { id: "switch.gate_spotlight", label: "Gate Spot", icon: "🔦" },
+    { id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" },
+    { id: "light.study_yard_light", label: "Study Yard", icon: "🌳" },
+  ] },
 ];
+
+// All light-ish entities we can safely blanket "turn off" (derived from the areas).
+export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) => a.lights.map((l) => l.id));
 
 export type Appliance = { sw: string; power: string; label: string; icon: string };
+export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
 
-export const APPLIANCES: Appliance[] = [
-  { sw: "switch.dishwasher", power: "sensor.dishwasher_power", label: "Dishwasher", icon: "🍽️" },
-  { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Washer", icon: "🧺" },
-  { sw: "switch.tumble_dryer", power: "sensor.tumble_dryer_energy_power", label: "Dryer", icon: "🌀" },
-  { sw: "switch.kettle", power: "sensor.kettle_power", label: "Kettle", icon: "☕" },
-  { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲" },
-  { sw: "switch.kitchen_air_fryer", power: "sensor.kitchen_air_fryer_power", label: "Air Fryer", icon: "🍟" },
-  { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕" },
-  { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻" },
-  { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥" },
+// Appliances grouped into logical areas — source of truth for the Appliances page.
+export const APPLIANCE_AREAS: ApplianceArea[] = [
+  { name: "Kitchen", icon: "🍳", items: [
+    { sw: "switch.dishwasher", power: "sensor.dishwasher_power", label: "Dishwasher", icon: "🍽️" },
+    { sw: "switch.kettle", power: "sensor.kettle_power", label: "Kettle", icon: "☕" },
+    { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲" },
+    { sw: "switch.kitchen_air_fryer", power: "sensor.kitchen_air_fryer_power", label: "Air Fryer", icon: "🍟" },
+    { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕" },
+  ] },
+  { name: "Laundry", icon: "🧺", items: [
+    { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Washing Machine", icon: "🧺" },
+    { sw: "switch.tumble_dryer", power: "sensor.tumble_dryer_energy_power", label: "Tumble Dryer", icon: "🌀" },
+  ] },
+  { name: "Study & Office", icon: "💻", items: [
+    { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻" },
+    { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥" },
+  ] },
 ];
+
+// Flat list (derived) — used by the Energy view's live-draw grid.
+export const APPLIANCES: Appliance[] = APPLIANCE_AREAS.flatMap((a) => a.items);
 
 export type ZoneDef = { id: string; label: string };
 

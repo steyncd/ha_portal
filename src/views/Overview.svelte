@@ -27,10 +27,10 @@
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
 
   const quick = [
-    { id: E.waterPump, icon: "💧", name: "Water Pump" },
-    { id: "switch.kitchen_lights", icon: "🍳", name: "Kitchen" },
-    { id: "switch.living_room_lamp", icon: "🛋️", name: "Living Room" },
     { id: E.poolPump, icon: "🏊", name: "Pool Pump" },
+    { id: E.boreholePump, icon: "🕳️", name: "Borehole" },
+    { id: E.heater, icon: "🔥", name: "Heater" },
+    { id: E.waterPump, icon: "💧", name: "Water Pump" },
   ];
 
   const WIDGETS = [
@@ -140,9 +140,9 @@
     <div style="margin-top:12px"><Spark data={solarHist} color="var(--solar)" height={54} /></div>
   </div>
 
-  <!-- quick controls -->
+  <!-- pumps & heater -->
   <div class="w card">
-    <div class="lb" style="margin-bottom:12px">Quick controls</div>
+    <div class="lb" style="margin-bottom:12px">Pumps & heater</div>
     <div class="grid2">
       {#each quick as q}
         <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id)}>
