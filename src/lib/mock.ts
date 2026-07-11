@@ -58,6 +58,8 @@ const ROWS: Row[] = [
   ["sensor.study_temperature", "17.8", { unit_of_measurement: "°C" }],
   ["sensor.patio_sensor_temperature", "13.98", { unit_of_measurement: "°C" }],
   ["sensor.back_yard_temperature", "12.1", { unit_of_measurement: "°C" }],
+  ["sensor.adjusted_temperature", "15.4", { unit_of_measurement: "°C" }],
+  ["sensor.guest_room_temperature", "16.2", { unit_of_measurement: "°C" }],
   ["sensor.main_bedroom_lamp_si7021_humidity", "68.5", { unit_of_measurement: "%" }],
   ["sensor.liam_s_room_humidity", "60.3", { unit_of_measurement: "%" }],
   ["sensor.kitchen_sensor_humidity", "69.1", { unit_of_measurement: "%" }],
