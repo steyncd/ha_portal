@@ -3,9 +3,27 @@
   import { prefs, PALETTE, type AccentId } from "../lib/prefs.svelte";
   import { NAV } from "../lib/nav";
   import { toast } from "../lib/toast.svelte";
+  import { HASS_URL } from "../lib/config";
   import Toggle from "../lib/components/Toggle.svelte";
 
   let { ontv }: { ontv: () => void } = $props();
+
+  const haHost = (() => { try { return new URL(HASS_URL).host; } catch { return HASS_URL; } })();
+  function signOut() {
+    localStorage.removeItem("ha_portal_tokens");
+    toast.show("Signing out…");
+    setTimeout(() => location.reload(), 400);
+  }
+
+  // Health goals (input_number helpers). min/max/step read from the entity, with fallbacks.
+  const healthGoals = [
+    { id: "input_number.oura_steps_goal", icon: "👟", name: "Daily steps goal", min: 1000, max: 20000, step: 500, unit: "" },
+    { id: "input_number.oura_readiness_low_threshold", icon: "🔋", name: "Low-readiness alert below", min: 50, max: 90, step: 1, unit: "" },
+    { id: "input_number.oura_temp_deviation_threshold", icon: "🌡️", name: "Illness temp deviation", min: 0.1, max: 1.5, step: 0.1, unit: "°C" },
+  ].filter((g) => ha.exists(g.id));
+  function goalBound(id: string, attr: string, fallback: number) {
+    const v = ha.attr(id, attr); return typeof v === "number" ? v : fallback;
+  }
 
   function setAccent(id: AccentId) { prefs.accent = id; prefs.apply(); prefs.save(); }
   function setHue(e: Event) { prefs.hue = Number((e.target as HTMLInputElement).value); prefs.accent = "custom"; prefs.apply(); prefs.save(); }
@@ -52,7 +70,19 @@
 </script>
 
 <div class="col">
+  <!-- account -->
+  <h2 class="section">Account</h2>
+  <div class="card pad acct">
+    <span class="aav">C</span>
+    <div class="ainfo">
+      <div class="anm2">Christo Steyn</div>
+      <div class="asub2">Home Assistant · {haHost}</div>
+    </div>
+    <button class="signout" onclick={signOut}>Sign out</button>
+  </div>
+
   <!-- appearance -->
+  <h2 class="section">Appearance</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:14px">Accent colour</div>
     <div class="swatches">
@@ -77,6 +107,7 @@
   </div>
 
   <!-- people -->
+  <h2 class="section">Household</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:12px">People & profiles</div>
     {#each people as p}
@@ -90,6 +121,7 @@
   </div>
 
   <!-- alarm automations + schedule -->
+  <h2 class="section">Security &amp; alarm</h2>
   <div class="two">
     <div class="card pad">
       <div class="lb" style="margin-bottom:6px">Alarm automations</div>
@@ -123,7 +155,26 @@
     </div>
   </div>
 
+  <!-- health goals -->
+  {#if healthGoals.length}
+    <h2 class="section">Health &amp; goals</h2>
+    <div class="card pad">
+      {#each healthGoals as g}
+        {@const val = ha.num(g.id) ?? g.min}
+        {@const min = goalBound(g.id, "min", g.min)}
+        {@const max = goalBound(g.id, "max", g.max)}
+        {@const step = goalBound(g.id, "step", g.step)}
+        <div class="goal">
+          <div class="grow"><span class="gname">{g.icon} {g.name}</span><span class="gval">{val.toLocaleString()}{g.unit}</span></div>
+          <input type="range" {min} {max} {step} value={val} onchange={(e) => ha.setNumber(g.id, Number((e.target as HTMLInputElement).value))} />
+        </div>
+      {/each}
+      <div class="note">Feeds the Oura automations (steps nudge, low-readiness morning, illness warning).</div>
+    </div>
+  {/if}
+
   <!-- broadcast -->
+  <h2 class="section">Messages</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:14px">Broadcast & messages</div>
     <div class="presets">
@@ -136,6 +187,7 @@
   </div>
 
   <!-- enabled views -->
+  <h2 class="section">Views</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:12px">Enabled views · tap to toggle</div>
     <div class="views">
@@ -150,7 +202,21 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .section { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted-2); margin: 8px 2px -4px; }
+  .section:first-child { margin-top: 0; }
   .pad { padding: 22px; }
+  .acct { display: flex; align-items: center; gap: 15px; }
+  .aav { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 18px; font-weight: 800; color: #0b1017; }
+  .ainfo { flex: 1; min-width: 0; }
+  .anm2 { font-size: 15px; font-weight: 700; }
+  .asub2 { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .signout { padding: 10px 16px; border-radius: 11px; background: color-mix(in srgb, var(--error) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 34%, transparent); color: #fecdd6; font-size: 12.5px; font-weight: 700; }
+  .goal { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  .goal:last-of-type { border-bottom: none; }
+  .grow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
+  .gname { font-size: 13px; font-weight: 600; }
+  .gval { font-size: 13px; font-weight: 800; color: var(--acc); }
+  .goal input[type="range"] { width: 100%; accent-color: var(--acc); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
   .swatches { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; }
