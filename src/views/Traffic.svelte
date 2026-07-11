@@ -1,101 +1,63 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { E } from "../lib/entities";
-  import { n } from "../lib/format";
-  import KpiCard from "../lib/components/KpiCard.svelte";
-  import Section from "../lib/components/Section.svelte";
+  import { n, thousands, dailyMax } from "../lib/format";
   import BarChart from "../lib/components/BarChart.svelte";
-  import Pill from "../lib/components/Pill.svelte";
 
-  const intensity = $derived(ha.state(E.trafficIntensity) ?? "—");
-  const intensityColor = $derived.by(() => {
-    switch (intensity.toLowerCase()) {
-      case "high": return "var(--error)";
-      case "moderate": return "var(--warning)";
-      case "low": return "var(--success)";
-      default: return "var(--muted)";
-    }
-  });
-  const plate = $derived(ha.state(E.lastPlate));
-
-  const todBars = $derived([
+  const tod = $derived([
     { label: "Morning", value: ha.num(E.trafficMorning), color: "var(--solar)" },
     { label: "Afternoon", value: ha.num(E.trafficAfternoon), color: "var(--warning)" },
-    { label: "Evening", value: ha.num(E.trafficEvening), color: "var(--brand)" },
+    { label: "Evening", value: ha.num(E.trafficEvening), color: "var(--acc)" },
     { label: "Night", value: ha.num(E.trafficNight), color: "#8b5cf6" },
   ]);
 
-  const stats = $derived([
-    { v: n(ha.num(E.vehiclesWeek)), l: "Vehicles week" },
-    { v: n(ha.num(E.vehiclesMonth)), l: "Vehicles month" },
-    { v: n(ha.num(E.pedestriansWeek)), l: "People week" },
-    { v: n(ha.num(E.pedestriansMonth)), l: "People month" },
-    { v: n(ha.num(E.personDetections)), l: "Person alerts" },
-    { v: n(ha.num(E.vehicleDetections)), l: "Vehicle alerts" },
-  ]);
+  let weekBars = $state<{ label: string; value: number | null }[]>([]);
+  onMount(async () => {
+    weekBars = dailyMax(await ha.history(E.vehiclesToday, 24 * 7), 7);
+  });
 </script>
 
-<div class="head">
-  <Pill label="Traffic: {intensity}" color={intensityColor} />
-  {#if plate && plate !== "None"}
-    <Pill label="Last plate: {plate}" color="var(--brand)" />
-  {/if}
-</div>
-
-<div class="kpis">
-  <KpiCard icon="🚗" label="Vehicles Today" value={n(ha.num(E.vehiclesToday))} unit="" accent="var(--brand)"
-    foots={[{ v: n(ha.num(E.vehiclesWeek)), l: "This week" }]} />
-  <KpiCard icon="🚶" label="People Today" value={n(ha.num(E.pedestriansToday))} unit="" accent="var(--success)"
-    foots={[{ v: n(ha.num(E.pedestriansWeek)), l: "This week" }]} />
-  <KpiCard icon="📹" label="Gate Detections" value={n(ha.num(E.gateDetections))} unit="" accent="var(--warning)"
-    foots={[{ v: n(ha.num(E.vehicleDetections)), l: "Vehicles" }, { v: n(ha.num(E.personDetections)), l: "People" }]} />
-</div>
-
-<Section title="Sidewalk Traffic" hint="people by time of day">
-  <div class="card chart-card"><BarChart bars={todBars} unit="" height={160} /></div>
-</Section>
-
-<Section title="Analytics">
-  <div class="mini-grid">
-    {#each stats as s}
-      <div class="mini"><div class="mv">{s.v}</div><div class="t-foot">{s.l}</div></div>
-    {/each}
+<div class="col">
+  <div class="kpis">
+    <div class="card k"><div class="lb">🚗 Vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month</div></div>
+    <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
   </div>
-</Section>
+
+  <div class="card pad">
+    <div class="rh"><span class="lb">Sidewalk traffic by time of day</span><span class="int">{ha.state(E.trafficIntensity) ?? "—"}</span></div>
+    <div class="tod">
+      {#each tod as b}
+        {@const max = Math.max(1, ...tod.map((x) => x.value ?? 0))}
+        <div class="col2">
+          <span class="tv">{n(b.value)}</span>
+          <div class="bar" style="height:{((b.value ?? 0) / max) * 100}%;background:{b.color}"></div>
+          <span class="tl">{b.label}</span>
+        </div>
+      {/each}
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="rh"><span class="lb">Vehicles past gate · 7 days</span><span class="sub">{thousands(ha.num(E.vehiclesWeek))} total</span></div>
+    <BarChart bars={weekBars} height={150} />
+  </div>
+</div>
 
 <style>
-  .head {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 22px 2px 0;
-  }
-  .kpis {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 12px;
-    margin-top: 14px;
-  }
-  .chart-card {
-    padding: 18px;
-  }
-  .mini-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-    gap: 10px;
-  }
-  .mini {
-    padding: 15px;
-    background: var(--card);
-    backdrop-filter: var(--glass-blur);
-    -webkit-backdrop-filter: var(--glass-blur);
-    border: 1px solid var(--border);
-    border-radius: var(--r);
-    box-shadow: var(--shadow);
-  }
-  .mv {
-    font-size: 20px;
-    font-weight: 700;
-    margin-bottom: 4px;
-  }
+  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
+  .k { padding: 18px; }
+  .big { font-size: 30px; font-weight: 800; margin-top: 6px; }
+  .u { font-size: 14px; color: var(--dim); }
+  .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
+  .pad { padding: 20px; }
+  .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+  .int { font-size: 12px; font-weight: 700; color: var(--acc); }
+  .tod { display: flex; align-items: flex-end; gap: 16px; height: 130px; }
+  .col2 { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; height: 100%; justify-content: flex-end; }
+  .tv { font-size: 13px; font-weight: 700; }
+  .bar { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; transition: height 0.5s; }
+  .tl { font-size: 11px; color: var(--dim); }
 </style>

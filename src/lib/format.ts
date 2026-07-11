@@ -21,6 +21,21 @@ export function rand(v: number | null): string {
   return "R " + v.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
+/** Duration in seconds → "7h 12m" (Oura reports durations in seconds). */
+export function dur(v: number | null): string {
+  if (v == null) return "—";
+  const mins = Math.round(v / 60);
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+/** Compact thousands (e.g. 3582 → "3,582"). */
+export function thousands(v: number | null): string {
+  if (v == null) return "—";
+  return Math.round(v).toLocaleString();
+}
+
 export function greeting(hour: number): string {
   if (hour < 12) return "Good morning";
   if (hour < 17) return "Good afternoon";

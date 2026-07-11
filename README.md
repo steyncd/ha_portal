@@ -15,17 +15,28 @@ client and HA's OAuth login flow (no tokens to paste).
 
 ## Views
 
-Seven views, modern dark "cb" design system, live data + history charts:
+Aurora-Glass design system (violet/indigo, six accent schemes), sidebar nav,
+command palette, live data + history charts. Built from the Claude Design
+prototype in `docs/`.
 
-- **Home** — greeting, quick actions (arm/disarm, all-lights-off, pumps), live
-  power-flow diagram, at-a-glance KPI gauges, light controls, comfort strip
-- **Energy** — animated power flow, battery/solar 24h area charts, 7-day solar
-  yield bars, power stats, appliance switches
-- **Water** — tank gauge + 48h level trend, water-used & borehole 7-day bars, pumps
-- **Climate** — indoor average + 24h trend, per-room temp/humidity with sparklines
-- **Security** — alarm status, two-tap arm/disarm, live zone grid
-- **Traffic** — vehicle/pedestrian counts, sidewalk traffic by time of day, analytics
-- **System** — internet, router CPU/memory gauges, mesh nodes, printer ink, health
+- **Overview** — greeting, command palette (⌘K), Customize (show/hide widgets),
+  live power flow, battery/solar/tank, scenes, quick controls, lights (→ light
+  sheet), today's energy, security & presence, recent activity, forecast
+- **Energy** — Day/Week/Month charts, animated power flow, Victron system, appliances
+- **Water** — tank gauge, 7-day usage & level, pumps
+- **Irrigation** — Wyze zones (start/stop), smart-irrigation, run-time
+- **Climate** — floor-plan room picker, per-room 24h trend + comfort + lights
+- **Security** — two-tap arm/disarm, activity, access status, zone grid
+- **Cameras** — detection KPIs, recent events, camera grid
+- **Traffic** — vehicle/pedestrian analytics, time-of-day bars
+- **System** — internet, router CPU/mem, printer ink, device breakdown
+- **Me** — Oura health: sleep/readiness/activity, stages, vitals, activity, trends
+- **Settings** — appearance (accent/density/motion), people, alarm automations +
+  schedule, notifications, zone bypass, broadcast, enabled views
+- **TV Overview** — standalone wall display (bento layout, live clock)
+
+Interactions: command palette (⌘K / `/`), light sheet (brightness + colour),
+two-tap arm/disarm, per-user Customize + theme (localStorage), toasts.
 
 ## Local development
 

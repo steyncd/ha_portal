@@ -95,7 +95,93 @@ export const E = {
   boreholePump: "switch.borehole_pump",
 
   notices: "sensor.home_notices",
+
+  // Occupancy / presence
+  houseOccupied: "binary_sensor.house_occupied",
+  interiorMotion: "binary_sensor.house_interior_motion",
+  nobodyHome: "binary_sensor.nobody_home",
+
+  // Quick-action scripts / scenes
+  scGoodnight: "script.quick_goodnight_scene",
+  scMovie: "script.movie_mode",
+  scAway: "script.quick_away_mode",
+  scMorning: "script.quick_good_morning_scene",
+  scLightsOff: "script.quick_lights_all_off",
+
+  // Irrigation (Wyze)
+  irrCurrentZone: "sensor.helloeben_sprinkler_current_zone",
+  irrZoneSelect: "input_select.irrigation_zone_selector",
+  irrRuntime: "input_number.irrigation_runtime_minutes",
+  irrIntelligence: "input_boolean.irrigation_intelligence_enabled",
+  irrTimeToday: "sensor.sprinkler_watering_time_today",
+  irrTimeMonth: "sensor.sprinkler_watering_time_this_month",
+  irrStartZone: "script.start_selected_irrigation_zone",
+  irrStop: "script.stop_irrigation",
+  irrStartAll: "script.quick_irrigation_start_all",
+  irrStopAll: "script.quick_irrigation_stop_all",
+
+  // Oura (health)
+  ouraSleepScore: "sensor.oura_sleep_score",
+  ouraReadiness: "sensor.oura_readiness_score",
+  ouraActivityScore: "sensor.oura_activity_score",
+  ouraTotalSleep: "sensor.oura_total_sleep_duration",
+  ouraTimeInBed: "sensor.oura_time_in_bed",
+  ouraDeep: "sensor.oura_deep_sleep_duration",
+  ouraRem: "sensor.oura_rem_sleep_duration",
+  ouraLightSleep: "sensor.oura_light_sleep_duration",
+  ouraAwake: "sensor.oura_awake_time",
+  ouraEfficiency: "sensor.oura_sleep_efficiency",
+  ouraRestful: "sensor.oura_restfulness",
+  ouraLatency: "sensor.oura_sleep_latency",
+  ouraSleepHR: "sensor.oura_average_sleep_heart_rate",
+  ouraSleepHRV: "sensor.oura_average_hrv",
+  ouraCurrentHR: "sensor.oura_current_heart_rate",
+  ouraRestingHR: "sensor.oura_lowest_sleep_heart_rate",
+  ouraSteps: "sensor.oura_steps",
+  ouraActiveCal: "sensor.oura_active_calories",
+  ouraTotalCal: "sensor.oura_total_calories",
+  ouraTargetCal: "sensor.oura_target_calories",
+  ouraLowActivity: "sensor.oura_low_activity_time",
+  ouraRingBatt: "sensor.oura_ring_battery_level",
+  ouraBedStart: "sensor.oura_bedtime_start",
+  ouraBedEnd: "sensor.oura_bedtime_end",
+  ouraTempDev: "sensor.oura_temperature_deviation",
 } as const;
+
+export type SceneDef = { id: string; label: string; icon: string };
+export const SCENES: SceneDef[] = [
+  { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
+  { id: "script.movie_mode", label: "Movie", icon: "🎬" },
+  { id: "script.quick_away_mode", label: "Away", icon: "🚪" },
+  { id: "script.quick_good_morning_scene", label: "Morning", icon: "☀️" },
+];
+
+// Camera feeds (live streams need HLS/WebRTC wiring; shown as labelled tiles for now).
+export const CAMERAS: { id: string; label: string; sub: string }[] = [
+  { id: "camera.main_gate", label: "Main Gate", sub: "ANPR" },
+  { id: "camera.driveway", label: "Driveway", sub: "Frigate" },
+  { id: "camera.gate_outside", label: "Gate Outside", sub: "street" },
+  { id: "camera.sidewalk_ai", label: "Sidewalk", sub: "AI" },
+  { id: "camera.store_room", label: "Store Room", sub: "indoor" },
+  { id: "camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_201", label: "Back Yard", sub: "HIK" },
+  { id: "camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_301", label: "Front Yard", sub: "HIK" },
+  { id: "camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_501", label: "Pool", sub: "HIK" },
+];
+
+// Access & openings — read-only door/gate status (no cover/lock entities exist).
+export const ACCESS: { id: string; label: string; icon: string }[] = [
+  { id: "binary_sensor.helloliam_alarm_zone_013_front_door", label: "Front Door", icon: "🚪" },
+  { id: "binary_sensor.helloliam_alarm_zone_020_door_kitchen", label: "Kitchen Door", icon: "🚪" },
+  { id: "binary_sensor.helloliam_alarm_zone_024_door_lounge", label: "Lounge Door", icon: "🚪" },
+  { id: "binary_sensor.helloliam_alarm_zone_030_beam_garage", label: "Garage", icon: "🏚️" },
+  { id: "binary_sensor.helloliam_alarm_zone_015_beam_driveway", label: "Driveway", icon: "🚗" },
+  { id: "binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", label: "Side Gate", icon: "🚧" },
+];
+
+// Irrigation zone labels (from the input_select options).
+export const IRRIGATION_ZONES = [
+  "Front Lawn", "Back Garden", "Veggie Patch", "Flower Beds", "Driveway Strip", "Rose Garden",
+];
 
 export type Room = { id: string; label: string; humidity?: string };
 

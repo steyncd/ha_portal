@@ -167,6 +167,48 @@ class HAStore {
     if (this.#mock) return this.#setMock([entity_id, "alarm_control_panel.olarm_alarm"], "disarmed");
     return this.#svc("alarm_control_panel", "alarm_disarm", { entity_id });
   }
+
+  /** Set a light's brightness (%) and optional rgb colour. */
+  lightSet(entity_id: string, opts: { brightness_pct?: number; rgb_color?: [number, number, number] }) {
+    if (this.#mock) {
+      this.#setMock(entity_id, (opts.brightness_pct ?? 100) > 0 ? "on" : "off");
+      return;
+    }
+    return this.#svc("light", "turn_on", { entity_id, ...opts });
+  }
+  scene(entity_id: string) {
+    if (this.#mock) return;
+    return this.#svc("scene", "turn_on", { entity_id });
+  }
+  script(entity_id: string) {
+    if (this.#mock) return;
+    const svc = entity_id.replace("script.", "");
+    return this.#svc("script", svc, {});
+  }
+  setBoolean(entity_id: string, on: boolean) {
+    if (this.#mock) return this.#setMock(entity_id, on ? "on" : "off");
+    return this.#svc("input_boolean", on ? "turn_on" : "turn_off", { entity_id });
+  }
+  toggleBoolean(entity_id: string) {
+    return this.setBoolean(entity_id, !this.isOn(entity_id));
+  }
+  setNumber(entity_id: string, value: number) {
+    if (this.#mock) return this.#setMock(entity_id, String(value));
+    return this.#svc("input_number", "set_value", { entity_id, value });
+  }
+  setSelect(entity_id: string, option: string) {
+    if (this.#mock) return this.#setMock(entity_id, option);
+    return this.#svc("input_select", "select_option", { entity_id, option });
+  }
+  setDatetime(entity_id: string, time: string) {
+    if (this.#mock) return this.#setMock(entity_id, time);
+    return this.#svc("input_datetime", "set_datetime", { entity_id, time });
+  }
+  /** Broadcast a message to a media/notify target (best-effort). */
+  notify(message: string) {
+    if (this.#mock) return;
+    return this.#svc("notify", "notify", { message });
+  }
 }
 
 export const ha = new HAStore();

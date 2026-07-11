@@ -156,6 +156,83 @@ const ROWS: Row[] = [
   ["device_tracker.kitchen_deco", "home"],
   ["device_tracker.main_living_room_deco", "home"],
   ["device_tracker.study_deco", "home"],
+  ["sensor.victron_mppt1_pv_power", "0", { unit_of_measurement: "W" }],
+  ["sensor.victron_mppt2_pv_power", "0", { unit_of_measurement: "W" }],
+
+  // Occupancy / people
+  ["sensor.home_occupancy", "Occupied"],
+  ["binary_sensor.house_occupied", "on"],
+  ["binary_sensor.house_interior_motion", "on"],
+  ["binary_sensor.nobody_home", "off"],
+  ["person.christo_steyn", "home"],
+  ["person.mandri_steyn", "not_home"],
+  ["person.hello_liam_en_eben", "home"],
+
+  // Access door/beam sensors
+  ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "off"],
+  ["binary_sensor.helloliam_alarm_zone_024_door_lounge", "off"],
+  ["binary_sensor.helloliam_alarm_zone_030_beam_garage", "off"],
+  ["binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", "off"],
+
+  // Irrigation (Wyze)
+  ["sensor.helloeben_sprinkler_current_zone", "Idle"],
+  ["input_select.irrigation_zone_selector", "Front Lawn", { options: ["Front Lawn", "Back Garden", "Veggie Patch", "Flower Beds", "Driveway Strip", "Rose Garden"] }],
+  ["input_number.irrigation_runtime_minutes", "10", { unit_of_measurement: "min" }],
+  ["input_boolean.irrigation_intelligence_enabled", "on"],
+  ["sensor.sprinkler_watering_time_today", "18", { unit_of_measurement: "min" }],
+  ["sensor.sprinkler_watering_time_this_month", "420", { unit_of_measurement: "min" }],
+
+  // Settings inputs
+  ["input_boolean.alarm_auto_arm_away", "off"],
+  ["input_boolean.alarm_auto_arm_stay", "off"],
+  ["input_boolean.alarm_auto_arm_beams", "on"],
+  ["input_boolean.alarm_auto_disarm", "on"],
+  ["input_boolean.alarm_auto_disarm_beams", "on"],
+  ["input_datetime.alarm_auto_arm_away_time", "17:00:00"],
+  ["input_datetime.alarm_auto_arm_stay_time", "22:00:00"],
+  ["input_datetime.alarm_auto_arm_time_beams", "22:10:00"],
+  ["input_datetime.alarm_auto_disarm_time", "06:00:00"],
+  ["input_datetime.alarm_auto_disarm_time_beams", "06:05:00"],
+  ["input_boolean.frigate_person_detection_enabled", "on"],
+  ["input_boolean.frigate_vehicle_detection_enabled", "on"],
+  ["input_boolean.door_open_alerts_enabled", "on"],
+  ["input_select.zone_bypass_selector", "None", { options: ["None", "Zone 22: Beam - Back Garden", "Zone 18: Beam - Pool", "Zone 15: Beam - Driveway"] }],
+
+  // Cameras
+  ["camera.main_gate", "recording"],
+  ["camera.driveway", "idle"],
+  ["camera.gate_outside", "idle"],
+  ["camera.sidewalk_ai", "recording"],
+  ["camera.store_room", "idle"],
+  ["camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_201", "idle"],
+  ["camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_301", "idle"],
+  ["camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_501", "idle"],
+
+  // Oura (health)
+  ["sensor.oura_sleep_score", "82"],
+  ["sensor.oura_readiness_score", "80"],
+  ["sensor.oura_activity_score", "76"],
+  ["sensor.oura_total_sleep_duration", "25920", { unit_of_measurement: "s" }],
+  ["sensor.oura_time_in_bed", "28800", { unit_of_measurement: "s" }],
+  ["sensor.oura_deep_sleep_duration", "5400", { unit_of_measurement: "s" }],
+  ["sensor.oura_rem_sleep_duration", "6000", { unit_of_measurement: "s" }],
+  ["sensor.oura_light_sleep_duration", "13020", { unit_of_measurement: "s" }],
+  ["sensor.oura_awake_time", "1500", { unit_of_measurement: "s" }],
+  ["sensor.oura_sleep_efficiency", "91", { unit_of_measurement: "%" }],
+  ["sensor.oura_restfulness", "78", { unit_of_measurement: "%" }],
+  ["sensor.oura_sleep_latency", "720", { unit_of_measurement: "s" }],
+  ["sensor.oura_average_sleep_heart_rate", "54", { unit_of_measurement: "bpm" }],
+  ["sensor.oura_average_hrv", "42", { unit_of_measurement: "ms" }],
+  ["sensor.oura_current_heart_rate", "62", { unit_of_measurement: "bpm" }],
+  ["sensor.oura_lowest_sleep_heart_rate", "51", { unit_of_measurement: "bpm" }],
+  ["sensor.oura_steps", "6400"],
+  ["sensor.oura_active_calories", "420", { unit_of_measurement: "kcal" }],
+  ["sensor.oura_total_calories", "2360", { unit_of_measurement: "kcal" }],
+  ["sensor.oura_target_calories", "500", { unit_of_measurement: "kcal" }],
+  ["sensor.oura_low_activity_time", "18000", { unit_of_measurement: "s" }],
+  ["sensor.oura_ring_battery_level", "68", { unit_of_measurement: "%" }],
+  ["sensor.oura_bedtime_start", "2026-07-10T22:40:00+02:00"],
+  ["sensor.oura_temperature_deviation", "0.2", { unit_of_measurement: "°C" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
