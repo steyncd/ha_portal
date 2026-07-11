@@ -22,7 +22,10 @@
 
   let view = $state<ViewId>("overview");
   let palette = $state(false);
-  let tv = $state(false);
+  // ?tv=1 (or #tv) boots straight into the always-on TV Overview — for wall displays.
+  let tv = $state(
+    new URLSearchParams(location.search).get("tv") === "1" || location.hash === "#tv",
+  );
   let moreOpen = $state(false);
   let isMobile = $state(false);
 
