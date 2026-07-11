@@ -8,11 +8,18 @@
 
   const tank = $derived(ha.num(E.tankLevel));
   const low = $derived(ha.state(E.tankLowAlert) === "on");
+  const days = $derived(ha.num(E.tankDays));
+  const daysColor = $derived(days == null ? "var(--muted)" : days < 7 ? "var(--error)" : days < 21 ? "var(--warning)" : "var(--success)");
+
+  // net in/out today: borehole pumped in vs consumption out
+  const inToday = $derived(ha.num(E.boreholeToday) ?? 0);
+  const outToday = $derived(ha.num(E.waterUsedToday) ?? 0);
+  const net = $derived(inToday - outToday);
 
   let tankHist = $state<{ t: number; v: number }[]>([]);
   let useBars = $state<{ label: string; value: number | null }[]>([]);
   onMount(async () => {
-    tankHist = await ha.history(E.tankLevel, 24 * 7);
+    tankHist = await ha.history(E.tankLevel, 24 * 30);
     useBars = dailyMax(await ha.history(E.waterUsedToday, 24 * 7), 7);
   });
 
@@ -24,6 +31,19 @@
 </script>
 
 <div class="col">
+  <!-- days-remaining hero -->
+  <div class="card hero" class:low>
+    <div class="hleft">
+      <div class="hbig" style="color:{daysColor}">{n(days)}<span class="hunit"> days</span></div>
+      <div class="hlbl">of water left at current use</div>
+    </div>
+    <div class="hmeta">
+      <div class="hm"><span class="hmv" style="color:var(--water)">{n(ha.num(E.tankVolume))} L</span><span class="hmk">in tank · {n(tank)}%</span></div>
+      <div class="hm"><span class="hmv">{n(ha.num(E.waterAvg7d))} L</span><span class="hmk">avg use / day</span></div>
+      <div class="hm"><span class="hmv" style="color:{net >= 0 ? 'var(--success)' : 'var(--warning)'}">{net >= 0 ? "+" : ""}{n(net)} L</span><span class="hmk">net today (in − out)</span></div>
+    </div>
+  </div>
+
   <div class="top">
     <div class="card gauge">
       <div class="lb" style="align-self:flex-start">JoJo Tank · {ha.state(E.tankStatus) ?? "—"}</div>
@@ -55,7 +75,7 @@
       <BarChart bars={useBars} height={150} />
     </div>
     <div class="card pad">
-      <div class="rh"><span class="lb">Tank level · 7 days</span><span class="sub" style="color:var(--water)">Now {n(tank)}%</span></div>
+      <div class="rh"><span class="lb">Tank level · 30 days</span><span class="sub" style="color:var(--water)">Now {n(tank)}%</span></div>
       <AreaChart data={tankHist} color="var(--water)" unit="%" fixedMin={0} fixedMax={100} height={150} />
     </div>
   </div>
@@ -63,6 +83,18 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .hero { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; overflow: hidden; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--water) 16%, transparent), transparent 70%); pointer-events: none; }
+  .hero.low::after { background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--error) 18%, transparent), transparent 70%); }
+  .hleft { position: relative; }
+  .hbig { font-size: 48px; font-weight: 800; letter-spacing: -2px; line-height: 0.9; }
+  .hunit { font-size: 22px; }
+  .hlbl { font-size: 12.5px; color: var(--dim); margin-top: 5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+  .hmeta { position: relative; display: grid; grid-template-columns: repeat(3, auto); gap: 8px 22px; }
+  @media (max-width: 560px) { .hmeta { grid-template-columns: 1fr 1fr; } }
+  .hm { display: flex; flex-direction: column; gap: 2px; }
+  .hmv { font-size: 17px; font-weight: 800; }
+  .hmk { font-size: 11px; color: var(--muted); }
   .top { display: grid; grid-template-columns: 320px 1fr; gap: 14px; }
   @media (max-width: 760px) { .top { grid-template-columns: 1fr; } }
   .gauge { padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
