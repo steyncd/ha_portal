@@ -24,6 +24,16 @@
     { id: "entrance", label: "Entry", left: 0, top: 85.1, w: 15.6, h: 14.9, lights: [] },
   ];
 
+  // 5-band temperature heat scale (house runs cold; bands per prototype 14/17/21.5/25)
+  function heat(t: number | null): string {
+    if (t == null) return "rgba(255,255,255,.03)";
+    const c = t < 14 ? "#3b82f6" : t < 17 ? "#38bdf8" : t < 21.5 ? "#34d399" : t < 25 ? "#fbbf24" : "#fb7185";
+    return `color-mix(in srgb, ${c} 26%, transparent)`;
+  }
+  const HEAT_LEGEND = [
+    { c: "#3b82f6", l: "<14°" }, { c: "#38bdf8", l: "14–17°" }, { c: "#34d399", l: "17–21°" }, { c: "#fbbf24", l: "22–25°" }, { c: "#fb7185", l: ">25°" },
+  ];
+
   let activeId = $state("main");
   const active = $derived(PLAN.find((r) => r.id === activeId)!);
   const temp = $derived(active.temp ? ha.num(active.temp) : null);
@@ -38,10 +48,11 @@
 
   const comfort = $derived.by(() => {
     if (temp == null) return { label: "No sensor", color: "var(--muted)" };
-    if (temp < 16) return { label: "Cold", color: "var(--water)" };
-    if (temp < 20) return { label: "Cool", color: "#60a5fa" };
-    if (temp <= 24) return { label: "Comfortable", color: "var(--success)" };
-    return { label: "Warm", color: "var(--warning)" };
+    if (temp < 14) return { label: "Cold", color: "#3b82f6" };
+    if (temp < 17) return { label: "Cool", color: "var(--water)" };
+    if (temp < 21.5) return { label: "Comfortable", color: "var(--success)" };
+    if (temp < 25) return { label: "Warm", color: "var(--warning)" };
+    return { label: "Hot", color: "var(--error)" };
   });
 </script>
 
@@ -51,11 +62,16 @@
     <div class="plan">
       {#each PLAN as r}
         {@const t = r.temp ? ha.num(r.temp) : null}
-        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%" onclick={() => (activeId = r.id)}>
+        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : heat(t)}" onclick={() => (activeId = r.id)}>
           <span class="rn">{r.label}</span>
           {#if t != null}<span class="rt">{n(t, 1)}°</span>{/if}
         </button>
       {/each}
+    </div>
+    <div class="legend">
+      <span class="ll">Cool</span>
+      {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
+      <span class="ll">Warm</span>
     </div>
   </div>
 
@@ -98,8 +114,11 @@
   .sub { font-size: 12px; color: var(--dim); }
   .plan { position: relative; width: 100%; aspect-ratio: 18600 / 14800; border-radius: 14px; background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); overflow: hidden; }
   .room { position: absolute; padding: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); overflow: hidden; }
-  .room.active { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
-  .room:hover { background: rgba(255, 255, 255, 0.07); }
+  .room.active { box-shadow: inset 0 0 0 1.5px var(--line); }
+  .room:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+  .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
+  .legend .lc { width: 26px; height: 9px; border-radius: 2px; }
+  .legend .ll { font-size: 10.5px; color: var(--muted); margin: 0 5px; }
   .rn { font-size: 10px; font-weight: 700; color: #f5f8ff; white-space: nowrap; text-shadow: 0 1px 3px rgba(5, 9, 15, 0.9); }
   .rt { font-size: 9.5px; font-weight: 700; color: #c4e3ff; text-shadow: 0 1px 3px rgba(5, 9, 15, 0.95); }
   .ah { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
