@@ -1,9 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E, ROOMS } from "../lib/entities";
+  import { E, ROOMS, ALARM_ZONES, CAMERAS } from "../lib/entities";
   import { n, power, greeting } from "../lib/format";
-  import Spark from "../lib/components/Spark.svelte";
+  import Overlay from "../lib/components/Overlay.svelte";
 
   let { onexit }: { onexit: () => void } = $props();
 
@@ -12,11 +12,19 @@
   onMount(() => { timer = setInterval(() => (now = new Date()), 20000); });
   onDestroy(() => clearInterval(timer));
 
-  let battHist = $state<{ t: number; v: number }[]>([]);
-  onMount(async () => { battHist = await ha.history(E.batterySoc, 24); });
+  let pvHist = $state<{ t: number; v: number }[]>([]);
+  let loadHist = $state<{ t: number; v: number }[]>([]);
+  onMount(async () => {
+    pvHist = await ha.history(E.pvPower, 24);
+    loadHist = await ha.history(E.loads, 24);
+  });
 
   const clock = $derived(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
   const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
+  const wxTemp = $derived(ha.attr(E.weather, "temperature") as number | undefined);
+  const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)).length);
+  const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
+  const armed = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
   const FC = [["Now", "🌙", 16], ["21h", "🌫️", 12], ["23h", "🌫️", 11], ["01h", "🌫️", 10], ["03h", "❄️", 8], ["06h", "❄️", 7], ["09h", "☀️", 15]];
 </script>
 
@@ -28,9 +36,9 @@
       <div class="clock">{clock}</div>
     </div>
     <div class="wx">
-      <div class="wt">🌙 16°</div>
-      <div class="wd">Clear night</div>
-      <div class="occ"><span class="od"></span>{ha.state(E.occupancy) ?? "Home"} · {ha.state(E.alarmMain) ?? "—"}</div>
+      <div class="wt">🌙 {wxTemp != null ? Math.round(wxTemp) : 16}°</div>
+      <div class="wd">{(ha.state(E.weather) ?? "clear-night").replace(/-/g, " ")}</div>
+      <div class="occ"><span class="od"></span>{ha.state(E.occupancy) ?? "Home"} · {armed ? "Armed" : "Disarmed"}</div>
     </div>
   </div>
 
@@ -43,7 +51,10 @@
         <div><div class="sl">🔋 Battery</div><div class="sv">{n(ha.num(E.batteryPower))} W</div></div>
         <div><div class="sl">🔌 Grid</div><div class="sv">{power(ha.num(E.gridPower)).val} {power(ha.num(E.gridPower)).unit}</div></div>
       </div>
-      <div class="espark"><Spark data={battHist} color="var(--solar)" forceMax={100} height={90} /></div>
+      <div class="espark"><Overlay height={110} series={[
+        { data: pvHist, color: "var(--solar)", label: "Solar", fill: true },
+        { data: loadHist, color: "var(--success)", label: "Home use" },
+      ]} /></div>
     </div>
 
     <div class="panel" style="--pc:var(--acc)">
@@ -64,10 +75,10 @@
         <div><span>{warm[warm.length - 1]?.label} · coolest</span><b>{n(ha.num(warm[warm.length - 1]?.id ?? ""), 1)}°</b></div>
       </div>
     </div>
-    <div class="panel" style="--pc:var(--success)">
-      <div class="pl" style="color:var(--success)">🛡️ Security</div>
-      <div class="secbig">All clear</div>
-      <div class="crows"><div><span>{ha.state(E.alarmMain) ?? "—"} · zones ready</span></div><div><span>Gate clear · 8 cameras</span></div></div>
+    <div class="panel" style="--pc:{activeZones ? 'var(--warning)' : 'var(--success)'}">
+      <div class="pl" style="color:{activeZones ? 'var(--warning)' : 'var(--success)'}">🛡️ Security</div>
+      <div class="secbig">{activeZones ? `${activeZones} active` : armed ? "Armed" : "All clear"}</div>
+      <div class="crows"><div><span>Home {armed ? "armed" : "disarmed"} · {activeZones} zones active</span></div><div><span>{camsOnline} / {CAMERAS.length} cameras online</span></div></div>
     </div>
   </div>
 
@@ -91,7 +102,7 @@
   .clock { font-size: clamp(52px, 7.6vw, 132px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.88; background: linear-gradient(120deg, #fff 34%, #b3a6f5 96%); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .wx { text-align: right; }
   .wt { font-size: clamp(30px, 3.6vw, 60px); font-weight: 700; }
-  .wd { font-size: clamp(12px, 1.15vw, 20px); color: var(--muted); }
+  .wd { font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); text-transform: capitalize; }
   .occ { display: inline-flex; align-items: center; gap: 8px; margin-top: 1vh; padding: 7px 14px; border-radius: 999px; background: color-mix(in srgb, var(--success) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 34%, transparent); font-size: clamp(12px, 1.15vw, 20px); font-weight: 700; }
   .od { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
   .bento { display: grid; flex: 1; min-height: 0; gap: clamp(10px, 1.15vw, 22px); grid-template-columns: 1.55fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
@@ -104,21 +115,21 @@
   .pu { font-size: 0.32em; color: var(--dim); }
   .pnote { padding-bottom: 1vh; font-size: clamp(14px, 1.5vw, 26px); color: var(--text-2); line-height: 1.35; }
   .stats3 { display: flex; gap: 2.4vw; flex-wrap: wrap; margin-top: 1.6vh; }
-  .sl { font-size: clamp(10px, 1vw, 17px); font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .sl { font-size: clamp(11px, 1.05vw, 18px); font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--dim); }
   .sv { font-size: clamp(20px, 2.4vw, 40px); font-weight: 800; margin-top: 0.4vh; }
   .espark { flex: 1; min-height: 0; display: flex; align-items: flex-end; margin-top: 1.4vh; }
   .mbig { font-size: clamp(38px, 5vw, 92px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.9; margin-top: 0.6vh; }
   .mu { font-size: 0.42em; color: var(--dim); }
   .msub { font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); margin-top: 0.4vh; }
   .secbig { font-size: clamp(30px, 4vw, 72px); font-weight: 800; line-height: 0.92; margin-top: 0.6vh; }
-  .crows { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.5vh; margin-top: 0.6vh; font-size: clamp(12px, 1.1vw, 20px); color: var(--text-2); }
+  .crows { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.5vh; margin-top: 0.6vh; font-size: clamp(13px, 1.25vw, 23px); color: var(--text-2); }
   .crows div { display: flex; justify-content: space-between; gap: 10px; }
   .fc { display: flex; gap: clamp(6px, 0.8vw, 16px); }
   .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; padding: clamp(9px, 1vw, 18px) clamp(6px, 0.6vw, 14px); border-radius: clamp(12px, 1.2vw, 22px); font-size: clamp(13px, 1.4vw, 25px); }
-  .fcc span { color: var(--muted); }
+  .fcc span { color: var(--text-2); }
   .fcc .fi { font-size: 1.3em; }
   .fcc b { color: var(--text); }
-  .foot { display: flex; align-items: center; gap: 2vw; font-size: clamp(11px, 1.05vw, 19px); color: var(--muted); }
+  .foot { display: flex; align-items: center; gap: 2vw; font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); }
   .fl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .fl b { color: var(--text); }
   .fdot { width: 7px; height: 7px; border-radius: 50%; background: var(--solar); animation: pulse 1.7s infinite; }
