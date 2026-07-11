@@ -201,7 +201,7 @@
   <!-- lights -->
   {#if prefs.widgets.lights}
     <div class="w card">
-      <div class="wh"><span class="lb">Lights</span><span class="sub2">{litCount} on</span></div>
+      <div class="wh"><span class="lb">Lights</span><button class="seeall" onclick={() => onnav("lights")}>{litCount} on · all →</button></div>
       <div class="grid2" style="margin-top:12px">
         {#each INDOOR_LIGHTS.slice(0, 6) as l}
           <div class="ltile" class:on={ha.isOn(l.id)}>
@@ -306,6 +306,8 @@
   .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .center-sub { font-size: 12px; color: var(--dim); text-align: center; margin-top: 4px; }
   .sub2 { font-size: 12px; color: var(--dim); }
+  .seeall { font-size: 12px; color: var(--acc2); font-weight: 600; }
+  .seeall:hover { color: var(--acc); }
   .brow { display: flex; align-items: center; gap: 15px; }
   .ring { width: 60px; height: 60px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; }
   .ringc { width: 46px; height: 46px; border-radius: 50%; background: #0b1017; display: grid; place-items: center; font-size: 13px; font-weight: 700; }
