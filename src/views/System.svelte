@@ -16,16 +16,40 @@
     const d = Math.floor(sec / 86400); const h = Math.floor((sec % 86400) / 3600);
     return `${d}d ${h}h`;
   }
-  const cats = [
-    { icon: "💡", name: "Lighting & switches", count: 21 },
-    { icon: "📷", name: "Cameras", count: 8 },
-    { icon: "🌡️", name: "Sensors", count: 40 },
-    { icon: "🔌", name: "Smart plugs", count: 12 },
-    { icon: "📱", name: "Phones & tablets", count: 6 },
+
+  // device-category counts derived from the live entity map (not hardcoded)
+  const DOMAINS = [
+    { icon: "💡", name: "Lights", pfx: ["light."] },
+    { icon: "🔌", name: "Switches & plugs", pfx: ["switch."] },
+    { icon: "📷", name: "Cameras", pfx: ["camera."] },
+    { icon: "🌡️", name: "Sensors", pfx: ["sensor.", "binary_sensor."] },
+    { icon: "📱", name: "Trackers", pfx: ["device_tracker."] },
+    { icon: "🎵", name: "Media players", pfx: ["media_player."] },
   ];
+  const cats = $derived(
+    DOMAINS.map((d) => ({ ...d, count: Object.keys(ha.entities).filter((id) => d.pfx.some((p) => id.startsWith(p))).length })).filter((d) => d.count > 0),
+  );
+
+  // problems: offline devices + low-battery
+  const PROBLEM_DOMAINS = ["light", "switch", "sensor", "binary_sensor", "camera", "climate", "cover", "lock", "media_player", "device_tracker", "fan"];
+  const offline = $derived(
+    Object.entries(ha.entities).filter(([id, e]) => PROBLEM_DOMAINS.includes(id.split(".")[0]) && (e.state === "unavailable" || e.state === "unknown")).length,
+  );
+  const lowBatt = $derived(ha.num(E.lowBatteryDevices) ?? 0);
+  const healthy = $derived(offline === 0 && lowBatt === 0);
 </script>
 
 <div class="col">
+  <!-- problems-first hero -->
+  <div class="card phero" class:ok={healthy}>
+    <span class="picon">{healthy ? "✅" : "⚠️"}</span>
+    <div class="pinfo">
+      <div class="pt">{healthy ? "All systems healthy" : `${offline} device${offline === 1 ? "" : "s"} offline · ${n(lowBatt)} low battery`}</div>
+      <div class="psub">{n(ha.num(E.routerDevices))} devices online · internet up {uptime(ha.num(E.routerUptime))}</div>
+    </div>
+    {#if !healthy}<span class="pcount">{offline + lowBatt}</span>{/if}
+  </div>
+
   <div class="kpis">
     <div class="card k"><div class="lb">↓ Download</div><div class="big">{n(ha.num(E.routerDown), 1)}<span class="u"> Mbps</span></div></div>
     <div class="card k"><div class="lb">↑ Upload</div><div class="big">{n(ha.num(E.routerUp), 1)}<span class="u"> Mbps</span></div></div>
@@ -69,6 +93,13 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .phero { display: flex; align-items: center; gap: 15px; padding: 18px 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 12%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 28%, transparent); }
+  .phero.ok { background: linear-gradient(180deg, color-mix(in srgb, var(--success) 10%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 24%, transparent); }
+  .picon { font-size: 24px; }
+  .pinfo { flex: 1; min-width: 0; }
+  .pt { font-size: 16px; font-weight: 800; }
+  .psub { font-size: 12px; color: var(--dim); margin-top: 2px; }
+  .pcount { font-size: 20px; font-weight: 800; color: var(--warning); }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
   .k { padding: 16px; }
