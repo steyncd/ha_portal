@@ -123,6 +123,8 @@ export const E = {
   irrStop: "script.stop_irrigation",
   irrStartAll: "script.quick_irrigation_start_all",
   irrStopAll: "script.quick_irrigation_stop_all",
+  irrNextRun: "sensor.helloeben_sprinkler_next_scheduled_run",
+  irrActiveSchedules: "sensor.helloeben_sprinkler_active_schedules",
 
   // Oura (health)
   ouraSleepScore: "sensor.oura_sleep_score",
@@ -191,10 +193,18 @@ export const ACCESS: { id: string; label: string; icon: string }[] = [
   { id: "binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", label: "Side Gate", icon: "🚧" },
 ];
 
-// Irrigation zone labels (from the input_select options).
-export const IRRIGATION_ZONES = [
-  "Front Lawn", "Back Garden", "Veggie Patch", "Flower Beds", "Driveway Strip", "Rose Garden",
+// Irrigation zones — real Wyze/HelloEben zones with per-zone sensors.
+export type IrrZone = { label: string; select: string; slug: string };
+export const IRR_ZONES: IrrZone[] = [
+  { label: "Sidewalk", select: "Zone 1: Sidewalk", slug: "sidewalk" },
+  { label: "Gate / Front Yard", select: "Zone 2: Gate/Front Yard", slug: "gate_front_yard" },
+  { label: "Front Garden", select: "Zone 3: Front Garden", slug: "front_garden" },
+  { label: "Back Yard Grass", select: "Zone 4: Back Yard Grass", slug: "back_yard_grass" },
+  { label: "Back Yard", select: "Zone 5: Back Yard", slug: "back_yard" },
+  { label: "JoJo / Courtyard", select: "Zone 6: JoJo/Courtyard", slug: "jojo_courtyard" },
 ];
+export const irrZoneSensor = (slug: string, kind: "remaining_time" | "soil_moisture" | "last_watered") =>
+  `sensor.helloeben_sprinkler_${slug}_${kind}`;
 
 export type Room = { id: string; label: string; humidity?: string };
 
