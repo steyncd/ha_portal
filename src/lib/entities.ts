@@ -197,7 +197,7 @@ export const ROOMS: Room[] = [
   { id: "sensor.back_yard_temperature", label: "Back Yard" },
 ];
 
-export type LightDef = { id: string; label: string; icon: string };
+export type LightDef = { id: string; label: string; icon: string; members?: number };
 
 export const INDOOR_LIGHTS: LightDef[] = [
   { id: "switch.kitchen_lights", label: "Kitchen", icon: "🍳" },
@@ -221,34 +221,47 @@ export const OUTDOOR_LIGHTS: LightDef[] = [
 export type LightArea = { name: string; icon: string; lights: LightDef[] };
 
 // Lights grouped into logical areas — source of truth for the Lights page.
+// `group.*` entries carry a `members` count and render as group controls.
 export const LIGHT_AREAS: LightArea[] = [
   { name: "Kitchen", icon: "🍳", lights: [
     { id: "switch.kitchen_lights", label: "Ceiling", icon: "🍳" },
     { id: "switch.kitchen_under_counter_lights", label: "Under Counter", icon: "🔆" },
   ] },
-  { name: "Living & Lounge", icon: "🛋️", lights: [
+  { name: "Living & Dining", icon: "🛋️", lights: [
     { id: "switch.living_room_lamp", label: "Living Room", icon: "🛋️" },
     { id: "switch.tv_room_lamp", label: "TV Room", icon: "📺" },
-    { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "💡" },
+    { id: "light.dining_room_lamp", label: "Dining", icon: "🍽️" },
+    { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️", members: 3 },
   ] },
   { name: "Bedrooms", icon: "🛏️", lights: [
-    { id: "switch.main_bedroom_lamp", label: "Main Bedroom", icon: "🛏️" },
-    { id: "group.room_lamps", label: "Room Lamps", icon: "💡" },
+    { id: "switch.main_bedroom_lamp", label: "Main Bedroom Lamp", icon: "🛏️" },
+    { id: "light.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
+    { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "light.eben_room_lamp", label: "Eben's Room", icon: "🛏️" },
+    { id: "switch.guest_room", label: "Guest Room", icon: "🛏️" },
+    { id: "group.room_lamps", label: "Room Lamps", icon: "🗂️", members: 3 },
   ] },
   { name: "Study", icon: "📚", lights: [
     { id: "light.study_lamp", label: "Study Lamp", icon: "📚" },
+    { id: "light.study_light_1", label: "Study Light 1", icon: "💡" },
+    { id: "light.study_light_2", label: "Study Light 2", icon: "💡" },
   ] },
   { name: "Outdoor & Yard", icon: "🌳", lights: [
     { id: "light.street_lights", label: "Street", icon: "🛣️" },
     { id: "switch.driveway_lights_switch", label: "Driveway", icon: "🚗" },
     { id: "switch.gate_spotlight", label: "Gate Spot", icon: "🔦" },
+    { id: "switch.patio_lamp", label: "Patio", icon: "🪑" },
+    { id: "light.back_yard_pool_light", label: "Pool", icon: "🏊" },
     { id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" },
     { id: "light.study_yard_light", label: "Study Yard", icon: "🌳" },
   ] },
 ];
 
-// All light-ish entities we can safely blanket "turn off" (derived from the areas).
-export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) => a.lights.map((l) => l.id));
+// Individual light entities (excludes group.* controls) — used for blanket
+// "all off", the overview lit-count, and the per-area on/off counts.
+export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) =>
+  a.lights.filter((l) => !l.id.startsWith("group.")).map((l) => l.id),
+);
 
 export type Appliance = { sw: string; power: string; label: string; icon: string };
 export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
@@ -256,6 +269,7 @@ export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
 // Appliances grouped into logical areas — source of truth for the Appliances page.
 export const APPLIANCE_AREAS: ApplianceArea[] = [
   { name: "Kitchen", icon: "🍳", items: [
+    { sw: "switch.main_fridge", power: "sensor.main_fridge_current_consumption", label: "Main Fridge", icon: "🧊" },
     { sw: "switch.dishwasher", power: "sensor.dishwasher_power", label: "Dishwasher", icon: "🍽️" },
     { sw: "switch.kettle", power: "sensor.kettle_power", label: "Kettle", icon: "☕" },
     { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲" },
@@ -263,12 +277,16 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
     { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕" },
   ] },
   { name: "Laundry", icon: "🧺", items: [
-    { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Washing Machine", icon: "🧺" },
+    { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Front Loader", icon: "🧺" },
+    { sw: "switch.top_loader", power: "sensor.top_loader_current_consumption", label: "Top Loader", icon: "🧺" },
     { sw: "switch.tumble_dryer", power: "sensor.tumble_dryer_energy_power", label: "Tumble Dryer", icon: "🌀" },
   ] },
   { name: "Study & Office", icon: "💻", items: [
     { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻" },
     { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥" },
+  ] },
+  { name: "Security & Systems", icon: "🛡️", items: [
+    { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️" },
   ] },
 ];
 

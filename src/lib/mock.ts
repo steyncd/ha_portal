@@ -81,20 +81,29 @@ const ROWS: Row[] = [
   ["binary_sensor.helloliam_alarm_zone_030_beam_garage", "off"],
   ["binary_sensor.helloliam_alarm_zone_006_beam_gate_to_back", "off"],
 
-  // Lights
+  // Lights (supported_color_modes drives whether a tile gets the brightness sheet)
   ["switch.kitchen_lights", "off"],
   ["switch.kitchen_under_counter_lights", "on"],
   ["switch.living_room_lamp", "off"],
   ["switch.tv_room_lamp", "off"],
+  ["light.dining_room_lamp", "off", { supported_color_modes: ["onoff"] }],
+  ["group.lounge_lamps", "off", { entity_id: ["switch.living_room_lamp", "switch.tv_room_lamp", "light.dining_room_lamp"] }],
   ["switch.main_bedroom_lamp", "on"],
-  ["light.study_lamp", "on"],
-  ["group.room_lamps", "on"],
-  ["group.lounge_lamps", "off"],
-  ["light.street_lights", "on"],
+  ["light.main_bedroom_light", "off", { supported_color_modes: ["onoff"] }],
+  ["light.main_bedroom_dresser_light", "off", { supported_color_modes: ["onoff"] }],
+  ["light.eben_room_lamp", "off", { supported_color_modes: ["onoff"] }],
+  ["switch.guest_room", "off"],
+  ["group.room_lamps", "on", { entity_id: ["switch.main_bedroom_lamp", "light.eben_room_lamp", "switch.guest_room"] }],
+  ["light.study_lamp", "on", { supported_color_modes: ["onoff"] }],
+  ["light.study_light_1", "on", { supported_color_modes: ["color_temp", "rgb"], brightness: 204 }],
+  ["light.study_light_2", "off", { supported_color_modes: ["color_temp", "rgb"] }],
+  ["light.street_lights", "on", { supported_color_modes: ["onoff"] }],
   ["switch.driveway_lights_switch", "off"],
   ["switch.gate_spotlight", "off"],
-  ["light.back_yard_fire_pit_light", "on"],
-  ["light.study_yard_light", "off"],
+  ["switch.patio_lamp", "off"],
+  ["light.back_yard_pool_light", "off", { supported_color_modes: ["brightness"] }],
+  ["light.back_yard_fire_pit_light", "on", { supported_color_modes: ["color_temp", "rgb"], brightness: 180 }],
+  ["light.study_yard_light", "off", { supported_color_modes: ["color_temp", "hs"] }],
 
   // Pumps
   ["switch.water_pump", "on"],
@@ -102,10 +111,14 @@ const ROWS: Row[] = [
   ["switch.borehole_pump", "off"],
 
   // Appliances
+  ["switch.main_fridge", "on"],
+  ["sensor.main_fridge_current_consumption", "118", { unit_of_measurement: "W" }],
   ["switch.dishwasher", "on"],
   ["sensor.dishwasher_power", "0", { unit_of_measurement: "W" }],
   ["switch.washing_machine", "on"],
   ["sensor.washing_machine_energy_power", "2", { unit_of_measurement: "W" }],
+  ["switch.top_loader", "off"],
+  ["sensor.top_loader_current_consumption", "0", { unit_of_measurement: "W" }],
   ["switch.tumble_dryer", "on"],
   ["sensor.tumble_dryer_energy_power", "0", { unit_of_measurement: "W" }],
   ["switch.kettle", "on"],
@@ -120,6 +133,8 @@ const ROWS: Row[] = [
   ["sensor.work_pc_current_consumption", "202", { unit_of_measurement: "W" }],
   ["switch.study_heater", "off"],
   ["sensor.study_heater_current_consumption", "0", { unit_of_measurement: "W" }],
+  ["switch.dining_room_alarm_cctv_power_monitor", "on"],
+  ["sensor.dining_room_alarm_cctv_power_monitor_power", "48", { unit_of_measurement: "W" }],
 
   // Traffic
   ["sensor.vehicles_today", "935"],

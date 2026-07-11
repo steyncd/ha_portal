@@ -7,11 +7,26 @@
   const onCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
   const total = ALL_LIGHTS.length;
 
-  const areaOn = (lights: LightDef[]) => lights.filter((l) => ha.isOn(l.id)).length;
-  const dimmable = (id: string) => id.startsWith("light.");
+  const isGroup = (id: string) => id.startsWith("group.");
+  // Individual lights in an area (group controls excluded from the counts).
+  const singles = (lights: LightDef[]) => lights.filter((l) => !isGroup(l.id));
+  const areaOn = (lights: LightDef[]) => singles(lights).filter((l) => ha.isOn(l.id)).length;
+
+  // Dimmable = a light.* entity that supports more than plain on/off.
+  // Switches and groups are never dimmable; unknown modes (mock) default true.
+  function dimmable(id: string): boolean {
+    if (!id.startsWith("light.")) return false;
+    const modes = ha.attr(id, "supported_color_modes");
+    if (Array.isArray(modes)) return modes.some((m) => m !== "onoff");
+    return true;
+  }
+
+  // Live member count for a group (falls back to the static hint).
+  const groupCount = (l: LightDef) =>
+    (ha.attr(l.id, "entity_id") as unknown[] | undefined)?.length ?? l.members ?? 0;
 
   function setArea(lights: LightDef[], on: boolean, name: string) {
-    const ids = lights.map((l) => l.id).filter((id) => ha.exists(id));
+    const ids = singles(lights).map((l) => l.id).filter((id) => ha.exists(id));
     if (!ids.length) return;
     if (on) ha.turnOn(ids);
     else ha.turnOff(ids);
@@ -37,7 +52,7 @@
         <div class="at">
           <span class="aic">{area.icon}</span>
           <span class="an">{area.name}</span>
-          <span class="acount" class:lit={on > 0}>{on}/{area.lights.length} on</span>
+          <span class="acount" class:lit={on > 0}>{on}/{singles(area.lights).length} on</span>
         </div>
         <div class="actrl">
           <button class="ab" onclick={() => setArea(area.lights, true, area.name)}>On</button>
@@ -46,8 +61,10 @@
       </div>
       <div class="grid">
         {#each area.lights as l}
+          {@const grp = isGroup(l.id)}
           {@const exists = ha.exists(l.id)}
-          <div class="ltile" class:on={ha.isOn(l.id)} class:dead={!exists}>
+          <div class="ltile" class:on={ha.isOn(l.id)} class:group={grp} class:dead={!exists}>
+            {#if grp}<span class="gbadge">⧉ Group</span>{/if}
             <div
               class="ltap"
               role="button"
@@ -57,7 +74,13 @@
             >
               <span class="mi">{l.icon}</span>
               <span class="mn">{l.label}</span>
-              <span class="qs">{exists ? (ha.isOn(l.id) ? "On" : "Off") : "N/A"}</span>
+              <span class="qs">
+                {#if grp}
+                  Controls {groupCount(l)} lights
+                {:else}
+                  {exists ? (ha.isOn(l.id) ? "On" : "Off") : "N/A"}
+                {/if}
+              </span>
             </div>
             {#if dimmable(l.id) && exists}
               <button class="tune" onclick={() => lightSheet.open(l.id, l.label)} aria-label="brightness & colour">⋯</button>
@@ -93,6 +116,10 @@
   .ltile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 13px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); transition: background 0.15s, box-shadow 0.15s; }
   .ltile.on { background: color-mix(in srgb, var(--warning) 15%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }
   .ltile.dead { opacity: 0.4; }
+  /* Group controls read as a distinct control, not a single lamp: accent tint + dashed frame + badge. */
+  .ltile.group { background: color-mix(in srgb, var(--acc) 9%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 42%, transparent); }
+  .ltile.group.on { background: color-mix(in srgb, var(--acc) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--acc); }
+  .gbadge { position: absolute; top: 10px; right: 11px; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent); padding: 3px 7px; border-radius: 999px; }
   .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; outline: none; }
   .ltap:focus-visible { box-shadow: 0 0 0 2px var(--acc); border-radius: 8px; }
   .mi { font-size: 17px; }
