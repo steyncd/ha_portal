@@ -208,9 +208,11 @@
   .mi { font-size: 20px; }
   .ml { font-size: 10px; font-weight: 600; }
   .msheet-scrim { position: fixed; inset: 0; z-index: 19; background: rgba(0, 0, 0, 0.5); }
-  .msheet { position: fixed; left: 0; right: 0; bottom: 60px; z-index: 20; padding: 16px; background: rgba(10, 15, 22, 0.97); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12); border-radius: 22px 22px 0 0; animation: ppop 0.18s ease; }
+  .msheet { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 20; padding: 16px 16px 20px; background: rgba(10, 15, 22, 0.97); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12); border-radius: 22px 22px 0 0; animation: ppop 0.18s ease; max-height: calc(100dvh - 76px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
   .grab { width: 38px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); margin: 0 auto 14px; }
   .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .mitem { display: flex; align-items: center; gap: 10px; padding: 13px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); font-size: 12.5px; font-weight: 600; text-align: left; }
-  .body { padding-bottom: 80px; }
+  @media (max-width: 820px) {
+    .body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+  }
 </style>
