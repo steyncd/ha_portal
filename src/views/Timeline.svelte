@@ -57,7 +57,23 @@
   let legend = $state<{ label: string; color: string }[]>([]);
   let roomTime = $state<{ label: string; color: string; w: number; dur: string }[]>([]);
   let applog = $state<{ icon: string; name: string; detail: string; t: string }[]>([]);
-  let places = $state<{ icon: string; name: string; tag: string; zone: boolean; sub: string; window: string; dur: string }[]>([]);
+  type Place = { icon: string; name: string; tag: string; zone: boolean; sub: string; window: string; dur: string; start: number; durMs: number; count: number };
+  // ---- places-list ordering + filtering ----
+  type PFilter = "all" | "zone" | "geo";
+  type PSort = "recent" | "long" | "name";
+  let meFilter = $state<PFilter>("all");
+  let meSort = $state<PSort>("recent");
+  let kidFilter = $state<PFilter>("all");
+  let kidSort = $state<PSort>("recent");
+  function applyPF(list: Place[], filter: PFilter, sort: PSort) {
+    const f = list.filter((p) => (filter === "all" ? true : filter === "zone" ? p.zone : !p.zone));
+    const cmp =
+      sort === "long" ? (a: Place, b: Place) => b.durMs - a.durMs
+      : sort === "name" ? (a: Place, b: Place) => a.name.localeCompare(b.name)
+      : (a: Place, b: Place) => b.start - a.start;
+    return [...f].sort(cmp).slice(0, 20);
+  }
+  let places = $state<Place[]>([]);
   let hero = $state({ summary: "—", sub: "", atHome: "—", places: 0, appl: 0, ctx: "today so far", label: "today" });
 
   function placeName(s: string) {
@@ -147,7 +163,7 @@
 
     // ----- places -----
     const ps = personSegs(personHist, start, end);
-    places = (r === "history" ? dedupePlaces(ps) : ps.map(placeRow)).slice(0, 8);
+    places = r === "history" ? dedupePlaces(ps) : ps.map(placeRow);
 
     // ----- hero -----
     const homeMs = ps.filter((p) => p.s === "home").reduce((s, p) => s + (p.end - p.start), 0);
@@ -170,6 +186,7 @@
       tag: zone ? "Zone" : "Geocoded", zone,
       sub: `${clk(p.start)} – ${clk(p.end)}`,
       window: clk(p.start), dur: fmtDur(p.end - p.start),
+      start: p.start, durMs: p.end - p.start, count: 1,
     };
   }
   function dedupePlaces(ps: { s: string; start: number; end: number }[]) {
@@ -179,12 +196,15 @@
       icon: e.name === "Home" ? "🏠" : e.zone ? "📍" : "🗺️", name: e.name,
       tag: e.zone ? "Zone" : "Geocoded", zone: e.zone,
       sub: `${e.count} visit${e.count === 1 ? "" : "s"} · 7 days`, window: `${e.count}×`, dur: fmtDur(e.ms),
+      start: 0, durMs: e.ms, count: e.count,
     }));
   }
 
   // ---------- Kids data ----------
-  let kidPlaces = $state<{ icon: string; name: string; tag: string; zone: boolean; sub: string; window: string; dur: string }[]>([]);
+  let kidPlaces = $state<Place[]>([]);
   let kidEvents = $state<{ icon: string; txt: string; sub: string; t: string }[]>([]);
+  const placesView = $derived(applyPF(places, meFilter, meSort));
+  const kidPlacesView = $derived(applyPF(kidPlaces, kidFilter, kidSort));
   const kidState = $derived(ha.state(KID));
   const kidBattN = $derived(ha.num(KID_BATT));
   const kidNow = $derived({
@@ -199,7 +219,7 @@
     const hrs = Math.ceil((Date.now() - start) / 3_600_000) + 1;
     const hist = await ha.historyStates(KID, hrs);
     const ps = personSegs(hist, start, end);
-    kidPlaces = (r === "history" ? dedupePlaces(ps) : ps.map(placeRow)).slice(0, 8);
+    kidPlaces = r === "history" ? dedupePlaces(ps) : ps.map(placeRow);
     // phone-activity feed from zone transitions + battery
     const evs: { icon: string; txt: string; sub: string; t: string }[] = [];
     for (let i = 1; i < ps.length; i++) {
@@ -274,6 +294,21 @@
   ];
 </script>
 
+{#snippet pctl(filter: PFilter, setFilter: (v: PFilter) => void, sort: PSort, setSort: (v: PSort) => void)}
+  <div class="pctl">
+    <div class="pseg">
+      {#each [["all", "All"], ["zone", "Zones"], ["geo", "Geocoded"]] as [k, l]}
+        <button class:on={filter === k} onclick={() => setFilter(k as PFilter)}>{l}</button>
+      {/each}
+    </div>
+    <div class="pseg">
+      {#each [["recent", "Recent"], ["long", "Longest"], ["name", "A–Z"]] as [k, l]}
+        <button class:on={sort === k} onclick={() => setSort(k as PSort)}>{l}</button>
+      {/each}
+    </div>
+  </div>
+{/snippet}
+
 <div class="col">
   <!-- tab switch -->
   <div class="tabs big">
@@ -331,16 +366,17 @@
 
     <!-- places -->
     <div class="card pad">
-      <div class="rh"><span class="lb">Places visited {hero.label}</span><span class="sub">zone name · else geocoded</span></div>
-      {#if places.length}
-        {#each places as p}
+      <div class="rh"><span class="lb">Places visited {hero.label}</span><span class="sub">{placesView.length} of {places.length}</span></div>
+      {@render pctl(meFilter, (v) => (meFilter = v), meSort, (v) => (meSort = v))}
+      {#if placesView.length}
+        {#each placesView as p}
           <div class="place">
             <span class="pic" style="background:{p.zone ? 'color-mix(in srgb,var(--success) 16%,transparent)' : 'color-mix(in srgb,var(--water) 16%,transparent)'}">{p.icon}</span>
             <div class="pinfo"><div class="ptop"><span class="pn">{p.name}</span><span class="ptag" class:geo={!p.zone}>{p.tag}</span></div><div class="psub">{p.sub}</div></div>
             <div class="pright"><div class="pwin num">{p.window}</div><div class="pdur">{p.dur}</div></div>
           </div>
         {/each}
-      {:else}<div class="note">No location history {hero.label}.</div>{/if}
+      {:else}<div class="note">{places.length ? "No places match this filter." : `No location history ${hero.label}.`}</div>{/if}
     </div>
 
     <!-- phone -->
@@ -365,16 +401,17 @@
     </div>
     <div class="two">
       <div class="card pad">
-        <div class="rh"><span class="lb">Places</span><span class="sub">zone · else geocoded</span></div>
-        {#if kidPlaces.length}
-          {#each kidPlaces as p}
+        <div class="rh"><span class="lb">Places</span><span class="sub">{kidPlacesView.length} of {kidPlaces.length}</span></div>
+        {@render pctl(kidFilter, (v) => (kidFilter = v), kidSort, (v) => (kidSort = v))}
+        {#if kidPlacesView.length}
+          {#each kidPlacesView as p}
             <div class="place">
               <span class="pic" style="background:{p.zone ? 'color-mix(in srgb,var(--success) 16%,transparent)' : 'color-mix(in srgb,var(--water) 16%,transparent)'}">{p.icon}</span>
               <div class="pinfo"><div class="ptop"><span class="pn">{p.name}</span><span class="ptag" class:geo={!p.zone}>{p.tag}</span></div><div class="psub">{p.sub}</div></div>
               <div class="pright"><div class="pwin num">{p.window}</div><div class="pdur">{p.dur}</div></div>
             </div>
           {/each}
-        {:else}<div class="note">No location history for this range.</div>{/if}
+        {:else}<div class="note">{kidPlaces.length ? "No places match this filter." : "No location history for this range."}</div>{/if}
       </div>
       <div class="card pad">
         <div class="lb" style="margin-bottom:6px">Phone activity</div>
@@ -445,6 +482,10 @@
   .rd { font-size: 11px; color: var(--muted); }
   .rtm { font-size: 11.5px; color: var(--muted-2); flex-shrink: 0; }
 
+  .pctl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .pseg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
+  .pseg button { padding: 6px 11px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .pseg button.on { background: var(--grad); color: #07131c; }
   .place { display: flex; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .place:last-child { border-bottom: none; }
   .pic { width: 38px; height: 38px; flex-shrink: 0; border-radius: 11px; display: grid; place-items: center; font-size: 17px; }
