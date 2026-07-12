@@ -112,7 +112,7 @@
 
       <div class="body">
         {#if view === "overview"}<Overview onnav={go} />
-        {:else if view === "energy"}<Energy />
+        {:else if view === "energy"}<Energy onnav={go} />
         {:else if view === "water"}<Water />
         {:else if view === "irrigation"}<Irrigation />
         {:else if view === "climate"}<Climate />

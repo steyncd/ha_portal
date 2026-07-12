@@ -9,6 +9,8 @@
   import Overlay from "../lib/components/Overlay.svelte";
   import Sankey from "../lib/components/Sankey.svelte";
 
+  let { onnav }: { onnav?: (id: string) => void } = $props();
+
   type Range = "day" | "week" | "month";
   let range = $state<Range>("day");
 
@@ -176,7 +178,7 @@
   </div>
 
   <div class="card pad">
-    <div class="lb" style="margin-bottom:13px">Appliances &amp; plugs — live draw</div>
+    <div class="rh"><span class="lb">Appliances &amp; plugs — live draw</span>{#if onnav}<button class="seeall" onclick={() => onnav?.("appliances")}>grouped view →</button>{/if}</div>
     <div class="appgrid">
       {#each APPLIANCES as a}
         {@const p = ha.num(a.power)}
@@ -213,6 +215,8 @@
   .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .ok { font-size: 11.5px; color: var(--success); font-weight: 600; }
+  .seeall { font-size: 12px; color: var(--acc2); font-weight: 600; }
+  .seeall:hover { color: var(--acc); }
   .tabs { display: flex; gap: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 11px; padding: 4px; }
   .tab { padding: 7px 16px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text); }
   .tab.active { background: var(--grad); color: #0b1017; }
