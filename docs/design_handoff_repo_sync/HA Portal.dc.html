@@ -1,0 +1,1856 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#070b11;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;color:#eaf1ff}
+  a{color:#38bdf8;text-decoration:none}a:hover{color:#7dd3fc}
+  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+  input[type=range]{-webkit-appearance:none;appearance:none;background:transparent}
+  input[type=range]::-webkit-slider-runnable-track{height:6px;border-radius:999px;background:rgba(255,255,255,.14)}
+  @keyframes drift1{to{transform:translate(60px,44px) scale(1.15)}}
+  @keyframes drift2{to{transform:translate(-52px,-38px) scale(1.1)}}
+  @keyframes dashmove{to{stroke-dashoffset:-24}}
+  @keyframes pulse{0%,100%{opacity:.9}50%{opacity:.4}}
+  @keyframes pfade{from{opacity:0}to{opacity:1}}
+  @keyframes ppop{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+
+<div style="min-height:100vh;position:relative;overflow-x:hidden">
+  <!-- accent-tinted aurora backdrop -->
+  <div style="position:fixed;inset:0;z-index:0;background:{{ t.bg }};pointer-events:none"></div>
+  <div style="position:fixed;width:44vw;height:44vw;top:-14vw;left:-8vw;z-index:0;border-radius:50%;filter:blur(90px);opacity:.5;background:radial-gradient(circle,{{ t.acc }},transparent 70%);animation:{{ t.motionA }};pointer-events:none"></div>
+  <div style="position:fixed;width:38vw;height:38vw;bottom:-14vw;right:-6vw;z-index:0;border-radius:50%;filter:blur(90px);opacity:.4;background:radial-gradient(circle,{{ t.acc2 }},transparent 70%);animation:{{ t.motionB }};pointer-events:none"></div>
+
+  <div style="position:relative;z-index:1;display:flex;min-height:100vh">
+
+    <!-- ===== DESKTOP SIDEBAR ===== -->
+    <sc-if value="{{ isDesktop }}" hint-placeholder-val="{{ true }}">
+      <aside style="width:{{ nav.width }};flex-shrink:0;position:sticky;top:0;height:100vh;border-right:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);backdrop-filter:blur(20px);padding:16px 13px;display:flex;flex-direction:column;gap:2px;transition:width .22s ease;overflow-y:auto;overflow-x:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:0 3px">
+          <span style="display:flex;align-items:center;gap:10px;overflow:hidden"><span style="width:30px;height:30px;flex-shrink:0;border-radius:9px;background:{{ t.grad }};display:grid;place-items:center;font-size:15px;color:#07131c">◆</span><span style="font-size:14.5px;font-weight:700;white-space:nowrap;display:{{ nav.brandDisp }}">Steyn Home</span></span>
+          <button onClick="{{ nav.toggle }}" style="width:26px;height:26px;flex-shrink:0;border-radius:8px;background:rgba(255,255,255,.06);border:none;color:#b6c5d6;font-size:13px;cursor:pointer">{{ nav.toggleIcon }}</button>
+        </div>
+        <sc-for list="{{ navTop }}" as="it" hint-placeholder-count="1">
+          <button onClick="{{ it.select }}" style="position:relative;display:flex;align-items:center;gap:12px;justify-content:{{ it.just }};padding:{{ it.pad }};border-radius:11px;background:none;border:none;cursor:pointer;width:100%;text-align:left;overflow:hidden">
+            <span style="position:absolute;inset:0;border-radius:11px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }};opacity:{{ it.active }};pointer-events:none"></span>
+            <span style="position:relative;font-size:17px;width:20px;text-align:center">{{ it.icon }}</span><span style="position:relative;font-size:13.5px;font-weight:600;color:#eef4fc;white-space:nowrap;display:{{ nav.labelDisp }}">{{ it.name }}</span>
+          </button>
+        </sc-for>
+        <div style="font-size:9.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#8ea3b8;padding:0 13px;margin:13px 0 5px;display:{{ nav.groupDisp }}">Systems</div>
+        <sc-for list="{{ navSystems }}" as="it" hint-placeholder-count="4">
+          <button onClick="{{ it.select }}" style="position:relative;display:flex;align-items:center;gap:12px;justify-content:{{ it.just }};padding:{{ it.pad }};border-radius:11px;background:none;border:none;cursor:pointer;width:100%;text-align:left;overflow:hidden">
+            <span style="position:absolute;inset:0;border-radius:11px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }};opacity:{{ it.active }};pointer-events:none"></span>
+            <span style="position:relative;font-size:17px;width:20px;text-align:center">{{ it.icon }}</span><span style="position:relative;font-size:13.5px;font-weight:600;color:#eef4fc;white-space:nowrap;display:{{ nav.labelDisp }}">{{ it.name }}</span>
+          </button>
+        </sc-for>
+        <div style="font-size:9.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#8ea3b8;padding:0 13px;margin:13px 0 5px;display:{{ nav.groupDisp }}">Safety</div>
+        <sc-for list="{{ navSafety }}" as="it" hint-placeholder-count="3">
+          <button onClick="{{ it.select }}" style="position:relative;display:flex;align-items:center;gap:12px;justify-content:{{ it.just }};padding:{{ it.pad }};border-radius:11px;background:none;border:none;cursor:pointer;width:100%;text-align:left;overflow:hidden">
+            <span style="position:absolute;inset:0;border-radius:11px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }};opacity:{{ it.active }};pointer-events:none"></span>
+            <span style="position:relative;font-size:17px;width:20px;text-align:center">{{ it.icon }}</span><span style="position:relative;font-size:13.5px;font-weight:600;color:#eef4fc;white-space:nowrap;display:{{ nav.labelDisp }}">{{ it.name }}</span>
+          </button>
+        </sc-for>
+        <div style="font-size:9.5px;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:#8ea3b8;padding:0 13px;margin:13px 0 5px;display:{{ nav.groupDisp }}">House</div>
+        <sc-for list="{{ navHouse }}" as="it" hint-placeholder-count="3">
+          <button onClick="{{ it.select }}" style="position:relative;display:flex;align-items:center;gap:12px;justify-content:{{ it.just }};padding:{{ it.pad }};border-radius:11px;background:none;border:none;cursor:pointer;width:100%;text-align:left;overflow:hidden">
+            <span style="position:absolute;inset:0;border-radius:11px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }};opacity:{{ it.active }};pointer-events:none"></span>
+            <span style="position:relative;font-size:17px;width:20px;text-align:center">{{ it.icon }}</span><span style="position:relative;font-size:13.5px;font-weight:600;color:#eef4fc;white-space:nowrap;display:{{ nav.labelDisp }}">{{ it.name }}</span>
+          </button>
+        </sc-for>
+        <div style="margin-top:auto;padding-top:12px;display:flex;align-items:center;gap:10px;overflow:hidden">
+          <span style="width:32px;height:32px;flex-shrink:0;border-radius:50%;background:{{ t.grad }};display:grid;place-items:center;font-size:13px;font-weight:700;color:#07131c">C</span>
+          <span style="display:flex;flex-direction:column;line-height:1.2;white-space:nowrap;display:{{ nav.colDisp }}"><span style="font-size:12.5px;font-weight:600">Christo</span><span style="font-size:10.5px;color:#98abbf">Admin</span></span>
+        </div>
+      </aside>
+    </sc-if>
+
+    <!-- ===== MAIN COLUMN ===== -->
+    <main style="flex:1;min-width:0;display:flex;flex-direction:column;padding-bottom:{{ mainPadBottom }}">
+      <!-- top bar -->
+      <header style="position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;padding:13px 20px;background:rgba(7,11,17,.72);backdrop-filter:blur(18px);border-bottom:1px solid rgba(255,255,255,.06)">
+        <div style="display:flex;align-items:center;gap:11px;flex:1;min-width:0">
+          <span style="font-size:20px">{{ nav.activeIcon }}</span>
+          <span style="font-size:17px;font-weight:700;letter-spacing:-.3px">{{ nav.activeName }}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px;flex-shrink:0">
+          <span style="display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:999px;background:{{ armFill }};box-shadow:inset 0 0 0 1px {{ armLine }};font-size:12px;font-weight:700"><span style="width:7px;height:7px;border-radius:50%;background:{{ armDot }};box-shadow:0 0 8px {{ armDot }}"></span>{{ armShort }}</span>
+          <span style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:rgba(255,255,255,.05);font-size:12px;color:#cdd9e6">🌙 16°</span>
+        </div>
+      </header>
+
+      <div style="flex:1;padding:20px">
+
+        <!-- ============ OVERVIEW ============ -->
+        <sc-if value="{{ vOverview }}" hint-placeholder-val="{{ true }}">
+          <div style="max-width:1180px;margin:0 auto">
+            <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:16px">
+              <div><h1 style="margin:0;font-size:27px;font-weight:800;letter-spacing:-.7px;background:{{ t.titleGrad }};-webkit-background-clip:text;background-clip:text;color:transparent">{{ greeting }}</h1><p style="margin:5px 0 0;color:#b6c5d6;font-size:13px">Thu 10 Jul · everything calm · running on your own power</p></div>
+              <div style="position:relative;display:flex;gap:9px;flex-shrink:0">
+                <button onClick="{{ openPalette }}" style="display:inline-flex;align-items:center;gap:8px;padding:9px 13px;border-radius:11px;background:rgba(255,255,255,.05);border:none;color:#c3d1e0;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.09);color:#eef4fc"><span style="font-size:13px">⌘</span>Search</button>
+                <button onClick="{{ toggleCustomize }}" style="display:inline-flex;align-items:center;gap:7px;padding:9px 13px;border-radius:11px;background:{{ customizeBtnBg }};border:none;color:{{ customizeBtnFg }};font-size:12.5px;font-weight:600;cursor:pointer">✨ {{ customizeBtnLabel }}</button>
+                <sc-if value="{{ customizing }}" hint-placeholder-val="{{ false }}">
+                  <div style="position:absolute;top:calc(100% + 8px);right:0;z-index:30;width:258px;padding:12px;border-radius:15px;background:rgba(16,22,31,.98);box-shadow:0 24px 60px -20px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.08);animation:ppop .18s cubic-bezier(.2,.8,.2,1)">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;padding:0 2px"><span style="font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aebccd">Show on overview</span><button onClick="{{ resetCustomize }}" style="background:none;border:none;color:#818cf8;font-size:11px;font-weight:600;cursor:pointer">Reset</button></div>
+                    <div style="display:flex;flex-direction:column;gap:1px">
+                      <sc-for list="{{ customizeList }}" as="w" hint-placeholder-count="6">
+                        <button onClick="{{ w.toggle }}" style="display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:10px;background:none;border:none;cursor:pointer;text-align:left" style-hover="background:rgba(255,255,255,.05)">
+                          <span style="font-size:15px;width:20px;text-align:center">{{ w.icon }}</span>
+                          <span style="flex:1;font-size:12.5px;color:#eef4fc">{{ w.name }}</span>
+                          <span style="position:relative;width:34px;height:20px;border-radius:999px;background:{{ w.trackBg }};flex-shrink:0;transition:background .16s"><span style="position:absolute;top:2px;left:{{ w.knobX }};width:16px;height:16px;border-radius:50%;background:#fff;transition:left .16s"></span></span>
+                        </button>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+            <!-- needs attention -->
+            <div style="padding:15px 18px;border-radius:16px;background:linear-gradient(180deg,color-mix(in srgb,#fbbf24 12%,transparent),rgba(255,255,255,.02));box-shadow:inset 0 0 0 1px color-mix(in srgb,#fbbf24 26%,transparent);margin-bottom:16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:#fbbf24">⚡ Attention</span>
+              <span style="font-size:13px;color:#eaf1ff">1 device low on battery</span><span style="color:#8ea3b8">·</span><span style="font-size:13px;color:#b6c5d6">PV asleep — not a good time for heavy appliances</span><span style="color:#8ea3b8">·</span><span style="font-size:13px;color:#34d399">41-night grid-free streak 🎉</span>
+            </div>
+            <!-- fluid masonry -->
+            <div style="column-count:{{ colCount }};column-gap:14px">
+              <!-- power flow -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="{{ LB }}">Power flow</span><span style="font-size:12px;font-weight:600;color:#34d399">87% independent</span></div>
+                <svg viewBox="0 0 260 150" style="width:100%;display:block">
+                  <path class="flow" style="animation:dashmove .7s linear infinite" d="M64,116 C108,96 150,92 128,86" fill="none" stroke="{{ t.acc }}" stroke-width="3" stroke-linecap="round" stroke-dasharray="3 7"/>
+                  <path d="M130,40 L130,64" fill="none" stroke="#fbbf24" stroke-width="3" stroke-linecap="round" stroke-dasharray="3 7" opacity=".3"/>
+                  <path d="M196,116 L150,92" fill="none" stroke="#34d399" stroke-width="2.5" stroke-linecap="round" opacity=".25"/>
+                  <circle cx="130" cy="86" r="30" fill="rgba(20,30,40,.7)" stroke="{{ t.line }}" stroke-width="2"/><text x="130" y="82" font-size="18" text-anchor="middle">🏠</text><text x="130" y="101" font-size="11" font-weight="700" fill="#eaf1ff" text-anchor="middle">814 W</text>
+                  <circle cx="130" cy="24" r="19" fill="rgba(16,24,34,.85)" stroke="rgba(251,191,36,.5)" stroke-width="2"/><text x="130" y="28" font-size="13" text-anchor="middle">☀️</text>
+                  <circle cx="50" cy="128" r="19" fill="rgba(16,24,34,.85)" stroke="{{ t.line }}" stroke-width="2"/><text x="50" y="132" font-size="13" text-anchor="middle">🔋</text>
+                  <circle cx="210" cy="128" r="19" fill="rgba(16,24,34,.85)" stroke="rgba(52,211,153,.4)" stroke-width="2"/><text x="210" y="132" font-size="13" text-anchor="middle">🔌</text>
+                </svg>
+                <div style="font-size:12px;color:#b6c5d6;text-align:center">Battery → home · grid idle · PV asleep</div>
+              </div>
+              <!-- battery -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }}">
+                <div style="display:flex;align-items:center;gap:15px">
+                  <div style="width:60px;height:60px;border-radius:50%;flex-shrink:0;background:conic-gradient({{ t.acc }} 76%,rgba(255,255,255,.10) 0);display:grid;place-items:center"><div style="width:46px;height:46px;border-radius:50%;background:#0b1017;display:grid;place-items:center;font-size:13px;font-weight:700">76%</div></div>
+                  <div><div style="{{ LB }}">Battery</div><div style="font-size:13px;color:#c3d1e0;margin-top:5px">−939 W · discharging<br>52.2 V · 20°C</div></div>
+                </div>
+                <div style="margin-top:14px">{{ battSpark }}</div>
+                <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aebccd"><span>24h · low 70%</span><span style="color:#eaf1ff;font-weight:700">≈ 06:40 left</span></div>
+              </div>
+              <!-- comfort -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Comfort · 16.0° avg</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#cdd9e6">Study</span><span style="font-size:14px;font-weight:700;color:#7dd3fc">17.8°</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#cdd9e6">Main</span><span style="font-size:14px;font-weight:700;color:#60a5fa">16.7°</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#cdd9e6">Kitchen</span><span style="font-size:14px;font-weight:700;color:#60a5fa">15.9°</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#cdd9e6">Living</span><span style="font-size:14px;font-weight:700;color:#60a5fa">15.4°</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#cdd9e6">Patio</span><span style="font-size:14px;font-weight:700;color:#38bdf8">14.0°</span></div>
+                </div>
+              </div>
+              <!-- tank -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:flex;align-items:center;gap:15px">
+                <div style="width:26px;height:58px;border-radius:8px;flex-shrink:0;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);overflow:hidden;position:relative"><div style="position:absolute;left:0;right:0;bottom:0;height:99%;background:#38bdf8;opacity:.85"></div></div>
+                <div><div style="{{ LB }}">Water tank</div><div style="font-size:26px;font-weight:800;letter-spacing:-1px;margin-top:2px">99%</div><div style="font-size:12px;color:#b6c5d6">73 days · 9,910 L</div></div>
+              </div>
+              <!-- scenes -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dScenes }}">
+                <div style="{{ LB }};margin-bottom:12px">Scenes</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+                  <sc-for list="{{ scenes }}" as="s" hint-placeholder-count="4">
+                    <button onClick="{{ s.select }}" style="position:relative;display:flex;align-items:center;gap:9px;padding:12px;border-radius:13px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:13px;background:{{ t.soft }};box-shadow:inset 0 0 0 1.5px {{ t.acc }};opacity:{{ s.glow }};pointer-events:none"></span>
+                      <span style="position:relative;font-size:17px">{{ s.icon }}</span><span style="position:relative;font-size:12px;font-weight:600;color:#f2f7fc;text-shadow:0 1px 2px rgba(6,10,16,.55)">{{ s.name }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <!-- solar -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }}">
+                <div style="{{ LB }}">Solar</div><div style="font-size:30px;font-weight:800;letter-spacing:-1.2px;margin-top:6px">0<span style="font-size:15px;color:#b6c5d6"> W</span></div><div style="font-size:12px;color:#b6c5d6;margin-top:4px">2.7 kWh today · asleep</div>
+                <div style="margin-top:12px">{{ solarSpark }}</div>
+                <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:11px;color:#aebccd"><span>Peak 500 W · 12h</span><span>of ~20 kWh</span></div>
+              </div>
+              <!-- quick controls -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Quick controls</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+                  <sc-for list="{{ quickTiles }}" as="q" hint-placeholder-count="4">
+                    <button onClick="{{ q.toggle }}" style="position:relative;display:flex;flex-direction:column;gap:6px;padding:13px;border-radius:13px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:13px;background:{{ q.softbg }};box-shadow:inset 0 0 0 1.5px {{ q.linebg }};opacity:{{ q.glow }};pointer-events:none"></span>
+                      <span style="position:relative;font-size:16px">{{ q.icon }}</span><span style="position:relative;font-size:11.5px;font-weight:600;color:#f2f7fc;text-shadow:0 1px 2px rgba(6,10,16,.5)">{{ q.name }}</span><span style="position:relative;font-size:10.5px;color:#c3d1e0">{{ q.sub }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dLights }}">
+                <div style="{{ LB }};margin-bottom:12px">Lights</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+                  <sc-for list="{{ lightsList }}" as="l" hint-placeholder-count="6">
+                    <div style="position:relative;display:flex;flex-direction:column;gap:6px;padding:13px;border-radius:13px;background:rgba(255,255,255,.05);overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:13px;background:color-mix(in srgb,#fbbf24 15%,transparent);box-shadow:inset 0 0 0 1.5px #fbbf24;opacity:{{ l.glow }};pointer-events:none"></span>
+                      <div onClick="{{ l.toggle }}" style="position:relative;display:flex;flex-direction:column;gap:6px;cursor:pointer">
+                        <span style="font-size:16px">{{ l.icon }}</span><span style="font-size:11.5px;font-weight:600;color:#f4f8fc">{{ l.name }}</span><span style="font-size:10.5px;color:#c3d1e0">{{ l.sub }}</span>
+                      </div>
+                      <button onClick="{{ l.tune }}" title="Brightness &amp; colour" style="position:absolute;top:9px;right:9px;z-index:2;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.09);border:none;color:#dbe6f0;font-size:14px;line-height:1;cursor:pointer" style-hover="background:rgba(255,255,255,.18)">⋯</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dEnergyToday }}">
+                <div style="{{ LB }};margin-bottom:12px">Today's energy</div>
+                <div style="display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#c3d0de">Solar generated</span><span style="font-size:14px;font-weight:700;color:#fbbf24">2.7 kWh</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#c3d0de">Grid imported</span><span style="font-size:14px;font-weight:700;color:#f4f8fc">3.2 kWh</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#c3d0de">Cost today</span><span style="font-size:14px;font-weight:700;color:#f4f8fc">R100</span></div>
+                  <div style="display:flex;justify-content:space-between"><span style="font-size:12.5px;color:#c3d0de">Report grade</span><span style="font-size:14px;font-weight:700;color:#38bdf8">B · 87% indep.</span></div>
+                </div>
+              </div>
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dSecurity }}">
+                <div style="{{ LB }};margin-bottom:12px">Security &amp; presence</div>
+                <div style="display:flex;flex-direction:column;gap:11px">
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#e6eef7"><span style="font-size:15px">✅</span>Disarmed · 31 zones clear</div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#e6eef7"><span style="font-size:15px">🏠</span>Occupied · interior motion</div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#e6eef7"><span style="font-size:15px">📷</span>Gate clear · 22 detections</div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#e6eef7"><span style="font-size:15px">📶</span>40 devices online</div>
+                </div>
+              </div>
+              <!-- recent activity -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dActivity }}">
+                <div style="{{ LB }};margin-bottom:6px">Recent activity</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ logbook }}" as="e" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                      <span style="width:31px;height:31px;flex-shrink:0;border-radius:9px;display:grid;place-items:center;font-size:14px;background:color-mix(in srgb, {{ e.color }} 17%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, {{ e.color }} 36%, transparent)">{{ e.icon }}</span>
+                      <div style="flex:1;min-width:0"><div style="font-size:12.5px;font-weight:600;color:#eef4fc">{{ e.title }}</div><div style="font-size:11px;color:#aebccd">{{ e.sub }}</div></div>
+                      <span style="font-size:11px;color:#93a5b8;flex-shrink:0;font-variant-numeric:tabular-nums;padding-top:2px">{{ e.t }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <!-- next hours -->
+              <div style="break-inside:avoid;margin:0 0 14px;padding:18px;{{ SC }};display:{{ dForecast }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span style="{{ LB }}">Next hours</span><span style="font-size:12px;color:#c3d1e0">🌙 Clear · 16°</span></div>
+                <div style="display:flex;gap:5px">
+                  <sc-for list="{{ fcHourly }}" as="f" hint-placeholder-count="8">
+                    <div style="flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 2px;border-radius:12px;background:{{ f.nowBg }}">
+                      <span style="font-size:10px;color:#aebccd">{{ f.h }}</span><span style="font-size:16px">{{ f.icon }}</span><span style="font-size:12.5px;font-weight:700;color:#eef4fc">{{ f.temp }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ ENERGY ============ -->
+        <sc-if value="{{ vEnergy }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:22px 24px;{{ SC }};display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;position:relative;overflow:hidden">
+              <span style="position:absolute;inset:0;background:radial-gradient(120% 150% at 0% 0%,color-mix(in srgb,#34d399 16%,transparent),transparent 60%);pointer-events:none"></span>
+              <div style="position:relative">
+                <div style="{{ LB }};color:#34d399">Running on your own power</div>
+                <div style="font-size:52px;font-weight:800;letter-spacing:-2px;line-height:1;margin-top:6px">87<span style="font-size:23px;color:#b6c5d6">% self-powered</span></div>
+                <div style="font-size:13px;color:#b6c5d6;margin-top:6px">Battery → home · grid idle · 41-night grid-free streak 🎉</div>
+              </div>
+              <div style="position:relative;display:flex;gap:24px;flex-shrink:0">
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800">814<span style="font-size:12px;color:#b6c5d6"> W</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">Home load</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:{{ t.acc }}">76<span style="font-size:12px;color:#b6c5d6">%</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">Battery</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fbbf24">0<span style="font-size:12px;color:#b6c5d6"> W</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">Solar</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#34d399">10<span style="font-size:12px;color:#b6c5d6"> W</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">Grid</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Battery</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px">76<span style="font-size:15px;color:#b6c5d6">%</span></div><div style="font-size:11.5px;color:#38bdf8;margin-top:3px">−939 W → home</div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Solar today</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px">2.7<span style="font-size:15px;color:#b6c5d6"> kWh</span></div><div style="font-size:11.5px;color:#fbbf24;margin-top:3px">of 20 expected</div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Grid import</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px">3.2<span style="font-size:15px;color:#b6c5d6"> kWh</span></div><div style="font-size:11.5px;color:#b6c5d6;margin-top:3px">R100 today</div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Grade</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px;color:#34d399">B</div><div style="font-size:11.5px;color:#b6c5d6;margin-top:3px">87% independent</div></div>
+            </div>
+            <!-- history + range -->
+            <div style="padding:20px 22px;{{ SC }}">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+                <span style="{{ LB }}">Production &amp; use</span>
+                <div style="display:flex;gap:4px;background:rgba(255,255,255,.05);border-radius:11px;padding:4px">
+                  <sc-for list="{{ eTabs }}" as="tb" hint-placeholder-count="3">
+                    <button onClick="{{ tb.select }}" style="position:relative;padding:7px 16px;border-radius:8px;border:none;background:none;cursor:pointer;font-size:12px;font-weight:600;color:#eaf1ff;overflow:hidden"><span style="position:absolute;inset:0;border-radius:8px;background:{{ t.grad }};opacity:{{ tb.active }}"></span><span style="position:relative">{{ tb.label }}</span></button>
+                  </sc-for>
+                </div>
+              </div>
+              <sc-if value="{{ eDay }}" hint-placeholder-val="{{ true }}">
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:11.5px;color:#c3d1e0;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:#fbbf24"></span>Solar</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:{{ t.acc }}"></span>House load</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:14px;height:3px;border-radius:2px;background:#fb7185"></span>Grid</span></div>
+                  {{ dayChart }}
+                  <div style="{{ LB }};margin:18px 0 6px">Battery state of charge · 24h</div>
+                  {{ battChart }}
+                  <div style="display:flex;justify-content:space-between;font-size:11px;color:#aebccd;margin-top:2px"><span>Low 70% · 06h</span><span>Peak 99% · 12h</span><span style="color:#eaf1ff;font-weight:700">Now 76%</span></div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ eWeek }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:11.5px;color:#c3d1e0;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:#fbbf24"></span>Solar</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:#fb7185"></span>Grid</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:{{ t.acc }}"></span>Battery</span></div>
+                  {{ weekBars }}
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px">
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">64.2<span style="font-size:12px;color:#b6c5d6"> kWh</span></div><div style="font-size:11px;color:#aebccd">Solar generated</div></div>
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">35.3<span style="font-size:12px;color:#b6c5d6"> kWh</span></div><div style="font-size:11px;color:#aebccd">Grid imported</div></div>
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">R1,116</div><div style="font-size:11px;color:#aebccd">Cost · 7 days</div></div>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{ eMonth }}" hint-placeholder-val="{{ false }}">
+                <div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px 16px;font-size:11.5px;color:#c3d1e0;margin-bottom:8px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:#fbbf24"></span>Solar</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:#fb7185"></span>Grid</span><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:11px;height:11px;border-radius:3px;background:{{ t.acc }}"></span>Battery</span></div>
+                  {{ monthBars }}
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px">
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">242<span style="font-size:12px;color:#b6c5d6"> kWh</span></div><div style="font-size:11px;color:#aebccd">Solar · this month</div></div>
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">78<span style="font-size:12px;color:#b6c5d6">%</span></div><div style="font-size:11px;color:#aebccd">Avg independence</div></div>
+                    <div style="text-align:center"><div style="font-size:21px;font-weight:800">R5,020</div><div style="font-size:11px;color:#aebccd">Cost · 30 days</div></div>
+                  </div>
+                </div>
+              </sc-if>
+            </div>
+            <!-- big power flow -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:6px">Live power flow</div>
+              {{ powerHub }}
+              <div style="display:flex;flex-wrap:wrap;justify-content:center;gap:8px 18px;font-size:12px;color:#b6c5d6;margin-top:6px"><span>☀️ Solar 0 W</span><span>🔋 Battery 939 W → home</span><span>🔌 Grid 10 W</span><span>🏠 AC loads 814 W</span><span style="color:#7dd3fc">● Essential 840 W</span><span>○ Non-essential 26 W</span></div>
+            </div>
+            <!-- Victron system -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:8px"><span style="{{ LB }}">Victron system · inverter &amp; chargers</span><span style="font-size:11.5px;color:#34d399;font-weight:600">● VE.Bus OK · ESS optimised</span></div>
+              <div style="padding:15px 17px;border-radius:15px;background:rgba(255,255,255,.035);margin-bottom:14px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:11px"><span style="font-size:12px;font-weight:700;color:#dbe6f0">Battery charge state</span><span style="display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:999px;background:color-mix(in srgb,{{ t.acc }} 26%,transparent);font-size:11px;font-weight:800;color:#eef4fc">↓ Discharging</span></div>
+                <div style="display:flex;gap:7px">
+                  <sc-for list="{{ chargeStages }}" as="c" hint-placeholder-count="3">
+                    <div style="flex:1;text-align:center"><div style="height:6px;border-radius:999px;background:{{ c.bar }};opacity:{{ c.op }}"></div><div style="font-size:10.5px;margin-top:7px;color:{{ c.fg }};font-weight:{{ c.fw }}">{{ c.name }}</div></div>
+                  </sc-for>
+                </div>
+                <div style="font-size:11px;color:#aebccd;margin-top:10px">Reached <b style="color:#34d399">Float</b> at 12:40 today · held 52.8 V · absorbed 1.9 kWh into the bank</div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(198px,1fr));gap:12px">
+                <sc-for list="{{ victronTiles }}" as="d" hint-placeholder-count="4">
+                  <div style="padding:15px;border-radius:14px;background:rgba(255,255,255,.04)">
+                    <div style="display:flex;align-items:center;gap:9px;margin-bottom:13px"><span style="width:30px;height:30px;flex-shrink:0;border-radius:9px;display:grid;place-items:center;font-size:15px;background:color-mix(in srgb,{{ d.color }} 18%,transparent)">{{ d.icon }}</span><span style="font-size:12.5px;font-weight:700;color:#eef4fc">{{ d.name }}</span></div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px 10px">
+                      <sc-for list="{{ d.rows }}" as="r" hint-placeholder-count="4">
+                        <div><div style="font-size:14.5px;font-weight:800;color:#f2f7fc">{{ r.v }}</div><div style="font-size:9.5px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:1px">{{ r.k }}</div></div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- sankey · live snapshot -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px"><span style="{{ LB }}">Where energy flows now</span><span style="font-size:11.5px;color:#38bdf8;font-weight:600">live · estimated split</span></div>
+              <div style="display:flex;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#8ea3b8;margin:2px 2px 6px"><span>Sources</span><span>Where it goes</span></div>
+              {{ sankeyChart }}
+              <div style="font-size:11.5px;color:#8ea3b8;margin-top:10px">Split from monitored plugs vs estimated unmonitored load — a live snapshot, not a daily total. Solar is asleep right now.</div>
+            </div>
+            <!-- appliances -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:13px">Appliances &amp; plugs — live draw</div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+                <sc-for list="{{ applianceList }}" as="a" hint-placeholder-count="8">
+                  <button onClick="{{ a.toggle }}" style="position:relative;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 15px;border-radius:14px;background:rgba(255,255,255,.05);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                    <span style="position:absolute;inset:0;border-radius:14px;background:{{ a.fillbg }};box-shadow:inset 0 0 0 1.5px {{ a.ring }};opacity:{{ a.glow }};pointer-events:none"></span>
+                    <span style="position:relative;display:flex;flex-direction:column;gap:2px;line-height:1.25"><span style="font-size:13.5px;font-weight:600;color:#f4f8fc">{{ a.name }}</span><span style="font-size:12px;color:#b6c5d6">{{ a.watts }}</span></span>
+                    <span style="position:relative;flex-shrink:0;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:800;letter-spacing:.05em;background:{{ a.pillBg }};color:{{ a.pillFg }}">{{ a.stateText }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ WATER ============ -->
+        <sc-if value="{{ vWater }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:20px 22px;{{ SC }};display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;overflow:hidden">
+              <span style="position:absolute;inset:0;background:radial-gradient(120% 150% at 0% 0%,color-mix(in srgb,#38bdf8 15%,transparent),transparent 60%);pointer-events:none"></span>
+              <div style="position:relative;flex:1;min-width:200px">
+                <div style="{{ LB }};color:#38bdf8">Water in reserve</div>
+                <div style="font-size:44px;font-weight:800;letter-spacing:-1.5px;line-height:1;margin-top:6px">73<span style="font-size:20px;color:#b6c5d6"> days left</span></div>
+                <div style="font-size:13px;color:#b6c5d6;margin-top:6px">Tank 99% · 9,910 L · borehole topping up · using ~125 L/day</div>
+              </div>
+              <div style="position:relative;display:flex;gap:20px;flex-shrink:0">
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#38bdf8">99<span style="font-size:12px;color:#b6c5d6">%</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Tank</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800">117<span style="font-size:12px;color:#b6c5d6"> L</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Today</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#34d399">+186<span style="font-size:12px;color:#b6c5d6"> L</span></div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Borehole</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:320px 1fr;gap:14px">
+              <div style="padding:22px;{{ SC }};display:flex;flex-direction:column;align-items:center;gap:14px">
+                <div style="{{ LB }};align-self:flex-start">JoJo Tank · Full</div>
+                <div style="width:80px;height:150px;border-radius:16px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px rgba(255,255,255,.16);overflow:hidden;position:relative"><div style="position:absolute;left:0;right:0;bottom:0;height:99%;background:linear-gradient(180deg,#7dd3fc,#38bdf8);opacity:.9"></div><div style="position:absolute;inset:0;display:grid;place-items:center;font-size:26px;font-weight:800;color:#04121c">99%</div></div>
+                <div style="text-align:center"><div style="font-size:15px;font-weight:700">9,910 L · 72.9 days left</div><div style="font-size:12px;color:#b6c5d6;margin-top:3px">flow −2.0 L/min</div></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="padding:18px;{{ SC }}">
+                  <div style="{{ LB }};margin-bottom:13px">Pumps</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+                    <sc-for list="{{ pumpList }}" as="p" hint-placeholder-count="3">
+                      <button onClick="{{ p.toggle }}" style="position:relative;display:flex;flex-direction:column;gap:7px;padding:15px;border-radius:14px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                        <span style="position:absolute;inset:0;border-radius:14px;background:{{ t.soft }};box-shadow:inset 0 0 0 1.5px {{ t.acc }};opacity:{{ p.glow }};pointer-events:none"></span>
+                        <span style="position:relative;font-size:18px">{{ p.icon }}</span><span style="position:relative;font-size:12.5px;font-weight:600;color:#f2f7fc">{{ p.name }}</span><span style="position:relative;font-size:10.5px;color:#c3d1e0">{{ p.sub }}</span>
+                      </button>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+                  <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Used today</div><div style="font-size:24px;font-weight:800;margin-top:5px">117<span style="font-size:13px;color:#b6c5d6"> L</span></div><div style="font-size:11px;color:#b6c5d6">yest. 136 L</div></div>
+                  <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">7-day avg</div><div style="font-size:24px;font-weight:800;margin-top:5px">125<span style="font-size:13px;color:#b6c5d6"> L</span></div><div style="font-size:11px;color:#b6c5d6">per day</div></div>
+                  <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Borehole</div><div style="font-size:24px;font-weight:800;margin-top:5px">186<span style="font-size:13px;color:#b6c5d6"> L</span></div><div style="font-size:11px;color:#b6c5d6">31,456 L month</div></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="{{ LB }}">Daily use · 7 days</span><span style="font-size:12px;color:#c3d1e0">avg 133 L</span></div>
+                {{ waterBars }}
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="{{ LB }}">Tank level · 30 days</span><span style="font-size:12px;color:#38bdf8;font-weight:600">topped by borehole</span></div>
+                {{ tankChart }}
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#aebccd;margin-top:2px"><span>Low 88%</span><span style="color:#eaf1ff;font-weight:700">Now 99%</span></div>
+              </div>
+            </div>
+            <div style="padding:20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:14px">Where today's water went · 117 L</div>
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <sc-for list="{{ waterSplit }}" as="w" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px"><span style="width:120px;font-size:12.5px;color:#dbe6f0">{{ w.name }}</span><div style="flex:1;height:10px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:{{ w.w }};background:{{ w.color }};border-radius:999px"></div></div><span style="font-size:12px;font-weight:700;width:44px;text-align:right;color:#eef4fc">{{ w.val }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ IRRIGATION ============ -->
+        <sc-if value="{{ vIrrigation }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:18px 20px;{{ SC }};display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+              <div><div style="font-size:16px;font-weight:700">🌿 Wyze Irrigation · 6 zones</div><div style="font-size:12px;color:#b6c5d6;margin-top:3px">Fed from borehole &amp; tank · watered {{ irrTodayMin }} min today · {{ irrSchedules }} schedules</div></div>
+              <button onClick="{{ irrigationAllOff }}" style="padding:10px 16px;border-radius:12px;background:rgba(255,255,255,.06);border:none;color:#eaf1ff;font-size:12.5px;font-weight:600;cursor:pointer">Stop all</button>
+            </div>
+            <!-- weather-aware banner -->
+            <div style="padding:14px 18px;border-radius:16px;background:{{ irrBannerBg }};box-shadow:inset 0 0 0 1px {{ irrBannerLine }};font-size:13px;color:#eaf1ff">{{ irrBannerText }}</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="{{ LB }}">Smart irrigation</span>
+                  <button onClick="{{ toggleSmart }}" style="position:relative;width:46px;height:27px;border-radius:999px;background:{{ irrSmartTrack }};border:none;cursor:pointer"><span style="position:absolute;top:2.5px;left:{{ irrSmartKnob }};width:21px;height:21px;border-radius:50%;background:#fff;transition:left .18s"></span></button>
+                </div>
+                <div style="font-size:12.5px;color:#c3d1e0">{{ irrSmartText }}</div>
+                <div style="margin-top:16px">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:9px"><span style="{{ LB }}">Run time per zone</span><span style="font-size:13px;font-weight:800;color:{{ t.acc }}">{{ runtimeDisp }}</span></div>
+                  <input type="range" min="1" max="30" value="{{ runtime }}" onInput="{{ setRuntime }}" style="width:100%;height:6px;cursor:pointer;accent-color:{{ t.acc }}">
+                </div>
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Schedule</div>
+                <div style="font-size:26px;font-weight:800;letter-spacing:-.5px">{{ irrNextRun }}</div>
+                <div style="font-size:12px;color:#b6c5d6;margin-top:2px">next scheduled run · {{ irrSchedules }} active schedules</div>
+                <div style="margin-top:13px;font-size:12.5px;color:#c3d1e0;padding:12px 14px;border-radius:12px;background:rgba(255,255,255,.03)">This month: <b style="color:#eef4fc">{{ irrMonthMin }} min</b> total watering</div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+              <sc-for list="{{ zoneList }}" as="z" hint-placeholder-count="6">
+                <div style="position:relative;padding:17px;{{ SC }};overflow:hidden">
+                  <span style="position:absolute;inset:0;border-radius:20px;background:{{ t.soft }};box-shadow:inset 0 0 0 1.5px {{ t.acc }};opacity:{{ z.glow }};pointer-events:none"></span>
+                  <div style="position:relative;display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13.5px;font-weight:600">{{ z.name }}</span><span style="font-size:11px;font-weight:700;color:{{ z.stateColor }}">{{ z.stateText }}</span></div>
+                  <div style="position:relative;display:flex;align-items:center;gap:10px;margin-bottom:13px"><span style="font-size:11px;color:#98abbf;width:30px">Soil</span><div style="flex:1;height:7px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;width:{{ z.soilW }};background:{{ z.soilColor }};border-radius:999px"></div></div><span style="font-size:11.5px;font-weight:700;width:34px;text-align:right;color:#eef4fc">{{ z.soil }}</span></div>
+                  <div style="position:relative;display:flex;align-items:center;justify-content:space-between"><span style="font-size:11.5px;color:#98abbf">{{ z.watered }}</span>
+                    <button onClick="{{ z.toggle }}" style="padding:8px 15px;border-radius:10px;background:{{ z.btnBg }};border:none;color:{{ z.btnFg }};font-size:12px;font-weight:700;cursor:pointer">{{ z.btnText }}</button>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ CLIMATE (floor plan) ============ -->
+        <sc-if value="{{ vClimate }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:grid;grid-template-columns:{{ climateCols }};gap:14px">
+            <div style="padding:18px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px"><span style="{{ LB }}">302 Wyoming · tap a room</span><span style="font-size:12px;color:#b6c5d6">16.0° avg</span></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span style="font-size:10px;color:#8ea3b8">Cool</span><span style="flex:1;height:6px;border-radius:999px;background:linear-gradient(90deg,#3b82f6,#22d3ee,#34d399,#fbbf24,#fb7185)"></span><span style="font-size:10px;color:#8ea3b8">Warm</span></div>
+              <div style="position:relative;width:100%;aspect-ratio:18600 / 14800;border-radius:14px;background:rgba(255,255,255,.03);box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);overflow:hidden">
+                <sc-for list="{{ planRooms }}" as="r" hint-placeholder-count="14">
+                  <button onClick="{{ r.select }}" title="{{ r.name }}" style="position:absolute;left:{{ r.left }}%;top:{{ r.top }}%;width:{{ r.w }}%;height:{{ r.h }}%;padding:3px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;background:{{ r.bg }};box-shadow:inset 0 0 0 1px rgba(255,255,255,.14);border:none;cursor:pointer;overflow:hidden">
+                    <span style="position:absolute;inset:0;box-shadow:inset 0 0 0 1.5px {{ t.acc }};background:{{ t.soft }};opacity:{{ r.active }};pointer-events:none"></span>
+                    <span style="position:relative;font-size:10px;font-weight:700;color:#f5f8ff;white-space:nowrap;text-shadow:0 1px 3px rgba(5,9,15,.9)">{{ r.name }}</span><span style="position:relative;font-size:9.5px;font-weight:700;color:#c4e3ff;text-shadow:0 1px 3px rgba(5,9,15,.95)">{{ r.temp }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:22px;{{ SC }}">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px"><span style="font-size:18px;font-weight:700">{{ activeRoom.name }}</span><span style="font-size:12px;color:#aebccd">{{ activeRoom.hum }}% RH</span></div>
+              <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;flex-wrap:wrap">
+                <div style="font-size:64px;font-weight:800;letter-spacing:-3px;line-height:.85">{{ activeRoom.temp }}<span style="font-size:26px;color:#60a5fa">°</span></div>
+                <div style="display:flex;align-items:center;gap:9px;padding:9px 15px;border-radius:999px;background:color-mix(in srgb, {{ comfortColor }} 15%, transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb, {{ comfortColor }} 34%, transparent)">
+                  <span style="width:9px;height:9px;border-radius:50%;background:{{ comfortColor }};box-shadow:0 0 8px {{ comfortColor }}"></span><span style="font-size:13px;font-weight:700;color:#eef4fc">{{ comfortLabel }}</span>
+                </div>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin:18px 0 2px"><span style="{{ LB }}">Temperature · 24h</span><span style="font-size:11px;color:#aebccd">{{ roomTMin }} – {{ roomTMax }}</span></div>
+              {{ roomTempChart }}
+              <div style="height:1px;background:rgba(255,255,255,.08);margin:16px 0"></div>
+              <div style="{{ LB }};margin-bottom:11px">Lights here</div>
+              <sc-if value="{{ activeRoom.hasLights }}" hint-placeholder-val="{{ true }}">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+                  <sc-for list="{{ activeRoom.lights }}" as="l" hint-placeholder-count="2">
+                    <button onClick="{{ l.toggle }}" style="position:relative;display:flex;align-items:center;gap:11px;padding:14px;border-radius:14px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:14px;background:color-mix(in srgb,#fbbf24 14%,transparent);box-shadow:inset 0 0 0 1.5px #fbbf24;opacity:{{ l.glow }};pointer-events:none"></span>
+                      <span style="position:relative;font-size:18px">{{ l.icon }}</span><span style="position:relative;display:flex;flex-direction:column;line-height:1.3"><span style="font-size:12.5px;font-weight:600;color:#f2f7fc">{{ l.name }}</span><span style="font-size:11px;color:#c3d1e0">{{ l.label }}</span></span>
+                    </button>
+                  </sc-for>
+                </div>
+              </sc-if>
+              <sc-if value="{{ activeRoom.noLights }}" hint-placeholder-val="{{ false }}"><div style="padding:15px;border-radius:14px;background:rgba(255,255,255,.03);font-size:12.5px;color:#98abbf">Climate &amp; sensors only.</div></sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ SECURITY ============ -->
+        <sc-if value="{{ vSecurity }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <!-- status hero -->
+            <div style="padding:24px;{{ SC }};display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+              <div style="display:flex;align-items:center;gap:16px"><span style="width:56px;height:56px;border-radius:16px;background:{{ armFill }};box-shadow:inset 0 0 0 1px {{ armLine }};display:grid;place-items:center;font-size:26px">{{ armIcon }}</span><div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px">{{ armLabel }}</div><div style="font-size:13px;color:#b6c5d6">{{ armSub }} · AC power OK</div></div></div>
+              <span style="display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:{{ beamsChipBg }};box-shadow:inset 0 0 0 1px {{ beamsChipLine }};font-size:12.5px;font-weight:700;color:#eaf1ff">📡 Beams {{ beamsChipText }}</span>
+            </div>
+            <!-- active-zones indicator -->
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;{{ SC }};font-size:13px;color:#c3d1e0"><span style="width:9px;height:9px;flex-shrink:0;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399"></span>All zones clear · {{ zonesSummary }}</div>
+            <!-- area controls: Home + Beams -->
+            <div style="display:grid;grid-template-columns:{{ secAreaCols }};gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap"><span style="font-size:15px;font-weight:700">🏠 Home area</span><span style="font-size:12px;color:#aebccd">Huis · {{ armLabel }}</span></div>
+                <div style="display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:7px">
+                  <sc-for list="{{ armModes }}" as="m" hint-placeholder-count="4">
+                    <button onClick="{{ m.tap }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:13px 6px;border-radius:13px;border:none;background:rgba(255,255,255,.05);cursor:pointer;overflow:hidden"><span style="position:absolute;inset:0;border-radius:13px;background:{{ t.grad }};opacity:{{ m.active }}"></span><span style="position:relative;font-size:17px">{{ m.icon }}</span><span style="position:relative;font-size:12px;font-weight:700;color:{{ m.fg }}">{{ m.name }}</span></button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap"><span style="font-size:15px;font-weight:700">📡 Beams area</span><span style="font-size:12px;color:#aebccd">Perimeter · {{ beamsChipText }}</span></div>
+                <div style="display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:7px">
+                  <sc-for list="{{ beamsModes }}" as="m" hint-placeholder-count="2">
+                    <button onClick="{{ m.tap }}" style="position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:13px 6px;border-radius:13px;border:none;background:rgba(255,255,255,.05);cursor:pointer;overflow:hidden"><span style="position:absolute;inset:0;border-radius:13px;background:{{ t.grad }};opacity:{{ m.active }}"></span><span style="position:relative;font-size:17px">{{ m.icon }}</span><span style="position:relative;font-size:12px;font-weight:700;color:{{ m.fg }}">{{ m.name }}</span></button>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <!-- activity -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:12px">Activity · last 24h</div>
+              {{ secTimeline }}
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ secLog }}" as="e" hint-placeholder-count="5">
+                  <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                    <span style="width:33px;height:33px;flex-shrink:0;border-radius:9px;display:grid;place-items:center;font-size:15px;background:color-mix(in srgb,{{ e.color }} 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{{ e.color }} 34%,transparent)">{{ e.icon }}</span>
+                    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#eef4fc">{{ e.title }}</div><div style="font-size:11px;color:#aebccd">{{ e.sub }}</div></div>
+                    <span style="font-size:11.5px;color:#93a5b8;font-variant-numeric:tabular-nums">{{ e.t }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- zones + bypass -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:13px"><span style="{{ LB }}">Zones · bypass to exclude</span><span style="display:flex;align-items:center;gap:12px"><span style="font-size:12px;color:#aebccd">{{ zonesSummary }}</span><sc-if value="{{ hasSecBypass }}" hint-placeholder-val="{{ false }}"><button onClick="{{ restoreAllSec }}" style="padding:6px 12px;border-radius:9px;background:rgba(255,255,255,.06);border:none;color:{{ t.acc2 }};font-size:11.5px;font-weight:600;cursor:pointer">Restore all</button></sc-if></span></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:9px">
+                <sc-for list="{{ zonesSec }}" as="z" hint-placeholder-count="12">
+                  <div style="display:flex;align-items:center;gap:10px;padding:10px 13px;border-radius:12px;background:rgba(255,255,255,.04);opacity:{{ z.op }}"><span style="width:8px;height:8px;flex-shrink:0;border-radius:50%;background:{{ z.dot }};box-shadow:0 0 7px {{ z.dot }}"></span><span style="flex:1;font-size:12px;color:#cdd9e6">{{ z.name }}</span><button onClick="{{ z.tap }}" style="flex-shrink:0;padding:5px 11px;border-radius:8px;background:{{ z.btnBg }};border:none;color:{{ z.btnFg }};font-size:10.5px;font-weight:700;cursor:pointer">{{ z.btn }}</button></div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- access & openings (read-only — no lock/cover devices exist) -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:13px">Access &amp; openings <span style="font-size:10px;font-weight:600;letter-spacing:0;text-transform:none;color:#8ea3b8;margin-left:6px">read-only · no lock/cover devices</span></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px">
+                <sc-for list="{{ openingsList }}" as="o" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.045)">
+                    <span style="width:36px;height:36px;flex-shrink:0;border-radius:11px;display:grid;place-items:center;font-size:17px;background:rgba(255,255,255,.06)">{{ o.icon }}</span>
+                    <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#eef4fc">{{ o.name }}</div><div style="font-size:11.5px;font-weight:700;color:{{ o.stateColor }}">{{ o.stateText }}</div></div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ CAMERAS ============ -->
+        <sc-if value="{{ vCameras }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+              <div style="padding:15px;{{ SC }}"><div style="{{ LB }}">Gate detections</div><div style="font-size:26px;font-weight:800;margin-top:5px">22</div><div style="font-size:11px;color:#b6c5d6">21 vehicles · 1 person</div></div>
+              <div style="padding:15px;{{ SC }}"><div style="{{ LB }}">Last plate (ANPR)</div><div style="font-size:22px;font-weight:800;margin-top:8px;color:#98abbf">None</div><div style="font-size:11px;color:#b6c5d6">gate camera</div></div>
+              <div style="padding:15px;{{ SC }}"><div style="{{ LB }}">Cameras online</div><div style="font-size:26px;font-weight:800;margin-top:5px">8<span style="font-size:14px;color:#8ea3b8;font-weight:600"> / 8</span></div><div style="font-size:11px;color:#34d399">online · live snapshots</div></div>
+            </div>
+            <div style="padding:18px 20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:4px">Recent detections</div>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{ camEvents }}" as="e" hint-placeholder-count="4">
+                  <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                    <span style="font-size:16px;width:24px;text-align:center">{{ e.icon }}</span>
+                    <span style="font-size:12.5px;font-weight:600;color:#eef4fc;width:104px">{{ e.cam }}</span>
+                    <span style="flex:1;font-size:12px;color:#c3d1e0">{{ e.txt }}</span>
+                    <span style="font-size:11.5px;color:#93a5b8;font-variant-numeric:tabular-nums">{{ e.t }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px">
+              <sc-for list="{{ cameraList }}" as="c" hint-placeholder-count="8">
+                <div style="{{ SC }};overflow:hidden">
+                  <div style="aspect-ratio:16/9;background:repeating-linear-gradient(135deg,rgba(255,255,255,.035) 0 12px,rgba(255,255,255,.06) 12px 24px);display:flex;align-items:center;justify-content:center;position:relative">
+                    <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:#98abbf">{{ c.name }} feed</span>
+                    <span style="position:absolute;top:9px;left:9px;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border-radius:999px;background:rgba(0,0,0,.5);font-size:10px;font-weight:700;color:#34d399"><span style="width:6px;height:6px;border-radius:50%;background:#34d399;animation:pulse 1.5s infinite"></span>LIVE</span>
+                  </div>
+                  <div style="padding:11px 13px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12.5px;font-weight:600">{{ c.name }}</span><span style="font-size:10.5px;color:#98abbf">{{ c.sub }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+            <div style="font-size:11.5px;color:#8ea3b8">Snapshots refresh every 10s from the HA camera proxy · tap-through to full HLS/WebRTC streams is a future step.</div>
+          </div>
+        </sc-if>
+
+        <!-- ============ TRAFFIC ============ -->
+        <sc-if value="{{ vTraffic }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+              <div style="padding:18px;{{ SC }}"><div style="{{ LB }}">🚗 Vehicles</div><div style="font-size:30px;font-weight:800;margin-top:6px">935<span style="font-size:14px;color:#b6c5d6"> today</span></div><div style="font-size:12px;color:#b6c5d6;margin-top:3px">3,582 week · 7,232 month</div></div>
+              <div style="padding:18px;{{ SC }}"><div style="{{ LB }}">🚶 Pedestrians</div><div style="font-size:30px;font-weight:800;margin-top:6px">50<span style="font-size:14px;color:#b6c5d6"> today</span></div><div style="font-size:12px;color:#b6c5d6;margin-top:3px">427 week · 2,098 month</div></div>
+            </div>
+            <div style="padding:20px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px"><span style="{{ LB }}">Sidewalk traffic by time of day</span><span style="font-size:12px;font-weight:700;color:{{ t.acc }}">Moderate</span></div>
+              <div style="display:flex;align-items:flex-end;gap:16px;height:130px">
+                <sc-for list="{{ trafficBars }}" as="b" hint-placeholder-count="4">
+                  <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%;justify-content:flex-end">
+                    <span style="font-size:13px;font-weight:700">{{ b.val }}</span>
+                    <div style="width:100%;height:{{ b.h }};border-radius:8px 8px 0 0;background:{{ t.grad }};min-height:4px"></div>
+                    <span style="font-size:11px;color:#b6c5d6">{{ b.label }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <!-- peak callout -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+              <div style="padding:15px 18px;{{ SC }}"><div style="font-size:20px;font-weight:800">Morning</div><div style="font-size:11px;color:#aebccd;margin-top:3px">busiest time of day</div></div>
+              <div style="padding:15px 18px;{{ SC }}"><div style="font-size:20px;font-weight:800">Thursday</div><div style="font-size:11px;color:#aebccd;margin-top:3px">busiest day this week</div></div>
+              <div style="padding:15px 18px;{{ SC }}"><div style="font-size:20px;font-weight:800">555 <span style="font-size:12px;color:#8ea3b8;font-weight:600">vs</span> 405</div><div style="font-size:11px;color:#aebccd;margin-top:3px">weekday vs weekend / day</div></div>
+            </div>
+            <div style="padding:20px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><span style="{{ LB }}">Vehicles past gate · 7 days</span><span style="font-size:12px;color:#c3d1e0">3,582 total</span></div>
+              {{ trafficWeekChart }}
+            </div>
+            <!-- ANPR plate history -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:13px"><span style="{{ LB }}">Recognised plates · gate ANPR</span><span style="font-size:12px;color:#aebccd">last 6</span></div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px">
+                <sc-for list="{{ platesList }}" as="p" hint-placeholder-count="6">
+                  <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 13px;border-radius:11px;background:rgba(255,255,255,.045)"><span style="font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;letter-spacing:.5px">{{ p.plate }}</span><span style="font-size:10.5px;color:#8ea3b8">{{ p.ago }}</span></div>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ SYSTEM ============ -->
+        <sc-if value="{{ vSystem }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:20px 22px;{{ SC }};display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;overflow:hidden">
+              <span style="position:absolute;inset:0;background:radial-gradient(120% 150% at 0% 0%,color-mix(in srgb,#fbbf24 13%,transparent),transparent 60%);pointer-events:none"></span>
+              <span style="position:relative;width:52px;height:52px;flex-shrink:0;border-radius:15px;display:grid;place-items:center;font-size:24px;background:color-mix(in srgb,#fbbf24 16%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#fbbf24 34%,transparent)">🩺</span>
+              <div style="position:relative;flex:1;min-width:200px">
+                <div style="{{ LB }};color:#fbbf24">Needs a look</div>
+                <div style="font-size:20px;font-weight:800;letter-spacing:-.4px;margin-top:4px">1 device low on battery · internet degraded</div>
+                <div style="font-size:12.5px;color:#b6c5d6;margin-top:4px">40 of 40 devices online · router uptime 34 days · all cameras recording</div>
+              </div>
+              <div style="position:relative;display:flex;gap:20px;flex-shrink:0">
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fbbf24">1</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Low batt</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#34d399">40</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Online</div></div>
+                <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fb7185">LTE</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Internet</div></div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px">
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">↓ Download</div><div style="font-size:26px;font-weight:800;margin-top:5px">0.08<span style="font-size:12px;color:#b6c5d6"> Mbps</span></div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">↑ Upload</div><div style="font-size:26px;font-weight:800;margin-top:5px">0.04<span style="font-size:12px;color:#b6c5d6"> Mbps</span></div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Devices</div><div style="font-size:26px;font-weight:800;margin-top:5px">40</div><div style="font-size:11px;color:#34d399">online</div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Battery health</div><div style="font-size:26px;font-weight:800;margin-top:5px">100<span style="font-size:12px;color:#b6c5d6">%</span></div><div style="font-size:11px;color:#b6c5d6">112 cycles</div></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }};display:flex;gap:22px;align-items:center;justify-content:center">
+                <div style="text-align:center"><div style="width:78px;height:78px;border-radius:50%;background:conic-gradient(#34d399 3%,rgba(255,255,255,.10) 0);display:grid;place-items:center;margin:0 auto"><div style="width:60px;height:60px;border-radius:50%;background:#0b1017;display:grid;place-items:center;font-size:14px;font-weight:700">3%</div></div><div style="font-size:11.5px;color:#b6c5d6;margin-top:8px">Router CPU</div></div>
+                <div style="text-align:center"><div style="width:78px;height:78px;border-radius:50%;background:conic-gradient(#fbbf24 91%,rgba(255,255,255,.10) 0);display:grid;place-items:center;margin:0 auto"><div style="width:60px;height:60px;border-radius:50%;background:#0b1017;display:grid;place-items:center;font-size:14px;font-weight:700">91%</div></div><div style="font-size:11.5px;color:#b6c5d6;margin-top:8px">Router memory</div></div>
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:14px">Printer ink · Brother DCP-T720DW</div>
+                <div style="display:flex;flex-direction:column;gap:11px">
+                  <sc-for list="{{ inkList }}" as="i" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:11px"><span style="width:52px;font-size:11.5px;color:#b6c5d6">{{ i.name }}</span><div style="flex:1;height:9px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden"><div style="height:100%;width:{{ i.w }};background:{{ i.color }};border-radius:999px"></div></div><span style="font-size:11.5px;font-weight:700;width:34px;text-align:right">{{ i.val }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px"><span style="{{ LB }}">Internet · 24h</span><span style="font-size:12px;color:#fbbf24;font-weight:600">degraded · LTE</span></div>
+                {{ netSpark }}
+                <div style="display:flex;justify-content:space-between;font-size:11px;color:#aebccd;margin-top:2px"><span>Avg 0.07 Mbps</span><span>Peak 0.12 Mbps</span></div>
+                <div style="font-size:12px;color:#c3d1e0;margin-top:10px">Uptime 34 days · 3 restarts this month</div>
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Devices · 40 online</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <sc-for list="{{ deviceCats }}" as="d" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:11px"><span style="font-size:15px;width:22px;text-align:center">{{ d.icon }}</span><span style="flex:1;font-size:12.5px;color:#dbe6f0">{{ d.name }}</span><span style="font-size:13px;font-weight:700;color:#eef4fc">{{ d.count }}</span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ APPLIANCES ============ -->
+        <sc-if value="{{ vAppliances }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Total draw</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px">{{ appTotalDraw }}</div><div style="font-size:11.5px;color:#fbbf24;margin-top:3px">{{ appOnCount }} on now</div></div>
+              <div style="padding:16px;{{ SC }}"><div style="{{ LB }}">Tracked</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:6px">{{ appTracked }}</div><div style="font-size:11.5px;color:#b6c5d6;margin-top:3px">plugs &amp; switches</div></div>
+            </div>
+            <sc-for list="{{ applianceAreas }}" as="a" hint-placeholder-count="3">
+              <div style="padding:20px 22px;{{ SC }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px">
+                  <div style="display:flex;align-items:center;gap:11px"><span style="width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;font-size:16px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }}">{{ a.icon }}</span><span style="font-size:15px;font-weight:700;letter-spacing:-.2px">{{ a.name }}</span></div>
+                  <span style="flex-shrink:0;font-size:12px;font-weight:700;color:{{ a.drawColor }};padding:4px 11px;border-radius:999px;background:{{ a.drawBg }}">{{ a.draw }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px">
+                  <sc-for list="{{ a.items }}" as="p" hint-placeholder-count="4">
+                    <button onClick="{{ p.toggle }}" style="position:relative;display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:14px;background:rgba(255,255,255,.05);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:14px;background:color-mix(in srgb,#fbbf24 14%,transparent);box-shadow:inset 0 0 0 1.5px #fbbf24;opacity:{{ p.on }};pointer-events:none"></span>
+                      <span style="position:relative;font-size:18px">{{ p.icon }}</span>
+                      <span style="position:relative;flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><span style="font-size:13.5px;font-weight:600;color:#f4f8fc">{{ p.name }}</span><span style="font-size:12px;color:#b6c5d6">{{ p.watts }}</span></span>
+                      <span style="position:relative;flex-shrink:0;padding:4px 10px;border-radius:999px;font-size:10.5px;font-weight:800;background:{{ p.pillBg }};color:{{ p.pillFg }}">{{ p.stateText }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ============ LIGHTS ============ -->
+        <sc-if value="{{ vLights }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:18px 20px;{{ SC }};display:flex;align-items:center;justify-content:space-between;gap:14px">
+              <div><div style="{{ LB }}">Lights</div><div style="font-size:30px;font-weight:800;letter-spacing:-1px;margin-top:4px">{{ lightsOn }}<span style="font-size:15px;color:#b6c5d6;font-weight:700"> / {{ lightsTotal }} on</span></div></div>
+              <button onClick="{{ lightsAllOff }}" style="flex-shrink:0;padding:11px 16px;border-radius:12px;background:rgba(255,255,255,.06);border:none;color:#c3d1e0;font-size:12.5px;font-weight:600;cursor:pointer">🌑 All off</button>
+            </div>
+            <sc-for list="{{ lightAreas }}" as="a" hint-placeholder-count="5">
+              <div style="padding:18px 20px;{{ SC }}">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+                  <div style="display:flex;align-items:center;gap:11px">
+                    <span style="width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;font-size:16px;background:{{ t.soft }};box-shadow:inset 0 0 0 1px {{ t.line }}">{{ a.icon }}</span>
+                    <span style="font-size:15px;font-weight:700;letter-spacing:-.2px">{{ a.name }}</span>
+                    <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#8ea3b8;padding:3px 9px;border-radius:999px;background:rgba(255,255,255,.05)">{{ a.onN }}/{{ a.total }} on</span>
+                  </div>
+                  <div style="display:flex;gap:6px;background:rgba(255,255,255,.05);border-radius:11px;padding:4px">
+                    <button onClick="{{ a.onArea }}" style="padding:7px 15px;border-radius:8px;border:none;background:none;color:#c3d1e0;font-size:12px;font-weight:600;cursor:pointer">On</button>
+                    <button onClick="{{ a.offArea }}" style="padding:7px 15px;border-radius:8px;border:none;background:none;color:#c3d1e0;font-size:12px;font-weight:600;cursor:pointer">Off</button>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+                  <sc-for list="{{ a.lights }}" as="l" hint-placeholder-count="3">
+                    <div style="position:relative;display:flex;flex-direction:column;gap:5px;padding:13px;border-radius:14px;background:rgba(255,255,255,.05);overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:14px;background:{{ t.soft }};box-shadow:inset 0 0 0 1.5px {{ t.acc }};opacity:{{ l.badge }};pointer-events:none"></span>
+                      <span style="position:absolute;inset:0;border-radius:14px;background:color-mix(in srgb,#fbbf24 15%,transparent);box-shadow:inset 0 0 0 1.5px #fbbf24;opacity:{{ l.glow }};pointer-events:none"></span>
+                      <div onClick="{{ l.toggle }}" style="position:relative;display:flex;flex-direction:column;gap:5px;cursor:pointer">
+                        <span style="font-size:17px">{{ l.icon }}</span><span style="font-size:12.5px;font-weight:600;color:#f2f7fc">{{ l.name }}</span><span style="font-size:10.5px;color:#c3d1e0">{{ l.sub }}</span>
+                      </div>
+                      <sc-if value="{{ l.badge }}" hint-placeholder-val="{{ false }}"><span style="position:absolute;top:10px;right:11px;font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:{{ t.acc }};background:color-mix(in srgb,{{ t.acc }} 18%,transparent);padding:3px 7px;border-radius:999px">⧉ Group</span></sc-if>
+                      <sc-if value="{{ l.dimmable }}" hint-placeholder-val="{{ false }}"><button onClick="{{ l.tune }}" title="Brightness &amp; colour" style="position:absolute;top:10px;right:10px;z-index:2;width:26px;height:26px;border-radius:8px;background:rgba(255,255,255,.09);border:none;color:#dbe6f0;font-size:14px;line-height:1;cursor:pointer">⋯</button></sc-if>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <!-- ============ ME ============ -->
+        <sc-if value="{{ vMe }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="padding:22px 24px;{{ SC }};display:flex;align-items:center;gap:18px;flex-wrap:wrap">
+              <span style="width:64px;height:64px;flex-shrink:0;border-radius:50%;background:{{ t.grad }};display:grid;place-items:center;font-size:24px;font-weight:800;color:#07131c">C</span>
+              <div style="flex:1;min-width:200px"><div style="font-size:22px;font-weight:800;letter-spacing:-.4px">Christo</div><div style="font-size:13px;color:#c3d1e0;margin-top:3px">Admin · <span style="color:#34d399">Home now</span> · Main bedroom</div></div>
+              <div style="display:flex;align-items:center;gap:9px;padding:9px 14px;border-radius:999px;background:rgba(255,255,255,.05)"><span style="font-size:15px">💍</span><span style="font-size:12.5px;color:#c3d1e0">Oura ring</span><span style="font-size:12.5px;font-weight:700;color:#34d399">{{ health.ringBatt }}%</span></div>
+            </div>
+
+            <!-- today's headline insight -->
+            <div style="border-radius:20px;padding:17px 20px;background:linear-gradient(120deg,color-mix(in srgb,{{ t.acc }} 16%,transparent),rgba(255,255,255,.03));box-shadow:inset 0 0 0 1px color-mix(in srgb,{{ t.acc }} 26%,transparent);display:flex;align-items:center;gap:15px;flex-wrap:wrap">
+              <span style="font-size:12px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:{{ t.acc }}">✦ Today</span>
+              <span style="font-size:14px;font-weight:600;color:#f4f8fc">{{ meHeadline }}</span>
+              <span style="font-size:12.5px;color:#aebccd">{{ meHeadlineSub }}</span>
+            </div>
+
+            <!-- three Oura scores with trend deltas -->
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+              <sc-for list="{{ meScores }}" as="s" hint-placeholder-count="3">
+                <div style="padding:20px 22px;{{ SC }};display:flex;align-items:center;gap:17px">
+                  <div style="width:82px;height:82px;flex-shrink:0;border-radius:50%;background:{{ s.ring }};display:grid;place-items:center"><div style="width:63px;height:63px;border-radius:50%;background:#0b1017;display:flex;align-items:center;justify-content:center;font-size:23px;font-weight:800;color:{{ s.color }}">{{ s.val }}</div></div>
+                  <div style="min-width:0"><div style="display:flex;align-items:center;gap:6px"><span style="font-size:15px;font-weight:700">{{ s.name }}</span><span style="font-size:14px">{{ s.crown }}</span></div><div style="font-size:12px;color:#aebccd;margin-top:2px">{{ s.status }}</div><span style="display:inline-flex;align-items:center;margin-top:8px;padding:3px 9px;border-radius:999px;background:{{ s.deltaBg }};font-size:11px;font-weight:700;color:{{ s.deltaColor }}">{{ s.delta }}</span></div>
+                </div>
+              </sc-for>
+            </div>
+
+            <!-- sleep (hypnogram) + readiness contributors -->
+            <div style="display:grid;grid-template-columns:{{ meSleepCols }};gap:14px">
+              <div style="padding:22px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px"><span style="{{ LB }}">Last night's sleep</span><span style="font-size:12px;color:#818cf8;font-weight:600">{{ health.bed }}</span></div>
+                <div style="display:flex;align-items:flex-end;gap:13px;margin:8px 0 16px"><div style="font-size:40px;font-weight:800;letter-spacing:-1.5px;line-height:.9">{{ health.sleepDur }}</div><div style="font-size:12px;color:#aebccd;padding-bottom:6px">asleep · {{ health.timeInBed }} in bed</div></div>
+                {{ meHypno }}
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px 20px;margin:16px 0 2px">
+                  <sc-for list="{{ sleepStages }}" as="st" hint-placeholder-count="4">
+                    <div style="display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;flex-shrink:0;border-radius:3px;background:{{ st.color }}"></span><span style="font-size:12px;color:#c3d1e0;flex:1">{{ st.name }}</span><span style="font-size:12px;font-weight:700;color:#eef4fc">{{ st.dur }}</span></div>
+                  </sc-for>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:15px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07);font-size:12px;color:#aebccd">
+                  <span>Efficiency <b style="color:#eef4fc">{{ health.efficiency }}%</b></span>
+                  <span>Restful <b style="color:#eef4fc">{{ health.restfulness }}%</b></span>
+                  <span>Latency <b style="color:#eef4fc">{{ health.latency }} min</b></span>
+                  <span>Sleep HR <b style="color:#eef4fc">{{ health.sleepHR }} bpm</b></span>
+                </div>
+              </div>
+              <div style="padding:22px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:16px"><span style="{{ LB }}">Readiness contributors</span><span style="font-size:12px;color:#34d399;font-weight:600">7 signals</span></div>
+                <div style="display:flex;flex-direction:column;gap:14px">
+                  <sc-for list="{{ meContributors }}" as="c" hint-placeholder-count="7">
+                    <div style="display:flex;align-items:center;gap:12px"><span style="width:132px;flex-shrink:0;font-size:12.5px;color:#dbe6f0">{{ c.name }}</span><div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.08);position:relative;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:{{ c.w }};background:{{ c.color }};border-radius:999px"></div></div><span style="width:98px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:flex-end;gap:6px"><span style="width:7px;height:7px;border-radius:50%;background:{{ c.color }}"></span><span style="font-size:10.5px;font-weight:700;color:{{ c.color }}">{{ c.status }}</span></span></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- activity rings (Apple) + vitals -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:16px">Activity today</div>
+                <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+                  <div style="width:172px;flex-shrink:0">{{ meActivityRings }}</div>
+                  <div style="flex:1;min-width:170px;display:flex;flex-direction:column;gap:15px">
+                    <sc-for list="{{ meActivityLegend }}" as="a" hint-placeholder-count="3">
+                      <div style="display:flex;align-items:baseline;gap:11px"><span style="width:11px;height:11px;flex-shrink:0;border-radius:50%;background:{{ a.color }};box-shadow:0 0 9px {{ a.color }};align-self:center"></span><span style="flex:1;font-size:12.5px;color:#c3d1e0">{{ a.name }}</span><span style="font-size:16px;font-weight:800;color:#f2f7fc">{{ a.val }}</span><span style="font-size:11px;color:#8ea3b8">/ {{ a.goal }} {{ a.unit }}</span></div>
+                    </sc-for>
+                    <div style="margin-top:1px;padding-top:12px;border-top:1px solid rgba(255,255,255,.08);font-size:12px;color:#aebccd">{{ health.steps }} steps · {{ health.totalCal }} kcal burned</div>
+                  </div>
+                </div>
+              </div>
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:18px">Heart &amp; vitals</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(88px,1fr));gap:18px 14px">
+                  <sc-for list="{{ vitals }}" as="vi" hint-placeholder-count="8">
+                    <div><div style="font-size:20px;font-weight:800;color:#f2f7fc">{{ vi.v }}</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:3px">{{ vi.k }}</div></div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- 7-day trends with deltas -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><span style="{{ LB }}">Sleep score · 7 days</span><span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:{{ meSleepDeltaBg }};font-size:11px;font-weight:700;color:{{ meSleepDeltaColor }}">{{ meSleepDelta }}</span></div>{{ sleepTrend }}</div>
+              <div style="padding:20px;{{ SC }}"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="{{ LB }}">Steps · 7 days</span><span style="display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:{{ meStepsDeltaBg }};font-size:11px;font-weight:700;color:{{ meStepsDeltaColor }}">{{ meStepsDelta }}</span></div>{{ stepsTrend }}</div>
+            </div>
+
+            <!-- favourites + notifications -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:13px">My favourites</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+                  <sc-for list="{{ favList }}" as="f" hint-placeholder-count="4">
+                    <button onClick="{{ f.toggle }}" style="position:relative;display:flex;align-items:center;gap:9px;padding:13px;border-radius:13px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left;overflow:hidden">
+                      <span style="position:absolute;inset:0;border-radius:13px;background:{{ f.softbg }};box-shadow:inset 0 0 0 1.5px {{ f.linebg }};opacity:{{ f.glow }};pointer-events:none"></span>
+                      <span style="position:relative;font-size:16px">{{ f.icon }}</span><span style="position:relative;font-size:12px;font-weight:600;color:#f2f7fc">{{ f.name }}</span>
+                    </button>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:13px">My notifications</div>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#dbe6f0"><span>🩺</span>Oura illness early-warning <span style="margin-left:auto;color:#34d399;font-weight:700">On</span></div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#dbe6f0"><span>🌙</span>Bedtime nudge <span style="margin-left:auto;color:#34d399;font-weight:700">On</span></div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#dbe6f0"><span>🛡️</span>Alarm arm/disarm <span style="margin-left:auto;color:#34d399;font-weight:700">On</span></div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#dbe6f0"><span>🚗</span>Gate detections <span style="margin-left:auto;color:#93a5b8;font-weight:700">Off</span></div>
+                  <div style="display:flex;align-items:center;gap:11px;font-size:12.5px;color:#dbe6f0"><span>💧</span>Low-water alert <span style="margin-left:auto;color:#34d399;font-weight:700">On</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ SETTINGS ============ -->
+        <sc-if value="{{ vSettings }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+
+            <!-- account + people -->
+            <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:14px">
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:15px">Your account</div>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+                  <span style="width:56px;height:56px;flex-shrink:0;border-radius:50%;background:{{ t.grad }};display:grid;place-items:center;font-size:22px;font-weight:800;color:#0b1017">C</span>
+                  <div><div style="font-size:17px;font-weight:800">Christo</div><div style="font-size:12px;color:#aebccd;margin-top:2px">Admin · steyncd@gmail.com</div></div>
+                </div>
+                <div style="display:flex;gap:9px;flex-wrap:wrap">
+                  <button style="flex:1;min-width:120px;padding:10px;border-radius:11px;background:rgba(255,255,255,.06);border:none;color:#eef4fc;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="background:rgba(255,255,255,.1)">Edit profile</button>
+                  <button style="flex:1;min-width:120px;padding:10px;border-radius:11px;background:color-mix(in srgb,#fb7185 16%,transparent);border:none;color:#fecdd6;font-size:12.5px;font-weight:600;cursor:pointer" style-hover="background:color-mix(in srgb,#fb7185 24%,transparent)">Sign out</button>
+                </div>
+              </div>
+              <div style="padding:22px;{{ SC }}">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px"><span style="{{ LB }}">People &amp; profiles</span><button style="background:none;border:none;color:{{ t.acc }};font-size:12px;font-weight:700;cursor:pointer">+ Add person</button></div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ people }}" as="p" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                      <span style="width:38px;height:38px;flex-shrink:0;border-radius:50%;background:{{ p.color }};display:grid;place-items:center;font-size:14px;font-weight:800;color:#0b1017">{{ p.initial }}</span>
+                      <div style="flex:1;min-width:0"><div style="font-size:13.5px;font-weight:600;color:#eef4fc">{{ p.name }}</div><div style="font-size:11px;color:{{ p.statusColor }}">{{ p.statusText }}</div></div>
+                      <span style="font-size:10px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:4px 9px;border-radius:999px;background:{{ p.roleColor }};color:{{ p.roleFg }}">{{ p.role }}</span>
+                      <button style="width:30px;height:30px;flex-shrink:0;border-radius:9px;background:rgba(255,255,255,.06);border:none;color:#c3d1e0;font-size:13px;cursor:pointer" style-hover="background:rgba(255,255,255,.11)">✎</button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- appearance -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:14px">Accent colour</div>
+              <div style="display:flex;gap:11px;flex-wrap:wrap;align-items:center;margin-bottom:16px">
+                <sc-for list="{{ accentList }}" as="a" hint-placeholder-count="6">
+                  <button onClick="{{ a.select }}" style="position:relative;width:36px;height:36px;border-radius:50%;background:{{ a.s0 }};border:none;cursor:pointer"><span style="position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px #fff;opacity:{{ a.active }}"></span></button>
+                </sc-for>
+                <div style="position:relative;width:36px;height:36px;border-radius:50%;background:{{ hueSwatch }};display:grid;place-items:center;font-size:14px;color:#07131c;font-weight:700">✎<span style="position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px #fff;opacity:{{ customActive }}"></span></div>
+              </div>
+              <div style="padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.04)">
+                <div style="display:flex;justify-content:space-between;margin-bottom:9px"><span style="font-size:12px;font-weight:600;color:#cdd9e6">Custom hue</span><span style="width:20px;height:20px;border-radius:6px;background:{{ hueSwatch }}"></span></div>
+                <input type="range" min="0" max="360" value="{{ hue }}" onInput="{{ setHue }}" style="width:100%;height:6px;cursor:pointer;accent-color:{{ hueSwatch }}">
+              </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+              <div style="padding:20px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Density</div>
+                <div style="display:flex;gap:6px;background:rgba(255,255,255,.05);border-radius:12px;padding:4px">
+                  <button onClick="{{ setComfort }}" style="position:relative;flex:1;padding:10px;border-radius:9px;border:none;background:none;cursor:pointer;font-size:12.5px;font-weight:600;color:#eaf1ff;overflow:hidden"><span style="position:absolute;inset:0;border-radius:9px;background:{{ t.grad }};opacity:{{ densComfort }}"></span><span style="position:relative">Comfortable</span></button>
+                  <button onClick="{{ setCompact }}" style="position:relative;flex:1;padding:10px;border-radius:9px;border:none;background:none;cursor:pointer;font-size:12.5px;font-weight:600;color:#eaf1ff;overflow:hidden"><span style="position:absolute;inset:0;border-radius:9px;background:{{ t.grad }};opacity:{{ densCompact }}"></span><span style="position:relative">Compact</span></button>
+                </div>
+              </div>
+              <div style="padding:20px;{{ SC }};display:flex;align-items:center;justify-content:space-between">
+                <div><div style="font-size:13px;font-weight:600">Motion &amp; aurora</div><div style="font-size:11px;color:#aebccd">Drifting glow + flows</div></div>
+                <button onClick="{{ toggleMotion }}" style="position:relative;width:46px;height:27px;border-radius:999px;background:{{ motionTrack }};border:none;cursor:pointer"><span style="position:absolute;top:2.5px;left:{{ motionKnob }};width:21px;height:21px;border-radius:50%;background:#fff;transition:left .18s"></span></button>
+              </div>
+            </div>
+
+            <!-- alarm automations -->
+            <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:14px">
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:6px">Alarm automations</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ autoArmRows }}" as="r" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#eef4fc">{{ r.name }}</div><div style="font-size:11px;color:#aebccd">{{ r.sub }}</div></div>
+                      <button onClick="{{ r.toggle }}" style="position:relative;width:46px;height:27px;flex-shrink:0;border-radius:999px;background:{{ r.trackBg }};border:none;cursor:pointer"><span style="position:absolute;top:2.5px;left:{{ r.knobX }};width:21px;height:21px;border-radius:50%;background:#fff;transition:left .18s"></span></button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:8px">Schedule</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ armTimeRows }}" as="r" hint-placeholder-count="5">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0">
+                      <span style="font-size:12.5px;color:#c3d1e0">{{ r.name }}</span>
+                      <input type="time" value="{{ r.val }}" onInput="{{ r.set }}" style="background:rgba(255,255,255,.06);border:none;border-radius:9px;color:#eef4fc;font-size:12.5px;padding:7px 10px;font-family:inherit;color-scheme:dark;cursor:pointer">
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+
+            <!-- notifications + zone bypass -->
+            <div style="display:grid;grid-template-columns:1.15fr 1fr;gap:14px">
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:6px">Notifications</div>
+                <div style="display:flex;flex-direction:column">
+                  <sc-for list="{{ notifRows }}" as="r" hint-placeholder-count="6">
+                    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                      <span style="font-size:16px;width:22px;text-align:center">{{ r.icon }}</span>
+                      <span style="flex:1;font-size:13px;color:#eef4fc">{{ r.name }}</span>
+                      <button onClick="{{ r.toggle }}" style="position:relative;width:46px;height:27px;flex-shrink:0;border-radius:999px;background:{{ r.trackBg }};border:none;cursor:pointer"><span style="position:absolute;top:2.5px;left:{{ r.knobX }};width:21px;height:21px;border-radius:50%;background:#fff;transition:left .18s"></span></button>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div style="padding:22px;{{ SC }}">
+                <div style="{{ LB }};margin-bottom:12px">Security · zone bypass</div>
+                <select value="{{ bypassVal }}" onChange="{{ setBypass }}" style="width:100%;background:rgba(255,255,255,.06);border:none;border-radius:11px;color:#eef4fc;font-size:13px;padding:12px 12px;font-family:inherit;color-scheme:dark;cursor:pointer">
+                  <sc-for list="{{ bypassOpts }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+                </select>
+                <div style="font-size:11.5px;color:#aebccd;margin-top:10px">Temporarily excludes a zone from arming. Requires a confirm on the Security screen.</div>
+              </div>
+            </div>
+
+            <!-- broadcast & messages -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">
+                <span style="{{ LB }}">Broadcast &amp; messages</span>
+                <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11.5px;color:#aebccd">Send to</span>
+                  <select value="{{ msgTarget }}" onChange="{{ setMsgTarget }}" style="background:rgba(255,255,255,.06);border:none;border-radius:9px;color:#eef4fc;font-size:12px;padding:7px 10px;font-family:inherit;color-scheme:dark;cursor:pointer">
+                    <sc-for list="{{ msgTargets }}" as="o" hint-placeholder-count="5"><option value="{{ o }}">{{ o }}</option></sc-for>
+                  </select>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:9px;margin-bottom:14px">
+                <sc-for list="{{ msgPresets }}" as="m" hint-placeholder-count="6">
+                  <button onClick="{{ m.send }}" style="display:flex;align-items:center;gap:10px;padding:12px 14px;border-radius:13px;background:rgba(255,255,255,.045);border:none;cursor:pointer;text-align:left" style-hover="background:rgba(255,255,255,.09)"><span style="font-size:17px">{{ m.icon }}</span><span style="font-size:12.5px;font-weight:600;color:#eef4fc">{{ m.text }}</span></button>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:9px">
+                <input value="{{ msgText }}" onInput="{{ setMsgText }}" placeholder="Type a custom message or announcement…" style="flex:1;background:rgba(255,255,255,.06);border:none;border-radius:12px;color:#eef4fc;font-size:13px;padding:12px 14px;outline:none;font-family:inherit">
+                <button onClick="{{ sendCustom }}" style="padding:12px 22px;border-radius:12px;background:{{ t.grad }};border:none;color:#0b1017;font-size:13px;font-weight:800;cursor:pointer">Send</button>
+              </div>
+              <sc-if value="{{ msgSentShow }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;align-items:center;gap:9px;margin-top:12px;padding:11px 14px;border-radius:12px;background:color-mix(in srgb,#34d399 14%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,#34d399 30%,transparent)"><span style="font-size:14px">📣</span><span style="font-size:12.5px;color:#eef4fc">“{{ msgSent }}” sent to {{ msgTarget }}</span></div>
+              </sc-if>
+            </div>
+
+            <!-- health goals -->
+            <div style="padding:22px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:16px">Health &amp; goals · Oura</div>
+              <div style="display:flex;flex-direction:column;gap:18px">
+                <sc-for list="{{ goalRows }}" as="r" hint-placeholder-count="3">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;margin-bottom:9px"><span style="font-size:12.5px;color:#c3d1e0">{{ r.name }}</span><span style="font-size:13px;font-weight:800;color:{{ t.acc }}">{{ r.disp }}</span></div>
+                    <input type="range" min="{{ r.min }}" max="{{ r.max }}" step="{{ r.step }}" value="{{ r.val }}" onInput="{{ r.set }}" style="width:100%;height:6px;cursor:pointer;accent-color:{{ t.acc }}">
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <!-- views -->
+            <div style="padding:20px;{{ SC }}">
+              <div style="{{ LB }};margin-bottom:12px">Enabled views · tap to toggle</div>
+              <div style="display:flex;gap:9px;flex-wrap:wrap">
+                <sc-for list="{{ viewList }}" as="v" hint-placeholder-count="9">
+                  <button onClick="{{ v.toggle }}" style="position:relative;display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:12px;background:rgba(255,255,255,.045);border:none;cursor:pointer;overflow:hidden">
+                    <span style="position:absolute;inset:0;border-radius:12px;background:{{ t.soft }};box-shadow:inset 0 0 0 1.5px {{ t.acc }};opacity:{{ v.glow }};pointer-events:none"></span>
+                    <span style="position:relative;font-size:15px">{{ v.icon }}</span><span style="position:relative;font-size:12px;font-weight:600;color:#f2f7fc">{{ v.name }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="padding:16px 20px;{{ SC }};font-size:12.5px;color:#c3d1e0">Casting a screen to the TV? Open the standalone <a href="HA TV Overview.dc.html">TV Overview →</a></div>
+          </div>
+        </sc-if>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ===== LIGHT CONTROL SHEET ===== -->
+  <sc-if value="{{ lightSheetOpen }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closeLightSheet }}" style="position:fixed;inset:0;z-index:62;background:rgba(4,8,13,.62);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:16px;animation:pfade .16s ease">
+      <div onClick="{{ stop }}" style="width:min(430px,94vw);border-radius:20px;background:rgba(15,21,30,.99);box-shadow:0 30px 80px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.09);overflow:hidden;animation:ppop .2s cubic-bezier(.2,.8,.2,1)">
+        <div style="padding:22px">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:13px;min-width:0"><span style="width:46px;height:46px;flex-shrink:0;border-radius:14px;display:grid;place-items:center;font-size:21px;background:color-mix(in srgb,{{ lightSheet.color }} 32%,transparent);box-shadow:0 0 22px color-mix(in srgb,{{ lightSheet.color }} 45%,transparent)">💡</span><div style="min-width:0"><div style="font-size:16px;font-weight:800;color:#eef4fc">{{ lightSheet.name }}</div><div style="font-size:11.5px;color:#aebccd">{{ lightSheet.stateText }} · {{ lightSheet.brightPct }}</div></div></div>
+            <button onClick="{{ lightSheet.toggle }}" style="position:relative;width:50px;height:29px;flex-shrink:0;border-radius:999px;background:{{ lightSheet.trackBg }};border:none;cursor:pointer"><span style="position:absolute;top:3px;left:{{ lightSheet.knobX }};width:23px;height:23px;border-radius:50%;background:#fff;transition:left .18s"></span></button>
+          </div>
+          <div style="margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:10px"><span style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aebccd">Brightness</span><span style="font-size:12.5px;font-weight:800;color:{{ lightSheet.color }}">{{ lightSheet.brightPct }}</span></div>
+            <input type="range" min="1" max="100" value="{{ lightSheet.bright }}" onInput="{{ lightSheet.setBright }}" style="width:100%;height:8px;cursor:pointer;accent-color:{{ lightSheet.color }}">
+          </div>
+          <div style="font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#aebccd;margin-bottom:11px">Colour</div>
+          <div style="display:flex;gap:11px;flex-wrap:wrap">
+            <sc-for list="{{ lightSheet.swatches }}" as="s" hint-placeholder-count="8">
+              <button onClick="{{ s.pick }}" style="position:relative;width:38px;height:38px;border-radius:50%;background:{{ s.c }};border:none;cursor:pointer"><span style="position:absolute;inset:-4px;border-radius:50%;box-shadow:0 0 0 2px #fff;opacity:{{ s.active }}"></span></button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== COMMAND PALETTE ===== -->
+  <sc-if value="{{ palette }}" hint-placeholder-val="{{ false }}">
+    <div onClick="{{ closePalette }}" style="position:fixed;inset:0;z-index:60;background:rgba(4,8,13,.62);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;animation:pfade .16s ease">
+      <div onClick="{{ stop }}" style="width:min(560px,94vw);border-radius:18px;background:rgba(15,21,30,.99);box-shadow:0 30px 80px -20px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.09);overflow:hidden;animation:ppop .18s cubic-bezier(.2,.8,.2,1)">
+        <div style="display:flex;align-items:center;gap:11px;padding:15px 18px;border-bottom:1px solid rgba(255,255,255,.07)">
+          <span style="font-size:15px;color:#aebccd">⌘</span>
+          <input ref="{{ focusPalette }}" value="{{ paletteQ }}" onInput="{{ setPaletteQ }}" placeholder="Search views, scenes, devices…" style="flex:1;background:none;border:none;outline:none;color:#eaf1ff;font-size:15px">
+          <span style="font-size:10px;color:#8ea3b8;padding:3px 7px;border-radius:6px;background:rgba(255,255,255,.06)">ESC</span>
+        </div>
+        <div style="max-height:46vh;overflow-y:auto;padding:8px">
+          <sc-for list="{{ paletteCmds }}" as="c" hint-placeholder-count="6">
+            <button onClick="{{ c.run }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:11px;background:none;border:none;cursor:pointer;text-align:left" style-hover="background:rgba(255,255,255,.06)">
+              <span style="width:32px;height:32px;flex-shrink:0;border-radius:9px;background:rgba(255,255,255,.06);display:grid;place-items:center;font-size:15px">{{ c.icon }}</span>
+              <span style="flex:1;font-size:13.5px;color:#eef4fc;font-weight:500">{{ c.label }}</span>
+              <span style="font-size:10px;color:#8ea3b8;text-transform:uppercase;letter-spacing:.06em">{{ c.hint }}</span>
+            </button>
+          </sc-for>
+        </div>
+      </div>
+    </div>
+  </sc-if>
+
+  <!-- ===== MOBILE BOTTOM NAV ===== -->
+  <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ false }}">
+    <div>
+      <sc-if value="{{ moreOpen }}" hint-placeholder-val="{{ false }}">
+        <div onClick="{{ closeMore }}" style="position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.5)"></div>
+        <div style="position:fixed;left:0;right:0;bottom:64px;z-index:20;padding:16px;background:rgba(10,15,22,.97);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.12);border-radius:22px 22px 0 0">
+          <div style="width:38px;height:4px;border-radius:2px;background:rgba(255,255,255,.2);margin:0 auto 14px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+            <sc-for list="{{ moreItems }}" as="m" hint-placeholder-count="7">
+              <button onClick="{{ m.select }}" style="display:flex;align-items:center;gap:10px;padding:13px;border-radius:13px;background:rgba(255,255,255,.05);border:none;cursor:pointer;text-align:left"><span style="font-size:17px">{{ m.icon }}</span><span style="font-size:12.5px;font-weight:600;color:#eaf1ff">{{ m.name }}</span></button>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+      <nav style="position:fixed;left:0;right:0;bottom:0;z-index:21;display:flex;padding:7px 4px calc(7px + env(safe-area-inset-bottom));background:rgba(7,11,17,.92);backdrop-filter:blur(18px);border-top:1px solid rgba(255,255,255,.08)">
+        <sc-for list="{{ mobileTabs }}" as="tb" hint-placeholder-count="5">
+          <button onClick="{{ tb.select }}" style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 0;background:none;border:none;cursor:pointer;min-height:46px">
+            <span style="font-size:20px;filter:{{ tb.filter }}">{{ tb.icon }}</span>
+            <span style="font-size:10px;font-weight:600;color:{{ tb.color }}">{{ tb.name }}</span>
+          </button>
+        </sc-for>
+      </nav>
+    </div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  PAL = [
+    { id:"violet",  a:"#a78bfa", a2:"#818cf8", sw:"#a78bfa" },
+    { id:"emerald", a:"#34d399", a2:"#10b981", sw:"#34d399" },
+    { id:"cyan",    a:"#38bdf8", a2:"#22d3ee", sw:"#38bdf8" },
+    { id:"amber",   a:"#fbbf24", a2:"#fb923c", sw:"#fbbf24" },
+    { id:"rose",    a:"#fb7185", a2:"#f472b6", sw:"#fb7185" },
+    { id:"mono",    a:"#cbd5e1", a2:"#94a3b8", sw:"#cbd5e1" },
+  ];
+  NAV = [
+    { id:"overview", name:"Overview", icon:"🏠", group:"" },
+    { id:"energy", name:"Energy", icon:"⚡", group:"Systems" },
+    { id:"water", name:"Water", icon:"💧", group:"Systems" },
+    { id:"irrigation", name:"Irrigation", icon:"🌿", group:"Systems" },
+    { id:"climate", name:"Climate", icon:"🌡️", group:"Systems" },
+    { id:"appliances", name:"Appliances", icon:"🔌", group:"Systems" },
+    { id:"security", name:"Security", icon:"🛡️", group:"Safety" },
+    { id:"cameras", name:"Cameras", icon:"📷", group:"Safety" },
+    { id:"traffic", name:"Traffic", icon:"🚗", group:"Safety" },
+    { id:"lights", name:"Lights", icon:"💡", group:"House" },
+    { id:"system", name:"System", icon:"🖥️", group:"House" },
+    { id:"me", name:"Me", icon:"👤", group:"House" },
+    { id:"settings", name:"Settings", icon:"⚙️", group:"House" },
+  ];
+  HOUSE = [
+    { id:"open_patio",name:"Open Patio",cat:"out",x:9000,y:1200,w:6250,h:3600 },
+    { id:"covered_patio",name:"Braai",cat:"out",x:9000,y:4800,w:4200,h:4000 },
+    { id:"study",name:"Study",cat:"living",x:13200,y:4800,w:3600,h:4000 },
+    { id:"liam",name:"Liam",cat:"bed",x:16800,y:5400,w:3200,h:3400 },
+    { id:"guest",name:"Eben",cat:"bed",x:20000,y:5400,w:3000,h:3400 },
+    { id:"main",name:"Main",cat:"bed",x:23000,y:5400,w:4600,h:3400 },
+    { id:"tv",name:"TV Room",cat:"living",x:9000,y:8800,w:4700,h:5000 },
+    { id:"dining",name:"Dining",cat:"living",x:13700,y:8800,w:2900,h:5000 },
+    { id:"kitchen",name:"Kitchen",cat:"wet",x:16600,y:9700,w:2900,h:4100 },
+    { id:"passage",name:"Passage",cat:"living",x:16600,y:8800,w:11000,h:900 },
+    { id:"bath_fam",name:"Bath",cat:"wet",x:19500,y:9700,w:2200,h:4100 },
+    { id:"bed3",name:"Bed 3",cat:"bed",x:21700,y:9700,w:3100,h:4100 },
+    { id:"bath_main",name:"En-suite",cat:"wet",x:24800,y:9700,w:2800,h:4100 },
+    { id:"entrance",name:"Entrance",cat:"living",x:9000,y:13800,w:2900,h:2200 },
+  ];
+  RDATA = {
+    main:{temp:"16.7",hum:"68",lights:[["mainlamp","Bedside Lamp","🛏️"]]},
+    liam:{temp:"16.7",hum:"60",lights:[["liam","Liam's Lamp","🧸"]]},
+    guest:{temp:"—",hum:"—",lights:[["guestlamp","Eben Lamp","💡"]]},
+    study:{temp:"17.8",hum:"—",lights:[["study","Study Lamp","📖"]]},
+    kitchen:{temp:"15.9",hum:"69",lights:[["kitchen","Ceiling","💡"],["under","Under-counter","✨"]]},
+    tv:{temp:"15.4",hum:"68",lights:[["living","Living Lamp","🛋️"],["tvlamp","TV Lamp","📺"]]},
+    dining:{temp:"—",hum:"—",lights:[["dining","Dining Lamp","🍽️"]]},
+    covered_patio:{temp:"14.0",hum:"64",lights:[["fire","Fire Pit","🔥"]]},
+    bed3:{temp:"—",hum:"—",lights:[["bed3lamp","Guest Lamp","💡"]]},
+  };
+  HIST = {
+    hours: ["00","02","04","06","08","10","12","14","16","18","20","22"],
+    battSoc: [80,76,72,70,82,94,99,98,93,86,80,76],
+    solarW:  [0,0,0,20,180,420,500,420,240,60,0,0],
+    loadW:   [640,580,560,720,900,760,700,720,820,1180,980,814],
+    gridW:   [170,150,150,120,0,0,0,0,40,340,240,10],
+    days: ["Fri","Sat","Sun","Mon","Tue","Wed","Thu"],
+    solarKwh: [12.4,15.1,3.2,9.8,14.6,6.4,2.7],
+    gridKwh:  [4.1,2.6,9.4,5.2,3.0,7.8,3.2],
+    battKwh:  [7.9,8.2,6.1,7.4,8.0,6.9,6.2],
+    costR:    [128,96,286,164,101,241,100],
+    indepPct: [86,90,52,74,88,63,87],
+    water7:   [142,118,150,127,139,136,117],
+    tank30:   [88,90,93,91,95,99,97,94,99,99,98,96,99,95,99,99,97,99,99,98,96,99,99,99,97,99,99,98,99,99],
+    trafficWk:[402,438,371,405,516,515,935],
+    pedWk:    [58,72,49,55,63,80,50],
+    netDown:  [0.06,0.09,0.05,0.11,0.08,0.04,0.07,0.12,0.06,0.05,0.08,0.08],
+    roomTemp: [15.1,14.7,14.2,13.9,14.4,15.3,16.1,16.8,17.0,16.6,15.9,15.4],
+  };
+  LOG = [
+    ["18:42","🔌","Grid import started","Battery reserve reached 76%","#38bdf8"],
+    ["17:31","🌇","Solar production ended","2.7 kWh harvested today","#fbbf24"],
+    ["16:05","🚗","Vehicle detected at gate","ANPR · no plate match","#fb7185"],
+    ["14:12","🕳️","Borehole ran 12 min","+186 L to storage","#38bdf8"],
+    ["13:05","🧺","Washer cycle finished","0.9 kWh used","#a78bfa"],
+    ["09:48","🌿","Irrigation complete","6 zones · 60 min","#34d399"],
+    ["07:15","🌅","Solar production started","PV woke at 41 W","#fbbf24"],
+    ["05:45","🛡️","Alarm disarmed","Christo · Main bedroom","#34d399"],
+  ];
+  FC = {
+    hourly: [["Now","🌙",16],["19h","🌙",14],["21h","🌫️",12],["23h","🌫️",11],["01h","🌫️",10],["03h","❄️",8],["05h","❄️",7],["07h","🌤️",10],["09h","☀️",15],["11h","☀️",19]],
+    daily: [["Fri","☀️",21,8],["Sat","🌤️",20,9],["Sun","🌧️",17,11],["Mon","⛅",19,7]],
+  };
+  HEALTH = {
+    sleepScore:82, readinessScore:80, activityScore:79,
+    totalSleep:6.808, timeInBed:7.839, efficiency:87, restfulness:95, latency:35.5,
+    deep:1.225, rem:1.975, light:3.608, awake:1.031, bedStart:"22:32", bedEnd:"06:23",
+    sleepHR:55.6, sleepHRV:52, spo2:94.7, bdi:2,
+    restHR:52, currentHR:64, avgHR:86.8, cvAge:37, pwv:6.94, tempDev:-0.23,
+    steps:2607, stepsGoal:8000, activeCal:148, targetCal:500, totalCal:2389, lowMin:150, highMin:0,
+    woType:"Walking", woIntensity:"Moderate", woDur:27, woDist:2.20, woCal:146,
+    ringBatt:72,
+    sleepScore7:[76,81,68,84,79,88,82], steps7:[6120,8450,3980,7200,9100,5400,2607],
+  };
+  state = {
+    nav: "overview", collapsed: false, isMobile: false, moreOpen: false,
+    settings: { accent:"violet", hue:262, density:"comfortable", motion:true },
+    viewsOn: { energy:true, water:true, irrigation:true, climate:true, appliances:true, security:true, cameras:true, traffic:true, lights:true, system:true, me:true },
+    scene: null, armed: false, confirm: false, armMode:"disarmed", secBypass:{}, beamsOn:false, bright: 72, room: "tv", sankeyHover: null, sankeyPin: null,
+    lights: { kitchen:false, under:true, mainlamp:true, liam:false, guestlamp:false, dining:false, bed3lamp:false, living:false, tvlamp:false, study:true, fire:true, loungelamps:false, roomlamps:true, street:true, driveway:false, gatespot:false, studyyard:false },
+    pumps: { water:true, pool:false, borehole:false },
+    appliances: { dishwasher:true, washer:true, dryer:false, kettle:false, microwave:true, airfryer:false, nespresso:true, workpc:true, studyheater:false },
+    zones: [false,false,false,false,false,false],
+    favs: { study:true, kitchen:false, pool:false, fire:true },
+    energyRange: "day", waterRange: "7d", climateRange: "24h",
+    setpoints: { tv:20, main:19, study:21, kitchen:20 },
+    openings: { gate:false, garage:false, front:true, mangate:true },
+    rainDelay: false, smart:true, runtime:10,
+    palette:false, paletteQ:"", customizing:false, hidden:{},
+    autoArm: { away:false, stay:false, beams:true, disarm:true, disarmBeams:true },
+    armTimes: { away:"17:00", stay:"22:00", beams:"22:10", disarm:"06:00", disarmBeams:"06:05" },
+    notif: { alarm:true, gate:false, water:true, ink:true, illness:true, bedtime:true },
+    bypass: "None", goals: { steps:8000, readiness:70, tempDev:0.5 },
+    msg: { text:"", target:"All speakers", sent:"" },
+    lightBright: { study:82, kitchen:100, living:70, mainlamp:60, under:100, fire:75, tv:65, dining:80 },
+    lightColor: { study:"#ffd9a8", kitchen:"#fff2dc", living:"#ffd9a8", mainlamp:"#ffcf96", under:"#e9f2ff", fire:"#ff7a3c", tv:"#c9a8ff", dining:"#ffe4b8" },
+    lightSheet: null,
+  };
+
+  componentDidMount() {
+    this._resize = () => { const m = window.innerWidth < 900; if (m !== this.state.isMobile) this.setState({ isMobile: m }); };
+    this._resize(); window.addEventListener("resize", this._resize);
+    this._key = (e) => {
+      if ((e.metaKey||e.ctrlKey) && (e.key==="k"||e.key==="K")) { e.preventDefault(); this.setState(s=>({ palette:!s.palette, paletteQ:"" })); return; }
+      if (e.key==="Escape") { this.setState({ palette:false, customizing:false }); return; }
+      const tag = e.target && e.target.tagName, typing = tag==="INPUT"||tag==="TEXTAREA";
+      if (e.key==="/" && !typing && !this.state.palette) { e.preventDefault(); this.setState({ palette:true, paletteQ:"" }); }
+    };
+    window.addEventListener("keydown", this._key);
+    try { const h = JSON.parse(localStorage.getItem("ha_overview_hidden")||"{}"); if (h && typeof h==="object") this.setState({ hidden:h }); } catch(e){}
+  }
+  componentWillUnmount() { window.removeEventListener("resize", this._resize); window.removeEventListener("keydown", this._key); clearTimeout(this._t); }
+
+  greeting() { const h = new Date().getHours(); const g = h<5?"Good night":h<12?"Good morning":h<17?"Good afternoon":h<21?"Good evening":"Good night"; return g + ", Christo"; }
+  setNav(id) { this.setState({ nav: id, moreOpen: false }); }
+  toggleCollapse() { this.setState(s => ({ collapsed: !s.collapsed })); }
+  toggleLight(k) { this.setState(s => ({ lights: { ...s.lights, [k]: !s.lights[k] } })); }
+  togglePump(k) { this.setState(s => ({ pumps: { ...s.pumps, [k]: !s.pumps[k] } })); }
+  toggleAppliance(k) { this.setState(s => ({ appliances: { ...s.appliances, [k]: !s.appliances[k] } })); }
+  toggleFav(k) { this.setState(s => ({ favs: { ...s.favs, [k]: !s.favs[k] } })); }
+  toggleZone(i) { this.setState(s => { const z = [...s.zones]; z[i] = !z[i]; return { zones: z }; }); }
+  irrigationAllOff() { this.setState({ zones: [false,false,false,false,false,false] }); }
+  allOff() { this.setState(s => { const l = {}; Object.keys(s.lights).forEach(k => l[k]=false); return { lights: l }; }); }
+  setScene(n) { this.setState(s => ({ scene: s.scene === n ? null : n })); }
+  setBright(e) { this.setState({ bright: Number(e.target.value) }); }
+  tapArm() { if (!this.state.confirm) { this.setState({ confirm:true }); clearTimeout(this._t); this._t = setTimeout(() => this.setState({ confirm:false }), 3000); return; } clearTimeout(this._t); this.setState(s => ({ armed: !s.armed, confirm:false })); }
+  setRoom(k) { this.setState({ room: k }); }
+  setArmMode(m) { this.setState({ armMode: m, armed: m !== "disarmed" }); }
+  toggleSecBypass(i) { this.setState(s => { const b = { ...s.secBypass }; b[i] = !b[i]; return { secBypass: b }; }); }
+  restoreAllSec() { this.setState({ secBypass:{} }); }
+  setBeams(on) { this.setState({ beamsOn: on }); }
+  setAccent(id) { this.setState(s => ({ settings: { ...s.settings, accent: id } })); }
+  setHue(e) { const v = Number(e.target.value); this.setState(s => ({ settings: { ...s.settings, accent:"custom", hue:v } })); }
+  setDensity(d) { this.setState(s => ({ settings: { ...s.settings, density: d } })); }
+  toggleMotion() { this.setState(s => ({ settings: { ...s.settings, motion: !s.settings.motion } })); }
+  toggleView(k) { this.setState(s => ({ viewsOn: { ...s.viewsOn, [k]: !s.viewsOn[k] } })); }
+
+  buildSankey() {
+    // Live snapshot: per-area/per-room split isn't available from HA, so we show the
+    // honest thing the app ships — sources (solar/grid/battery) into monitored plugs
+    // vs estimated unmonitored load. Values in watts. (Solar asleep now → omitted.)
+    const H = 300, scale = 0.285, gap = 16, nodeW = 14;
+    const acc = this._acc || "#a78bfa";
+    const cols = [
+      { x:176, lab:"left", nodes:[
+        { id:"grid", label:"Grid · 10 W", val:10, color:"#fb7185" },
+        { id:"batt", label:"Battery · 804 W", val:804, color:acc },
+      ] },
+      { x:710, lab:"right", nodes:[
+        { id:"mon", label:"Monitored plugs · 274 W", val:274, color:"#34d399" },
+        { id:"other", label:"Estimated other · 540 W", val:540, color:"#8ea3b8" },
+      ] },
+    ];
+    const links = [
+      { from:"grid", to:"mon", val:10*274/814 }, { from:"grid", to:"other", val:10*540/814 },
+      { from:"batt", to:"mon", val:804*274/814 }, { from:"batt", to:"other", val:804*540/814 },
+    ];
+    const node = {}, nodes = [];
+    cols.forEach(col => { const total = col.nodes.reduce((a,n)=>a+n.val,0); let y=(H-(total*scale+(col.nodes.length-1)*gap))/2;
+      col.nodes.forEach(n => { const h=n.val*scale; const rec={id:n.id,x:col.x,y:Math.round(y),w:nodeW,h:Math.round(h),color:n.color,label:n.label,outY:y,inY:y};
+        if(col.lab==="left"){rec.labelX=col.x-9;rec.labelY=Math.round(y+h/2);rec.anchor="end";}
+        else if(col.lab==="right"){rec.labelX=col.x+nodeW+9;rec.labelY=Math.round(y+h/2);rec.anchor="start";}
+        else{rec.labelX=col.x+nodeW/2;rec.labelY=Math.round(y-8);rec.anchor="middle";}
+        node[n.id]=rec; nodes.push(rec); y+=h+gap; }); });
+    const hov = this.state.sankeyPin || this.state.sankeyHover;
+    const ribbons = links.map(l => { const s=node[l.from],t=node[l.to],th=l.val*scale; const sy=s.outY;s.outY+=th;const ty=t.inY;t.inY+=th;
+      const xs=s.x+s.w,xt=t.x,mx=(xs+xt)/2;
+      const touch = hov && (l.from===hov || l.to===hov);
+      const op = hov ? (touch?0.62:0.06) : 0.3;
+      return { d:`M ${xs} ${sy} C ${mx} ${sy} ${mx} ${ty} ${xt} ${ty} L ${xt} ${ty+th} C ${mx} ${ty+th} ${mx} ${sy+th} ${xs} ${sy+th} Z`, color:s.color, opacity:op }; });
+    nodes.forEach(rec => { const conn = hov && (rec.id===hov || links.some(l => (l.from===hov&&l.to===rec.id)||(l.to===hov&&l.from===rec.id)));
+      rec.labelColor = (!hov || conn) ? "#e6eef7" : "#7286a0";
+      rec.strokeW = rec.id===hov ? 2.5 : 0;
+      rec.enter = () => this.setState({ sankeyHover: rec.id });
+      rec.leave = () => this.setState({ sankeyHover: null });
+      rec.click = () => this.setState(s => ({ sankeyPin: s.sankeyPin===rec.id ? null : rec.id }));
+    });
+    return { nodes, links: ribbons };
+  }
+
+  buildSankeyChart() {
+    const h = React.createElement;
+    const s = this.buildSankey();
+    const kids = [];
+    s.links.forEach((k,i) => kids.push(h("path", { key:"l"+i, d:k.d, fill:k.color, opacity:k.opacity })));
+    s.nodes.forEach((n,i) => {
+      kids.push(h("g", { key:"n"+i, onMouseEnter:n.enter, onMouseLeave:n.leave, onClick:n.click, style:{ cursor:"pointer" } },
+        h("rect", { x:n.x, y:n.y, width:n.w, height:n.h, rx:3, fill:n.color, stroke:"#ffffff", strokeWidth:n.strokeW }),
+        h("text", { x:n.labelX, y:n.labelY, fontSize:12, fontWeight:700, fill:n.labelColor, textAnchor:n.anchor, dominantBaseline:"middle", style:{ paintOrder:"stroke", stroke:"rgba(6,10,16,.92)", strokeWidth:"3.5px", strokeLinejoin:"round" } }, n.label)
+      ));
+    });
+    return h("svg", { viewBox:"0 0 900 300", style:{ width:"100%", display:"block" } }, kids);
+  }
+
+  setEnergyRange(r){ this.setState({ energyRange:r }); }
+  setWaterRange(r){ this.setState({ waterRange:r }); }
+  setClimateRange(r){ this.setState({ climateRange:r }); }
+  bumpSetpoint(k,d){ this.setState(s => ({ setpoints: { ...s.setpoints, [k]: Math.max(14, Math.min(28, (s.setpoints[k]||20)+d)) } })); }
+  toggleOpening(k){ this.setState(s => ({ openings: { ...s.openings, [k]: !s.openings[k] } })); }
+  toggleRainDelay(){ this.setState(s => ({ rainDelay: !s.rainDelay })); }
+  toggleSmart(){ this.setState(s => ({ smart: !s.smart })); }
+  setRuntime(e){ const v=Number(e.target.value); this.setState({ runtime:v }); }
+  openPalette(){ this.setState({ palette:true, paletteQ:"" }); }
+  closePalette(){ this.setState({ palette:false }); }
+  toggleCustomize(){ this.setState(s => ({ customizing: !s.customizing })); }
+  paletteArm(){ this.setState(s => ({ armed: !s.armed, confirm:false })); }
+  toggleHidden(id){ this.setState(s => { const h = { ...s.hidden, [id]: !s.hidden[id] }; try{ localStorage.setItem("ha_overview_hidden", JSON.stringify(h)); }catch(e){} return { hidden:h }; }); }
+  resetCustomize(){ try{ localStorage.removeItem("ha_overview_hidden"); }catch(e){} this.setState({ hidden:{} }); }
+  setAutoArm(k){ this.setState(s => ({ autoArm: { ...s.autoArm, [k]: !s.autoArm[k] } })); }
+  setArmTime(k,e){ const val=e.target.value; this.setState(s => ({ armTimes: { ...s.armTimes, [k]: val } })); }
+  setNotif(k){ this.setState(s => ({ notif: { ...s.notif, [k]: !s.notif[k] } })); }
+  setBypass(e){ const val=e.target.value; this.setState({ bypass: val }); }
+  setGoal(k,e){ const val=Number(e.target.value); this.setState(s => ({ goals: { ...s.goals, [k]: val } })); }
+  setMsgText(e){ const val=e.target.value; this.setState(s => ({ msg: { ...s.msg, text: val } })); }
+  setMsgTarget(e){ const val=e.target.value; this.setState(s => ({ msg: { ...s.msg, target: val } })); }
+  sendMsg(preset){ const t=(preset||this.state.msg.text||"").trim(); if(!t) return; clearTimeout(this._msgT); this.setState(s => ({ msg: { ...s.msg, sent: t, text: preset?s.msg.text:"" } })); this._msgT=setTimeout(()=>this.setState(s=>({ msg:{...s.msg, sent:"" } })), 2800); }
+  openLightSheet(k){ this.setState({ lightSheet:k }); }
+  closeLightSheet(){ this.setState({ lightSheet:null }); }
+  setBright(k,e){ const val=Number(e.target.value); this.setState(s => ({ lightBright: { ...s.lightBright, [k]: val }, lights: { ...s.lights, [k]: true } })); }
+  setColor(k,c){ this.setState(s => ({ lightColor: { ...s.lightColor, [k]: c } })); }
+
+  _acc = "#38bdf8";
+  _area(vals, opt) {
+    const h = React.createElement, o = Object.assign({ w:320, ht:78, color:this._acc, pad:7, base0:true, dot:true, fill:true }, opt||{});
+    const n = vals.length;
+    const max = Math.max(...vals, o.forceMax||0, 0.0001);
+    const min = o.base0 ? 0 : Math.min(...vals);
+    const rng = (max-min) || 1;
+    const X = i => o.pad + (n<=1?0:i*(o.w-2*o.pad)/(n-1));
+    const Y = v => (o.ht-o.pad) - (v-min)/rng*(o.ht-2*o.pad);
+    const line = vals.map((v,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ");
+    const area = `M${X(0).toFixed(1)} ${o.ht} ` + vals.map((v,i)=>`L${X(i).toFixed(1)} ${Y(v).toFixed(1)}`).join(" ") + ` L${X(n-1).toFixed(1)} ${o.ht} Z`;
+    const kids = [];
+    if (o.fill) kids.push(h("path",{key:"a",d:area,fill:`color-mix(in srgb, ${o.color} 17%, transparent)`}));
+    kids.push(h("path",{key:"l",d:line,fill:"none",stroke:o.color,strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"}));
+    if (o.dot) { const i=n-1; kids.push(h("circle",{key:"d",cx:X(i),cy:Y(vals[i]),r:3.4,fill:o.color,stroke:"#0b1017",strokeWidth:2})); }
+    return h("svg",{viewBox:`0 0 ${o.w} ${o.ht}`,style:{width:"100%",height:"auto",display:"block"}},kids);
+  }
+  _bars(items, opt) {
+    const h = React.createElement, o = Object.assign({ w:560, ht:172, pad:20, gap:0.46, axis:true }, opt||{});
+    const n = items.length;
+    const totals = items.map(it => it.segs ? it.segs.reduce((a,s)=>a+s.v,0) : it.v);
+    const max = Math.max(...totals, o.forceMax||0, 1);
+    const slot = (o.w - 2*o.pad) / n;
+    const bw = Math.min(slot * (1 - o.gap), 46);
+    const base = o.ht - 20;
+    const scale = (base - 16) / max;
+    const kids = [];
+    kids.push(h("line",{key:"base",x1:o.pad*0.5,y1:base,x2:o.w-o.pad*0.5,y2:base,stroke:"rgba(255,255,255,.10)",strokeWidth:1}));
+    items.forEach((it,i) => {
+      const cx = o.pad + slot*i + slot/2;
+      const x = cx - bw/2;
+      let yTop = base;
+      const segs = it.segs || [{ v:it.v, color:it.color||o.color||this._acc }];
+      segs.forEach((s,si) => {
+        const hgt = s.v*scale;
+        if (hgt > 0.4) { yTop -= hgt; const isTop = si === segs.length-1;
+          kids.push(h("rect",{key:`b${i}_${si}`,x:x.toFixed(1),y:yTop.toFixed(1),width:bw.toFixed(1),height:hgt.toFixed(1),rx:isTop?4:0,fill:s.color,opacity:it.dim?0.4:1})); }
+      });
+      if (it.hi != null) kids.push(h("text",{key:`v${i}`,x:cx,y:(base - totals[i]*scale - 6).toFixed(1),fontSize:10.5,fontWeight:700,fill:it.dim?"#8698ab":"#eef4fc",textAnchor:"middle"}, it.hi));
+      if (o.axis) kids.push(h("text",{key:`x${i}`,x:cx,y:base+14,fontSize:10.5,fill:it.dim?"#7f8fa1":"#aebccd",fontWeight:it.dim?400:600,textAnchor:"middle"}, it.label));
+    });
+    return h("svg",{viewBox:`0 0 ${o.w} ${o.ht}`,style:{width:"100%",height:"auto",display:"block"}},kids);
+  }
+
+  buildSecTimeline(){
+    const h = React.createElement;
+    const evs = [["18:12","#fbbf24"],["16:05","#fb7185"],["11:30","#fb7185"],["05:45","#34d399"],["22:10","#34d399"]];
+    const w=900, base=34, pad=16;
+    const X = hr => pad + (hr/24)*(w-2*pad);
+    const kids = [ h("line",{key:"b",x1:pad,y1:base,x2:w-pad,y2:base,stroke:"rgba(255,255,255,.12)",strokeWidth:2,strokeLinecap:"round"}) ];
+    [0,6,12,18,24].forEach((tk,i)=>{ kids.push(h("line",{key:"g"+i,x1:X(tk),y1:base-4,x2:X(tk),y2:base+4,stroke:"rgba(255,255,255,.18)",strokeWidth:1}));
+      kids.push(h("text",{key:"gl"+i,x:X(tk),y:base+16,fontSize:10,fill:"#8ea3b8",textAnchor:"middle"}, String(tk).padStart(2,"0")+"h")); });
+    evs.forEach((e,i)=>{ const p=e[0].split(":"); const hr=(+p[0])+(+p[1])/60; const x=X(hr);
+      kids.push(h("line",{key:"el"+i,x1:x,y1:base,x2:x,y2:14,stroke:`color-mix(in srgb, ${e[1]} 55%, transparent)`,strokeWidth:2}));
+      kids.push(h("circle",{key:"ec"+i,cx:x,cy:14,r:5,fill:e[1],stroke:"#0b1017",strokeWidth:2})); });
+    return h("svg",{viewBox:`0 0 ${w} 54`,style:{width:"100%",height:"auto",display:"block",marginBottom:"12px"}},kids);
+  }
+
+  buildPowerHub() {
+    const h = React.createElement, acc = this._acc || "#38bdf8";
+    const line = `color-mix(in srgb, ${acc} 45%, transparent)`;
+    const el = [];
+    const pBH = "M120,150 C182,150 214,150 250,153";
+    const pHE = "M290,206 C280,248 258,260 236,274";
+    el.push(h("path", { key:"ls", d:"M300,86 L300,112", fill:"none", stroke:"#fbbf24", strokeWidth:4, strokeLinecap:"round", strokeDasharray:"4 9", opacity:0.28 }));
+    el.push(h("path", { key:"lg", d:"M480,150 L350,150", fill:"none", stroke:"#38bdf8", strokeWidth:3, strokeLinecap:"round", opacity:0.22 }));
+    el.push(h("path", { key:"lb", d:pBH, fill:"none", stroke:acc, strokeWidth:4, strokeLinecap:"round", strokeDasharray:"4 9", style:{ animation:"dashmove .7s linear infinite", filter:`drop-shadow(0 0 4px ${acc})` } }));
+    el.push(h("path", { key:"le", d:pHE, fill:"none", stroke:acc, strokeWidth:4, strokeLinecap:"round", strokeDasharray:"4 9", style:{ animation:"dashmove .7s linear infinite" } }));
+    el.push(h("path", { key:"ln", d:"M310,206 C320,248 342,260 364,274", fill:"none", stroke:"#b6c5d6", strokeWidth:2.5, strokeLinecap:"round", opacity:0.3 }));
+    // inverter / AC hub
+    el.push(h("rect", { key:"hub", x:250, y:110, width:100, height:94, rx:20, fill:"rgba(16,26,36,.82)", stroke:line, strokeWidth:2 }));
+    el.push(h("text", { key:"hi", x:300, y:142, fontSize:23, textAnchor:"middle" }, "🏠"));
+    el.push(h("text", { key:"hv", x:300, y:170, fontSize:17, fontWeight:800, fill:"#eaf1ff", textAnchor:"middle" }, "814 W"));
+    el.push(h("text", { key:"hl", x:300, y:189, fontSize:9, fill:"#b6c5d6", textAnchor:"middle", letterSpacing:"0.08em" }, "AC LOADS"));
+    const nd = (k,cx,cy,ic,val,c) => { el.push(h("circle",{key:k,cx,cy,r:28,fill:"rgba(12,20,30,.9)",stroke:`color-mix(in srgb, ${c} 55%, transparent)`,strokeWidth:2}));
+      el.push(h("text",{key:k+"i",x:cx,y:cy-3,fontSize:17,textAnchor:"middle"},ic));
+      el.push(h("text",{key:k+"v",x:cx,y:cy+15,fontSize:10.5,fontWeight:700,fill:"#cdd9e6",textAnchor:"middle"},val)); };
+    nd("s",300,58,"☀️","0 W","#fbbf24");
+    nd("b",92,150,"🔋","939 W",acc);
+    nd("g",508,150,"🔌","10 W","#38bdf8");
+    // load groups (Victron: essential / non-essential)
+    el.push(h("rect",{key:"ess",x:176,y:270,width:120,height:48,rx:12,fill:"color-mix(in srgb,#38bdf8 12%,transparent)",stroke:"color-mix(in srgb,#38bdf8 48%,transparent)",strokeWidth:1.5}));
+    el.push(h("text",{key:"essl",x:236,y:289,fontSize:9.5,fontWeight:700,fill:"#7dd3fc",textAnchor:"middle",letterSpacing:"0.05em"},"ESSENTIAL"));
+    el.push(h("text",{key:"essv",x:236,y:307,fontSize:15,fontWeight:800,fill:"#eaf1ff",textAnchor:"middle"},"840 W"));
+    el.push(h("rect",{key:"non",x:304,y:270,width:120,height:48,rx:12,fill:"rgba(255,255,255,.05)",stroke:"rgba(255,255,255,.16)",strokeWidth:1.5}));
+    el.push(h("text",{key:"nonl",x:364,y:289,fontSize:9.5,fontWeight:700,fill:"#b6c5d6",textAnchor:"middle",letterSpacing:"0.05em"},"NON-ESSENTIAL"));
+    el.push(h("text",{key:"nonv",x:364,y:307,fontSize:15,fontWeight:800,fill:"#c3d0de",textAnchor:"middle"},"26 W"));
+    [0,0.8].forEach((b,i) => el.push(h("circle",{key:"pb"+i,r:3.2,fill:acc},h("animateMotion",{dur:"1.6s",begin:b+"s",repeatCount:"indefinite",path:pBH}))));
+    [0,0.8].forEach((b,i) => el.push(h("circle",{key:"pe"+i,r:3,fill:acc},h("animateMotion",{dur:"1.6s",begin:b+"s",repeatCount:"indefinite",path:pHE}))));
+    return h("svg", { viewBox:"0 0 600 336", style:{ width:"100%", maxWidth:"600px", margin:"0 auto", display:"block" } }, el);
+  }
+
+  _meBand(p){ if (p>=85) return { c:"#34d399", s:"Optimal" }; if (p>=70) return { c:"#818cf8", s:"Good" }; return { c:"#fbbf24", s:"Pay attention" }; }
+  _meRings(){
+    const h = React.createElement;
+    const rings = [ { v:420, goal:500, color:"#fb2d55" }, { v:34, goal:45, color:"#a3f335" }, { v:9, goal:12, color:"#2fe6de" } ];
+    const cx=90, cy=90, sw=15, gap=6, r0=80, kids=[];
+    rings.forEach((rg,i) => { const rad = r0 - i*(sw+gap); const circ = 2*Math.PI*rad; const pct = Math.min(1, rg.v/rg.goal);
+      kids.push(h("circle",{ key:"t"+i, cx, cy, r:rad, fill:"none", stroke:"rgba(255,255,255,.08)", strokeWidth:sw }));
+      kids.push(h("circle",{ key:"p"+i, cx, cy, r:rad, fill:"none", stroke:rg.color, strokeWidth:sw, strokeLinecap:"round", strokeDasharray:circ.toFixed(1), strokeDashoffset:(circ*(1-pct)).toFixed(1), transform:`rotate(-90 ${cx} ${cy})`, style:{ filter:`drop-shadow(0 0 5px ${rg.color})` } })); });
+    return h("svg",{ viewBox:"0 0 180 180", style:{ width:"100%", maxWidth:"172px", display:"block" } }, kids);
+  }
+  _meHypno(){
+    const h = React.createElement;
+    const segs = [["Light",26],["Deep",34],["Light",20],["REM",24],["Light",30],["Deep",22],["Light",38],["Awake",8],["REM",32],["Light",42],["Deep",17],["Light",36],["REM",30],["Light",24],["Awake",14],["REM",26]];
+    const lane = { Awake:0, REM:1, Light:2, Deep:3 };
+    const col = { Awake:"rgba(255,255,255,.30)", REM:"#22d3ee", Light:"#7dd3fc", Deep:"#6366f1" };
+    const w=560, top=6, laneH=27, laneGap=6, pad=52, total=segs.reduce((a,s)=>a+s[1],0), kids=[];
+    ["Awake","REM","Light","Deep"].forEach((nm,i)=>{ const y = top + i*(laneH+laneGap) + laneH/2; kids.push(h("text",{ key:"l"+i, x:pad-10, y:y+3.5, fontSize:10, fontWeight:600, fill:"#8ea3b8", textAnchor:"end" }, nm)); });
+    let x = pad;
+    segs.forEach((s,i)=>{ const wd = (s[1]/total)*(w-pad-8); const y = top + lane[s[0]]*(laneH+laneGap); kids.push(h("rect",{ key:"s"+i, x:x.toFixed(1), y, width:Math.max(0,wd-1.5).toFixed(1), height:laneH, rx:5, fill:col[s[0]] })); x += wd; });
+    const HH = top + 4*(laneH+laneGap);
+    kids.push(h("text",{ key:"ta", x:pad, y:HH+7, fontSize:10, fill:"#8ea3b8", textAnchor:"start" }, "22:32"));
+    kids.push(h("text",{ key:"tb", x:w, y:HH+7, fontSize:10, fill:"#8ea3b8", textAnchor:"end" }, "06:23"));
+    return h("svg",{ viewBox:`0 0 ${w} ${HH+12}`, style:{ width:"100%", height:"auto", display:"block" } }, kids);
+  }
+
+  renderVals() {
+    const S = this.state.settings;
+    let acc, acc2;
+    if (S.accent === "custom") { acc = `hsl(${S.hue} 80% 68%)`; acc2 = `hsl(${(S.hue+28)%360} 78% 64%)`; }
+    else { const p = this.PAL.find(x => x.id === S.accent) || this.PAL[2]; acc = p.a; acc2 = p.a2; }
+    this._acc = acc;
+    const soft = `color-mix(in srgb, ${acc} 15%, transparent)`;
+    const line = `color-mix(in srgb, ${acc} 45%, transparent)`;
+    const grad = `linear-gradient(135deg,${acc2},${acc})`;
+    const motion = S.motion;
+    const t = {
+      acc, acc2, soft, line, grad,
+      titleGrad: `linear-gradient(120deg,#fff 30%,${acc2} 78%,${acc} 100%)`,
+      bg: `radial-gradient(900px 620px at 8% -10%, color-mix(in srgb, ${acc} 26%, transparent), transparent 60%),radial-gradient(820px 640px at 116% 0%, color-mix(in srgb, ${acc2} 22%, transparent), transparent 55%),#070b11`,
+      motionA: motion ? "drift1 26s ease-in-out infinite alternate" : "none",
+      motionB: motion ? "drift2 32s ease-in-out infinite alternate" : "none",
+    };
+    const SC = "background:linear-gradient(180deg,rgba(255,255,255,.065),rgba(255,255,255,.028));box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 16px 40px -24px rgba(0,0,0,.8);border-radius:20px";
+    const LB = "font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;color:#aebccd";
+
+    // nav
+    const collapsed = this.state.collapsed && !this.state.isMobile;
+    const mkNav = d => ({ id:d.id, name:d.name, icon:d.icon, active:this.state.nav===d.id?1:0, just:collapsed?"center":"flex-start", pad:collapsed?"11px 0":"10px 13px", select:()=>this.setNav(d.id) });
+    const on = k => this.state.viewsOn[k];
+    const navFor = grp => this.NAV.filter(d => d.group===grp && (d.group===""||["security","settings"].includes(d.id)|| on(d.id) || d.id==="overview")).map(mkNav);
+    const navTop = this.NAV.filter(d=>d.group==="").map(mkNav);
+    const navSystems = this.NAV.filter(d=>d.group==="Systems" && on(d.id)).map(mkNav);
+    const navSafety = this.NAV.filter(d=>d.group==="Safety" && (d.id==="security"||on(d.id))).map(mkNav);
+    const navHouse = this.NAV.filter(d=>d.group==="House").map(mkNav);
+    const na = this.NAV.find(d=>d.id===this.state.nav) || this.NAV[0];
+    const nav = { width:collapsed?"70px":"236px", labelDisp:collapsed?"none":"inline", colDisp:collapsed?"none":"flex", brandDisp:collapsed?"none":"inline", groupDisp:collapsed?"none":"block", toggle:()=>this.toggleCollapse(), toggleIcon:collapsed?"»":"«", activeName:na.name, activeIcon:na.icon };
+
+    // mobile
+    const MT = [["overview","Home","🏠"],["energy","Energy","⚡"],["climate","Rooms","🛋️"],["security","Security","🛡️"],["more","More","⋯"]];
+    const mobileTabs = MT.map(([id,name,icon]) => { const active = id==="more"?this.state.moreOpen:this.state.nav===id; return { id,name,icon, filter: active?`drop-shadow(0 0 7px ${acc})`:"grayscale(.4) opacity(.6)", color: active?"#eaf1ff":"#98abbf", select: id==="more"?()=>this.setState(s=>({moreOpen:!s.moreOpen})):()=>this.setNav(id) }; });
+    const MORE = [["water","Water","💧"],["irrigation","Irrigation","🌿"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"],["settings","Settings","⚙️"]];
+    const moreItems = MORE.map(([id,name,icon]) => ({ id,name,icon, select:()=>this.setNav(id) }));
+
+    // scenes
+    const scenes = [ {name:"Goodnight",icon:"🌙"},{name:"Movie",icon:"🎬"},{name:"Away",icon:"🚪"},{name:"Morning",icon:"☀️"} ].map(s => ({ ...s, glow:this.state.scene===s.name?1:0, select:()=>this.setScene(s.name) }));
+
+    // quick tiles
+    const L = this.state.lights, P = this.state.pumps;
+    const litCount = Object.values(L).filter(Boolean).length;
+    const qt = (name,icon,onv,sub,fn,color) => ({ name, icon, sub, glow:onv?1:0, softbg:`color-mix(in srgb, ${color} 15%, transparent)`, linebg:color, toggle:fn });
+    const quickTiles = [
+      qt("All lights off","🌙",false,litCount+" on",()=>this.allOff(),acc),
+      qt("Water pump","💧",P.water,P.water?"2.9 W":"Off",()=>this.togglePump("water"),"#38bdf8"),
+      qt("Kitchen","💡",L.kitchen,L.kitchen?"On":"Off",()=>this.toggleLight("kitchen"),"#fbbf24"),
+      qt("Fire pit","🔥",L.fire,L.fire?"On":"Off",()=>this.toggleLight("fire"),"#fb7185"),
+    ];
+
+    // lights (overview)
+    const lightDefs = [["kitchen","Kitchen","💡"],["living","Living","🛋️"],["study","Study","📖"],["mainlamp","Main","🛏️"],["fire","Fire pit","🔥"],["under","Counter","✨"]];
+    const lightsList = lightDefs.map(([k,name,icon]) => ({ key:k, name, icon, glow:L[k]?1:0, sub:L[k]?((this.state.lightBright[k]??80)+"%"):"Off", toggle:()=>this.toggleLight(k), tune:()=>this.openLightSheet(k) }));
+    // appliances
+    const A = this.state.appliances;
+    const appDefs = [["dishwasher","Dishwasher","0 W"],["washer","Washer","2 W"],["dryer","Dryer","0 W"],["kettle","Kettle","0 W"],["microwave","Microwave","0.8 W"],["airfryer","Air Fryer","0 W"],["nespresso","Nespresso","0 W"],["workpc","Work PC","202 W"]];
+    const applianceList = appDefs.map(([k,name,watts]) => { const onv=A[k]; return { name, watts:onv?watts:"standby", glow:onv?1:0, stateText:onv?"ON":"OFF", fillbg:`color-mix(in srgb, ${acc} 15%, transparent)`, ring:acc, pillBg:onv?`color-mix(in srgb, ${acc} 32%, transparent)`:"rgba(255,255,255,.09)", pillFg:onv?"#eaf1ff":"#94a6b8", toggle:()=>this.toggleAppliance(k) }; });
+
+    // pumps
+    const pumpDefs = [["water","Water Pump","💧",P.water?"2.9 W · on":"Off"],["pool","Pool Pump","🏊",P.pool?"466 W · on":"Idle"],["borehole","Borehole","🕳️",P.borehole?"On":"Idle"]];
+    const pumpList = pumpDefs.map(([k,name,icon,sub]) => ({ name, icon, sub, glow:P[k]?1:0, toggle:()=>this.togglePump(k) }));
+
+    // irrigation
+    const zoneNames = ["Front Lawn","Back Garden","Veggie Patch","Flower Beds","Driveway Strip","Rose Garden"];
+    const zoneSoil = [62,44,71,55,38,66];
+    const zoneWatered = ["6h ago","yesterday","6h ago","2d ago","yesterday","6h ago"];
+    const irrRuntime = this.state.runtime;
+    const zoneList = zoneNames.map((name,i) => { const running = this.state.zones[i]; const sv=zoneSoil[i]; return { name, glow:running?1:0, stateText:running?(irrRuntime+"m left"):"Idle", stateColor:running?"#34d399":"#98abbf", soil:sv+"%", soilW:sv+"%", soilColor: sv<15?"#fbbf24":sv<40?"#38bdf8":"#34d399", watered:"watered "+zoneWatered[i], btnText:running?"Stop":"Start", btnBg:running?"color-mix(in srgb,#fb7185 22%,transparent)":grad, btnFg:running?"#fecdd6":"#07131c", toggle:()=>this.toggleZone(i) }; });
+
+    // climate floor plan
+    const B = { minX:9000, minY:1200, W:18600, H:14800 };
+    const heat = (tp) => {
+      if (tp==null || isNaN(tp)) return "rgba(255,255,255,.04)";
+      const c = tp<13?"#3b82f6":tp<15?"#22d3ee":tp<17?"#34d399":tp<19?"#fbbf24":"#fb7185";
+      return `color-mix(in srgb, ${c} 34%, transparent)`;
+    };
+    const planRooms = this.HOUSE.map(r => ({ id:r.id, name:r.name, bg:heat(this.RDATA[r.id]?parseFloat(this.RDATA[r.id].temp):null), left:((r.x-B.minX)/B.W*100).toFixed(2), top:((r.y-B.minY)/B.H*100).toFixed(2), w:(r.w/B.W*100).toFixed(2), h:(r.h/B.H*100).toFixed(2), temp: this.RDATA[r.id]?this.RDATA[r.id].temp+"°":"", active:this.state.room===r.id?1:0, select:()=>this.setRoom(r.id) }));
+    const cur = this.HOUSE.find(r=>r.id===this.state.room) || this.HOUSE[6];
+    const cd = this.RDATA[cur.id] || { temp:"—",hum:"—",lights:[] };
+    const activeRoom = { name:cur.name, temp:cd.temp, hum:cd.hum, hasLights:cd.lights.length>0, noLights:cd.lights.length===0, lights:cd.lights.map(([k,name,icon]) => ({ name, icon, glow:L[k]?1:0, label:L[k]?"On":"Off", toggle:()=>this.toggleLight(k) })) };
+
+    // security
+    const confirm = this.state.confirm, armed = this.state.armed;
+    const ZBP = this.state.secBypass;
+    const ZNL = ["Front Door","Kitchen Door","Driveway Beam","Pool Beam","Patio Beam","Garage","Back Garden","Gate Beam","Bedroom Window","Store Room","Roof","Passage"];
+    const zonesSec = ZNL.map((name,i)=>{ const by=!!ZBP[i]; return { name, op:by?"0.5":"1", dot:by?"#fbbf24":"#34d399", btn:by?"Restore":"Bypass", btnBg:by?"color-mix(in srgb,#fbbf24 20%,transparent)":"rgba(255,255,255,.08)", btnFg:by?"#fde68a":"#eaf1ff", tap:()=>this.toggleSecBypass(i) }; });
+    const zByN = Object.values(ZBP).filter(Boolean).length;
+    const zonesSummary = (ZNL.length - zByN)+" armed-ready · "+zByN+" bypassed";
+    const AMODE = this.state.armMode;
+    const armModes = [["disarmed","Off","🔓"],["home","Home","🏠"],["away","Away","🛡️"],["night","Night","🌙"]].map(([m,name,icon])=>({ name, icon, active:AMODE===m?1:0, fg:AMODE===m?"#07131c":"#c3d1e0", tap:()=>this.setArmMode(m) }));
+    const beamsOn = this.state.beamsOn;
+    const beamsModes = [["off","Off","🔓"],["arm","Arm","📡"]].map(([m,name,icon])=>({ name, icon, active:((m==="arm")===beamsOn)?1:0, fg:((m==="arm")===beamsOn)?"#07131c":"#c3d1e0", tap:()=>this.setBeams(m==="arm") }));
+
+    // cameras / traffic / system
+    const cameraList = [["Main Gate","ANPR"],["Driveway","Hik"],["Pool","Hik"],["Front Yard","Hik"],["Back Yard","Hik"],["Carport","Hik"],["Road","H90"],["Sidewalk","AI"]].map(([name,sub])=>({name,sub}));
+    const trafficBars = [["Morning",19,"100%"],["Afternoon",9,"48%"],["Evening",0,"3%"],["Night",0,"3%"]].map(([label,val,h])=>({label,val,h}));
+    const platesList = [["CA 123-456","2h ago"],["CJ 88-991 GP","5h ago"],["ND 145-012","8h ago"],["CA 771-330","yesterday"],["WP 09-114","yesterday"],["CY 512-889","2d ago"]].map(([plate,ago])=>({ plate, ago }));
+    const inkList = [["Black","43%","#e2e8f0","43"],["Cyan","31%","#38bdf8","31"],["Magenta","37%","#f472b6","37"],["Yellow","31%","#fbbf24","31"]].map(([name,w,color,val])=>({name,w,color,val}));
+
+    // me favs
+    const F = this.state.favs;
+    const favDefs = [["study","Study Lamp","📖","#fbbf24"],["kitchen","Kitchen","💡","#fbbf24"],["pool","Pool Pump","🏊","#38bdf8"],["fire","Fire Pit","🔥","#fb7185"]];
+    const favList = favDefs.map(([k,name,icon,color]) => ({ name, icon, glow:F[k]?1:0, softbg:`color-mix(in srgb, ${color} 15%, transparent)`, linebg:color, toggle:()=>this.toggleFav(k) }));
+
+    // settings
+    const accentList = this.PAL.map(p => ({ id:p.id, s0:p.sw, active:S.accent===p.id?1:0, select:()=>this.setAccent(p.id) }));
+    const viewDefs = [["energy","Energy","⚡"],["water","Water","💧"],["irrigation","Irrigation","🌿"],["climate","Climate","🌡️"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"]];
+    const viewList = viewDefs.map(([k,name,icon]) => ({ key:k, name, icon, glow:this.state.viewsOn[k]?1:0, toggle:()=>this.toggleView(k) }));
+
+    // ===== charts + history + activity =====
+    const H = this.HIST;
+    const eR = this.state.energyRange;
+    const eTabs = [["day","Day"],["week","Week"],["month","Month"]].map(([k,l]) => ({ key:k, label:l, active:eR===k?1:0, select:()=>this.setEnergyRange(k) }));
+    const dayChart = (() => {
+      const h=React.createElement, w=560, ht=178, pad=10, base=ht-22;
+      const maxW = Math.max(...H.solarW, ...H.loadW, 1);
+      const X=i=>pad+i*(w-2*pad)/(H.hours.length-1);
+      const Y=val=>base-(val/maxW)*(base-16);
+      const path=arr=>arr.map((val,i)=>`${i?"L":"M"}${X(i).toFixed(1)} ${Y(val).toFixed(1)}`).join(" ");
+      const sArea=`M${X(0)} ${base} `+H.solarW.map((val,i)=>`L${X(i).toFixed(1)} ${Y(val).toFixed(1)}`).join(" ")+` L${X(H.solarW.length-1)} ${base} Z`;
+      const kids=[
+        h("line",{key:"bl",x1:pad,y1:base,x2:w-pad,y2:base,stroke:"rgba(255,255,255,.10)"}),
+        h("path",{key:"sa",d:sArea,fill:"color-mix(in srgb,#fbbf24 22%,transparent)"}),
+        h("path",{key:"sl",d:path(H.solarW),fill:"none",stroke:"#fbbf24",strokeWidth:2.6,strokeLinecap:"round",strokeLinejoin:"round"}),
+        h("path",{key:"ll",d:path(H.loadW),fill:"none",stroke:acc,strokeWidth:2.4,strokeLinecap:"round",strokeLinejoin:"round"}),
+        h("path",{key:"gl",d:path(H.gridW),fill:"none",stroke:"#fb7185",strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",strokeDasharray:"2 5",opacity:.85}),
+      ];
+      H.hours.forEach((hr,i)=>{ if(i%2===0) kids.push(h("text",{key:"x"+i,x:X(i),y:base+15,fontSize:10.5,fill:"#a9b8c9",textAnchor:"middle"}, hr+"h")); });
+      return h("svg",{viewBox:`0 0 ${w} ${ht}`,style:{width:"100%",height:"auto",display:"block"}},kids);
+    })();
+    const battChart = this._area(H.battSoc, { color:acc, ht:132, w:560, forceMax:100, dot:true });
+    const weekBars = this._bars(H.days.map((d,i)=>({ label:d, hi:(H.solarKwh[i]+H.gridKwh[i]+H.battKwh[i]).toFixed(0), segs:[{v:H.solarKwh[i],color:"#fbbf24"},{v:H.gridKwh[i],color:"#fb7185"},{v:H.battKwh[i],color:acc}] })), { ht:188 });
+    const costSpark = this._area(H.costR, { color:"#fb7185", ht:98, w:320, dot:true });
+    const monthWk = [ {s:64,g:38,b:49},{s:78,g:29,b:52},{s:41,g:61,b:47},{s:59,g:34,b:44} ];
+    const monthBars = this._bars(monthWk.map((x,i)=>({ label:"W"+(i+1), hi:(x.s+x.g+x.b).toFixed(0), segs:[{v:x.s,color:"#fbbf24"},{v:x.g,color:"#fb7185"},{v:x.b,color:acc}] })), { ht:188 });
+    const battSpark = this._area(H.battSoc, { color:acc, ht:44, w:150, forceMax:100, dot:false });
+    const solarSpark = this._area(H.solarW, { color:"#fbbf24", ht:44, w:150, dot:false });
+    const chargeStages = [
+      { name:"Bulk", bar:"rgba(255,255,255,.16)", op:1, fg:"#aebccd", fw:500 },
+      { name:"Absorption", bar:"rgba(255,255,255,.16)", op:1, fg:"#aebccd", fw:500 },
+      { name:"Float", bar:acc, op:1, fg:"#eef4fc", fw:700 },
+    ];
+    const victronTiles = [
+      { icon:"🔋", name:"Battery · Discharging", color:acc, rows:[["52.2 V","Voltage"],["−18.0 A","Current"],["20°C","Temp"],["6 h 40 m","Time-to-go"]].map(([vv,kk])=>({v:vv,k:kk})) },
+      { icon:"🔌", name:"MultiPlus · Inverting", color:"#34d399", rows:[["On","Mode"],["814 W","AC output"],["230 V","AC out"],["49.9 Hz","Frequency"]].map(([vv,kk])=>({v:vv,k:kk})) },
+      { icon:"☀️", name:"MPPT · Sleeping", color:"#fbbf24", rows:[["0 W","PV power"],["2.7 kWh","Yield today"],["0 V","PV volts"],["Night","Tracker"]].map(([vv,kk])=>({v:vv,k:kk})) },
+      { icon:"🏭", name:"Grid input · Connected", color:"#fb7185", rows:[["10 W","Draw"],["230 V","Voltage"],["49.9 Hz","Frequency"],["No limit","AC limit"]].map(([vv,kk])=>({v:vv,k:kk})) },
+    ];
+    const logbook = this.LOG.map(([tt,icon,title,sub,color]) => ({ t:tt, icon, title, sub, color }));
+    const fcHourly = this.FC.hourly.map(([hh,icon,tp],i) => ({ h:hh, icon, temp:tp+"°", nowBg:i===0?"rgba(125,211,252,.16)":"transparent" }));
+    const fcDaily = this.FC.daily.map(([d,icon,hi,lo]) => ({ d, icon, hi:hi+"°", lo:lo+"°" }));
+    const waterBars = this._bars(H.days.map((d,i)=>({ label:d, hi:H.water7[i], v:H.water7[i], color:"#38bdf8", dim:i!==H.days.length-1 })), { ht:150 });
+    const tankChart = this._area(H.tank30, { color:"#38bdf8", ht:98, w:320, base0:false, forceMax:100, dot:true });
+    const waterSplit = [ ["Indoor & kitchen",71,"#38bdf8"],["Bathrooms",29,"#22d3ee"],["Pool top-up",9,"#818cf8"],["Outdoor tap",8,"#7dd3fc"] ].map(([name,val,color])=>({ name, val:val+" L", w:(val/71*100).toFixed(0)+"%", color }));
+    const spKey = cur.id;
+    const hasSetpoint = this.state.setpoints[spKey] != null;
+    const setpoint = this.state.setpoints[spKey] || 20;
+    const roomTemp24 = H.roomTemp.map(x => +(x + ((parseFloat(cd.temp)||16) - 15.4)).toFixed(1));
+    const roomTempChart = this._area(roomTemp24, { color:acc, ht:130, w:520, base0:false, dot:true });
+    const roomTMin = Math.min(...roomTemp24).toFixed(1)+"°", roomTMax = Math.max(...roomTemp24).toFixed(1)+"°";
+    const irrSmart = this.state.smart;
+    const irrSmartTrack = irrSmart ? acc : "rgba(255,255,255,.16)";
+    const irrSmartKnob = irrSmart ? "22px" : "3px";
+    const irrSmartText = irrSmart ? "Auto-skips runs when rain is forecast and adapts to soil moisture." : "Manual scheduling — runs exactly as programmed.";
+    const irrNextRun = "in 6h 12m", irrSchedules = 3, irrMonthMin = 420, irrTodayMin = 60;
+    const runtimeDisp = irrRuntime + " min";
+    const irrBannerText = irrSmart ? "☀️ No rain forecast — running as scheduled. Next run in 6h 12m." : "🗓️ Manual mode — runs exactly as programmed. Next run in 6h 12m.";
+    const irrBannerBg = irrSmart ? "linear-gradient(180deg,color-mix(in srgb,#34d399 10%,transparent),rgba(255,255,255,.02))" : "linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.02))";
+    const irrBannerLine = irrSmart ? "color-mix(in srgb,#34d399 22%,transparent)" : "rgba(255,255,255,.10)";
+    const O = this.state.openings;
+    const openingsList = [
+      { key:"gate", name:"Driveway Gate", icon:"🚧", kind:"cover" },
+      { key:"garage", name:"Garage Door", icon:"🚙", kind:"cover" },
+      { key:"front", name:"Front Door", icon:"🚪", kind:"lock" },
+      { key:"mangate", name:"Pedestrian Gate", icon:"🔑", kind:"lock" },
+    ].map(o => { const cover=o.kind==="cover"; const attn=cover?O[o.key]:!O[o.key]; return { key:o.key, name:o.name, icon:o.icon, stateText: cover?(O[o.key]?"Open":"Closed"):(O[o.key]?"Locked":"Unlocked"), stateColor: attn?"#fbbf24":"#34d399", btnText: cover?(O[o.key]?"Close":"Open"):(O[o.key]?"Unlock":"Lock"), toggle:()=>this.toggleOpening(o.key) }; });
+    const secLog = [ ["18:12","🚶","Motion · Passage","Interior · auto-cleared","#fbbf24"],["16:05","🚗","Gate · vehicle","ANPR — no plate match","#fb7185"],["11:30","📷","Driveway · person","8s clip recorded","#fb7185"],["05:45","🔓","Disarmed","Christo · keypad","#34d399"],["22:10","🔒","Armed · Away","Scheduled · bedtime","#34d399"] ].map(([t,icon,title,sub,color])=>({t,icon,title,sub,color}));
+    const netSpark = this._area(H.netDown, { color:acc, ht:60, w:300, dot:false });
+    const deviceCats = [ ["Lights","💡",14],["Sensors","📡",9],["Cameras","📷",8],["Smart plugs","🔌",5],["Climate","🌡️",4] ].map(([name,icon,count])=>({ name, icon, count }));
+    const trafficWeekChart = this._bars(H.days.map((d,i)=>({ label:d, hi:H.trafficWk[i], v:H.trafficWk[i], color:acc, dim:i!==H.days.length-1 })), { ht:150 });
+    const camEvents = [ ["16:05","Main Gate","Vehicle approached","🚗"],["14:48","Driveway","Person detected","🚶"],["12:20","Road","Vehicle passing","🚗"],["09:12","Front Yard","Motion cleared","🐕"] ].map(([t,cam,txt,icon])=>({t,cam,txt,icon}));
+
+    const HH = this.HEALTH;
+    const hm = h => Math.floor(h)+"h "+String(Math.round((h-Math.floor(h))*60)).padStart(2,"0")+"m";
+    const ringCss = (pct,c) => `conic-gradient(${c} ${(Math.min(100,pct)*3.6).toFixed(1)}deg, rgba(255,255,255,.10) 0)`;
+    const scoreRings = [
+      { name:"Sleep", val:HH.sleepScore, color:"#818cf8", ring:ringCss(HH.sleepScore,"#818cf8"), sub:hm(HH.totalSleep)+" asleep" },
+      { name:"Readiness", val:HH.readinessScore, color:"#34d399", ring:ringCss(HH.readinessScore,"#34d399"), sub:"Balanced day ahead" },
+      { name:"Activity", val:HH.activityScore, color:"#fb923c", ring:ringCss(HH.activityScore,"#fb923c"), sub:HH.steps.toLocaleString()+" steps" },
+    ];
+    const tib = HH.timeInBed;
+    const sleepStages = [
+      { name:"Deep", dur:hm(HH.deep), w:(HH.deep/tib*100).toFixed(1)+"%", color:"#6366f1" },
+      { name:"REM", dur:hm(HH.rem), w:(HH.rem/tib*100).toFixed(1)+"%", color:"#22d3ee" },
+      { name:"Light", dur:hm(HH.light), w:(HH.light/tib*100).toFixed(1)+"%", color:"#7dd3fc" },
+      { name:"Awake", dur:hm(HH.awake), w:(HH.awake/tib*100).toFixed(1)+"%", color:"rgba(255,255,255,.22)" },
+    ];
+    const vitals = [
+      ["Resting HR", HH.restHR+" bpm"], ["Sleeping HR", Math.round(HH.sleepHR)+" bpm"], ["HRV", HH.sleepHRV+" ms"], ["SpO\u2082", HH.spo2+"%"],
+      ["Breathing", HH.bdi+"/h"], ["Cardio age", HH.cvAge+" yr"], ["Body temp", (HH.tempDev>0?"+":"")+HH.tempDev+"°C"], ["Pulse wave", HH.pwv.toFixed(1)+" m/s"],
+    ].map(([k,val])=>({ k, v:val }));
+    const health = {
+      sleepDur:hm(HH.totalSleep), timeInBed:hm(HH.timeInBed), efficiency:HH.efficiency, restfulness:HH.restfulness, latency:HH.latency,
+      bed:HH.bedStart+" – "+HH.bedEnd, sleepHR:Math.round(HH.sleepHR), sleepHRV:HH.sleepHRV,
+      steps:HH.steps.toLocaleString(), stepsGoal:HH.stepsGoal.toLocaleString(), stepsRing:ringCss(HH.steps/HH.stepsGoal*100,"#fb923c"),
+      activeCal:HH.activeCal, targetCal:HH.targetCal, totalCal:HH.totalCal.toLocaleString(), lowMin:HH.lowMin, ringBatt:HH.ringBatt,
+      woType:HH.woType, woIntensity:HH.woIntensity, woDur:HH.woDur, woDist:HH.woDist.toFixed(1), woCal:HH.woCal,
+    };
+    const sleepTrend = this._area(HH.sleepScore7, { color:"#818cf8", ht:82, w:320, forceMax:100, dot:true });
+    const stepsTrend = this._bars(this.HIST.days.map((d,i)=>({ label:d, hi:(HH.steps7[i]/1000).toFixed(1)+"k", v:HH.steps7[i], color:"#fb923c", dim:i!==6 })), { ht:150 });
+    // Me redesign (Oura/Apple): headline, trend deltas, readiness contributors, concentric rings, hypnogram
+    const meUpBg = "color-mix(in srgb,#34d399 18%,transparent)", meUpFg = "#34d399", meDnBg = "rgba(255,255,255,.06)", meDnFg = "#aebccd";
+    const meScoreDefs = [
+      { name:"Sleep", val:HH.sleepScore, color:"#818cf8", status:"Solid night", d:3 },
+      { name:"Readiness", val:HH.readinessScore, color:"#34d399", status:"Balanced", d:-2 },
+      { name:"Activity", val:HH.activityScore, color:"#fb923c", status:"On track", d:5 },
+    ];
+    const meScores = meScoreDefs.map(s => ({ name:s.name, val:s.val, color:s.color, ring:ringCss(s.val,s.color), crown: s.val>=85?"👑":"", status:s.status, delta:(s.d>=0?"▲ ":"▼ ")+Math.abs(s.d)+" vs avg", deltaBg:s.d>=0?meUpBg:meDnBg, deltaColor:s.d>=0?meUpFg:meDnFg }));
+    const meContributors = [["Resting heart rate",92],["HRV balance",78],["Body temperature",95],["Recovery index",88],["Sleep",82],["Sleep balance",80],["Previous day activity",64]].map(([name,p]) => { const b=this._meBand(p); return { name, w:p+"%", color:b.c, status:b.s }; });
+    const meActivityLegend = [ { name:"Move", color:"#fb2d55", val:420, goal:500, unit:"CAL" }, { name:"Exercise", color:"#a3f335", val:34, goal:45, unit:"MIN" }, { name:"Stand", color:"#2fe6de", val:9, goal:12, unit:"HR" } ];
+    const meAvg = a => a.reduce((x,y)=>x+y,0)/a.length;
+    const meSD = Math.round(HH.sleepScore7[6] - meAvg(HH.sleepScore7));
+    const meStD = Math.round(HH.steps7[6] - meAvg(HH.steps7));
+    const meSleepCols = this.state.isMobile ? "1fr" : "1.4fr 1fr";
+
+    // ===== command palette + overview customization =====
+    const q = (this.state.paletteQ||"").trim().toLowerCase();
+    const rawCmds = [];
+    this.NAV.forEach(d => rawCmds.push({ icon:d.icon, label:"Go to "+d.name, hint:"View", act:()=>this.setNav(d.id) }));
+    rawCmds.push({ icon:"🌙", label:"All lights off", hint:"Action", act:()=>this.allOff() });
+    rawCmds.push({ icon:"💧", label:(this.state.pumps.water?"Turn off":"Turn on")+" water pump", hint:"Pump", act:()=>this.togglePump("water") });
+    rawCmds.push({ icon:"🔥", label:(this.state.lights.fire?"Turn off":"Turn on")+" fire pit", hint:"Light", act:()=>this.toggleLight("fire") });
+    rawCmds.push({ icon:"🛡️", label:(this.state.armed?"Disarm":"Arm")+" alarm", hint:"Security", act:()=>this.paletteArm() });
+    [["Goodnight","🌙"],["Movie","🎬"],["Away","🚪"],["Morning","☀️"]].forEach(([n,ic])=>rawCmds.push({ icon:ic, label:"Scene · "+n, hint:"Scene", act:()=>this.setScene(n) }));
+    rawCmds.push({ icon:"📺", label:"Open TV Overview", hint:"Screen", act:()=>{ window.location.href="HA TV Overview.dc.html"; } });
+    const paletteCmds = rawCmds.filter(c => !q || c.label.toLowerCase().includes(q)).slice(0,8).map(c => ({ icon:c.icon, label:c.label, hint:c.hint, run:()=>{ this.closePalette(); c.act(); } }));
+    const HID = this.state.hidden;
+    const optDefs = [["scenes","Scenes","🎬"],["lights","Lights","💡"],["energyToday","Today's energy","⚡"],["security","Security & presence","🛡️"],["activity","Recent activity","🕒"],["forecast","Next hours","🌙"]];
+    const customizeList = optDefs.map(([id,name,icon]) => ({ id, name, icon, on:!HID[id], trackBg: !HID[id]?acc:"rgba(255,255,255,.16)", knobX: !HID[id]?"16px":"2px", toggle:()=>this.toggleHidden(id) }));
+    const dv = id => HID[id] ? "none" : "block";
+
+    const ctv = parseFloat(cd.temp);
+    const comfort = isNaN(ctv) ? { label:"No reading", color:"#93a5b8" } : ctv<14 ? { label:"Cold", color:"#60a5fa" } : ctv<17 ? { label:"Cool", color:"#38bdf8" } : ctv<21.5 ? { label:"Comfortable", color:"#34d399" } : { label:"Warm", color:"#fb923c" };
+
+    // ===== settings inputs · messages · profiles · light control =====
+    const sw = on => ({ trackBg: on?acc:"rgba(255,255,255,.16)", knobX: on?"22px":"3px" });
+    const AA = this.state.autoArm;
+    const autoArmRows = [["away","Auto-arm · Away","Arms the house when everyone leaves"],["stay","Auto-arm · Stay","Night arm, interior sensors off"],["beams","Auto-arm · Beams","Outdoor beams at night"],["disarm","Auto-disarm","Disarms on the morning schedule"],["disarmBeams","Auto-disarm · Beams","Beams off in the morning"]].map(([k,name,sub])=>({ k, name, sub, ...sw(AA[k]), toggle:()=>this.setAutoArm(k) }));
+    const AT = this.state.armTimes;
+    const armTimeRows = [["away","Arm Away"],["stay","Arm Stay"],["beams","Arm Beams"],["disarm","Disarm"],["disarmBeams","Disarm Beams"]].map(([k,name])=>({ k, name, val:AT[k], set:(e)=>this.setArmTime(k,e) }));
+    const NT = this.state.notif;
+    const notifRows = [["alarm","🛡️","Alarm arm / disarm"],["gate","🚗","Gate & driveway detections"],["water","💧","Low-water alert"],["ink","🖨️","Printer ink low"],["illness","🩺","Oura illness early-warning"],["bedtime","🌙","Bedtime nudge"]].map(([k,icon,name])=>({ k, icon, name, ...sw(NT[k]), toggle:()=>this.setNotif(k) }));
+    const bypassOpts = ["None","Zone 22 · Driveway beam","Zone 18 · Pool beam","Zone 09 · Garage","Zone 14 · Back garden"];
+    const G = this.state.goals;
+    const goalRows = [["steps","Daily steps goal",G.steps,2000,15000,500,G.steps.toLocaleString()],["readiness","Low-readiness alert below",G.readiness,50,90,1,String(G.readiness)],["tempDev","Illness temp deviation",G.tempDev,0.2,1,0.1,G.tempDev.toFixed(1)+"°C"]].map(([k,name,val,min,max,step,disp])=>({ k, name, val, min, max, step, disp, set:(e)=>this.setGoal(k,e) }));
+    const M = this.state.msg;
+    const msgPresets = [["🍽️","Dinner's ready"],["🚗","Please open the gate"],["🌙","Goodnight everyone"],["🏠","Arriving in 10 minutes"],["🧺","The washing is done"],["☕","Come have coffee"]].map(([icon,text])=>({ icon, text, send:()=>this.sendMsg(text) }));
+    const msgTargets = ["All speakers","Living room","Kitchen","Main bedroom","All phones"];
+    const people = [
+      { name:"Christo", role:"Admin", initial:"C", color:acc, home:true, room:"Main bedroom", you:true },
+      { name:"Marizanne", role:"Adult", initial:"M", color:"#f472b6", home:true, room:"Kitchen" },
+      { name:"Liam", role:"Child", initial:"L", color:"#38bdf8", home:false, room:"School" },
+      { name:"Eben", role:"Child", initial:"E", color:"#34d399", home:false, room:"School" },
+      { name:"Guest", role:"Guest", initial:"G", color:"#fbbf24", home:false, room:"—" },
+    ].map(p => ({ ...p, statusText: p.home?("Home · "+p.room):"Away", statusColor: p.home?"#34d399":"#93a5b8", roleColor: p.role==="Admin"?acc:"rgba(255,255,255,.14)", roleFg: p.role==="Admin"?"#0b1017":"#c3d1e0" }));
+    const lsKey = this.state.lightSheet;
+    const lsMap = { kitchen:"Kitchen", living:"Living Room", study:"Study Lamp", mainlamp:"Main Bedroom", fire:"Fire Pit", under:"Under-counter", tv:"TV Room", dining:"Dining" };
+    const swatchCols = ["#ffcf96","#ffe1b0","#fff4e2","#eaf2ff","#7dd3fc","#c9a8ff","#ff7a3c","#f472b6"];
+    const lightSheetOpen = !!lsKey;
+    const lightSheet = lsKey ? {
+      key:lsKey, name:lsMap[lsKey]||"Light", on:!!this.state.lights[lsKey], onGlow:this.state.lights[lsKey]?1:0,
+      bright:this.state.lightBright[lsKey]??80, brightPct:(this.state.lightBright[lsKey]??80)+"%", color:this.state.lightColor[lsKey]||"#ffcf96",
+      toggle:()=>this.toggleLight(lsKey), setBright:(e)=>this.setBright(lsKey,e), stateText:this.state.lights[lsKey]?"On":"Off", trackBg:this.state.lights[lsKey]?acc:"rgba(255,255,255,.16)", knobX:this.state.lights[lsKey]?"24px":"3px",
+      swatches: swatchCols.map(c=>({ c, active:(this.state.lightColor[lsKey]||"")===c?1:0, pick:()=>this.setColor(lsKey,c) })),
+    } : null;
+
+    // ===== lights (area-grouped) & appliances =====
+    const LAREAS = [
+      { name:"Kitchen", icon:"🍳", lights:[["kitchen","Ceiling","💡","switch"],["under","Under Counter","🔆","switch"]] },
+      { name:"Living & Lounge", icon:"🛋️", lights:[["living","Living Room","🛋️","switch"],["tvlamp","TV Room","📺","switch"],["loungelamps","Lounge Lamps","💡","group"]] },
+      { name:"Bedrooms", icon:"🛏️", lights:[["mainlamp","Main Bedroom","🛏️","switch"],["roomlamps","Room Lamps","💡","group"]] },
+      { name:"Study", icon:"📚", lights:[["study","Study Lamp","📚","light"]] },
+      { name:"Outdoor & Yard", icon:"🌳", lights:[["street","Street","🛣️","switch"],["driveway","Driveway","🚗","switch"],["gatespot","Gate Spot","🔦","switch"],["fire","Fire Pit","🔥","light"],["studyyard","Study Yard","🌳","switch"]] },
+    ];
+    const GMEM = { loungelamps:3, roomlamps:4 };
+    const lightAreas = LAREAS.map(a => { const singles = a.lights.filter(x=>x[3]!=="group");
+      return { name:a.name, icon:a.icon, onN:singles.filter(x=>L[x[0]]).length, total:singles.length,
+        onArea:()=>singles.forEach(x=>{ if(!L[x[0]]) this.toggleLight(x[0]); }),
+        offArea:()=>singles.forEach(x=>{ if(L[x[0]]) this.toggleLight(x[0]); }),
+        lights:a.lights.map(([k,nm,ic,tp]) => { const g=tp==="group", dim=tp==="light", onv=!!L[k];
+          return { name:nm, icon:ic, badge: g?(onv?1:0.45):0, dimmable:dim, glow:(onv&&!g)?1:0,
+            sub: g?("Controls "+(GMEM[k]||0)+" lights"):(onv?(dim?((this.state.lightBright[k]??80)+"%"):"On"):"Off"),
+            toggle:()=>this.toggleLight(k), tune:()=>this.openLightSheet(k) }; }) }; });
+    const _allS = LAREAS.flatMap(a=>a.lights).filter(x=>x[3]!=="group");
+    const lightsOn = _allS.filter(x=>L[x[0]]).length, lightsTotal = _allS.length;
+    const AAREAS = [
+      { name:"Kitchen", icon:"🍳", items:[["dishwasher","Dishwasher","🍽️",0],["kettle","Kettle","☕",0],["microwave","Microwave","🍲",0.8],["airfryer","Air Fryer","🍟",0],["nespresso","Nespresso","☕",0]] },
+      { name:"Laundry", icon:"🧺", items:[["washer","Washing Machine","🧺",2],["dryer","Tumble Dryer","🌀",0]] },
+      { name:"Study & Office", icon:"💻", items:[["workpc","Work PC","💻",202],["studyheater","Study Heater","🔥",0]] },
+    ];
+    const AP = this.state.appliances;
+    const fmtW = w => w>=1000?(w/1000).toFixed(2)+" kW":(Math.round(w*10)/10)+" W";
+    const applianceAreas = AAREAS.map(a => { const dr=a.items.reduce((s,x)=>s+(AP[x[0]]?x[3]:0),0);
+      return { name:a.name, icon:a.icon, draw:fmtW(dr), drawColor:dr>0?"#fbbf24":"#8ea3b8", drawBg:dr>0?"color-mix(in srgb,#fbbf24 16%,transparent)":"rgba(255,255,255,.05)",
+        items:a.items.map(([k,nm,ic,w])=>({ name:nm, icon:ic, on:AP[k]?1:0, watts:AP[k]?fmtW(w):"standby", stateText:AP[k]?"ON":"OFF", pillBg:AP[k]?`color-mix(in srgb, ${acc} 30%, transparent)`:"rgba(255,255,255,.08)", pillFg:AP[k]?"#fff":"#94a6b8", toggle:()=>this.toggleAppliance(k) })) }; });
+    const _allA = AAREAS.flatMap(a=>a.items);
+    const appTotalDraw = fmtW(_allA.reduce((s,x)=>s+(AP[x[0]]?x[3]:0),0)), appOnCount = _allA.filter(x=>AP[x[0]]).length, appTracked = _allA.length;
+
+    const v = id => this.state.nav === id;
+    return {
+      t, SC, LB, greeting: this.greeting(),
+      isMobile: this.state.isMobile, isDesktop: !this.state.isMobile,
+      mainPadBottom: this.state.isMobile ? "78px" : "0px",
+      nav, navTop, navSystems, navSafety, navHouse, mobileTabs, moreItems, moreOpen: this.state.moreOpen, closeMore: () => this.setState({ moreOpen:false }),
+      colCount: this.state.isMobile ? 1 : 3,
+      climateCols: this.state.isMobile ? "1fr" : "1.15fr 1fr",
+      scenes, quickTiles, lightsList, applianceList, pumpList, zoneList, planRooms, activeRoom, zonesSec, cameraList, trafficBars, platesList, inkList, favList, accentList, viewList,
+      eTabs, eDay:eR==="day", eWeek:eR==="week", eMonth:eR==="month", dayChart, battChart, weekBars, monthBars, costSpark,
+      battSpark, solarSpark, logbook, fcHourly, fcDaily,
+      waterBars, tankChart, waterSplit,
+      roomTempChart, roomTMin, roomTMax, hasSetpoint, setpoint:setpoint.toFixed(1), spUp:()=>this.bumpSetpoint(spKey,0.5), spDown:()=>this.bumpSetpoint(spKey,-0.5),
+      comfortLabel:comfort.label, comfortColor:comfort.color,
+      secLog, netSpark, deviceCats, trafficWeekChart, camEvents, chargeStages, victronTiles,
+      openingsList, toggleSmart:()=>this.toggleSmart(), setRuntime:(e)=>this.setRuntime(e), runtime:this.state.runtime, runtimeDisp, irrSmart, irrSmartTrack, irrSmartKnob, irrSmartText, irrNextRun, irrSchedules, irrMonthMin, irrTodayMin, irrBannerText, irrBannerBg, irrBannerLine,
+      scoreRings, sleepStages, vitals, health, sleepTrend, stepsTrend,
+      meScores, meContributors, meActivityLegend, meActivityRings:this._meRings(), meHypno:this._meHypno(), meSleepCols,
+      meHeadline:"Recovered and ready — a balanced day ahead.", meHeadlineSub:"HRV steady at 52 ms · resting HR 52 bpm · body temp normal.",
+      meSleepDelta:(meSD>=0?"▲ ":"▼ ")+Math.abs(meSD)+" vs avg", meSleepDeltaBg:meSD>=0?meUpBg:meDnBg, meSleepDeltaColor:meSD>=0?meUpFg:meDnFg,
+      meStepsDelta:(meStD>=0?"▲ ":"▼ ")+Math.abs(meStD)+" vs avg", meStepsDeltaBg:meStD>=0?meUpBg:meDnBg, meStepsDeltaColor:meStD>=0?meUpFg:meDnFg,
+      autoArmRows, armTimeRows, notifRows, bypassOpts, bypassVal:this.state.bypass, setBypass:(e)=>this.setBypass(e), goalRows,
+      msgPresets, msgTargets, msgText:M.text, msgTarget:M.target, msgSent:M.sent, msgSentShow:!!M.sent,
+      setMsgText:(e)=>this.setMsgText(e), setMsgTarget:(e)=>this.setMsgTarget(e), sendCustom:()=>this.sendMsg(),
+      people, lightSheet, lightSheetOpen, openLightSheet:(k)=>this.openLightSheet(k), closeLightSheet:()=>this.closeLightSheet(),
+      palette:this.state.palette, paletteQ:this.state.paletteQ, paletteCmds,
+      openPalette:()=>this.openPalette(), closePalette:()=>this.closePalette(), stop:(e)=>e.stopPropagation(),
+      setPaletteQ:(e)=>this.setState({ paletteQ:e.target.value }), focusPalette:(el)=>{ if(el) setTimeout(()=>{ try{el.focus();}catch(_){} },30); },
+      customizing:this.state.customizing, toggleCustomize:()=>this.toggleCustomize(), customizeList, resetCustomize:()=>this.resetCustomize(),
+      customizeBtnLabel: this.state.customizing?"Done":"Customize", customizeBtnBg: this.state.customizing?`color-mix(in srgb, ${acc} 26%, transparent)`:"rgba(255,255,255,.05)", customizeBtnFg: this.state.customizing?"#eef4fc":"#c3d1e0",
+      dScenes:dv("scenes"), dLights:dv("lights"), dEnergyToday:dv("energyToday"), dSecurity:dv("security"), dActivity:dv("activity"), dForecast:dv("forecast"),
+      irrigationAllOff: () => this.irrigationAllOff(),
+      sankeyChart: this.buildSankeyChart(), powerHub: this.buildPowerHub(), secTimeline: this.buildSecTimeline(),
+      sankeyHint: (this.state.sankeyPin || this.state.sankeyHover) ? "Showing one flow · tap the node again to clear" : "Hover or tap a node to trace its flow",
+      tapArm: () => this.tapArm(),
+      armShort: AMODE!=="disarmed" ? "Armed" : "Disarmed", armModes, zonesSummary,
+      beamsModes, beamsChipText: beamsOn?"armed":"off", beamsChipBg: beamsOn?"color-mix(in srgb,#34d399 16%,transparent)":"rgba(255,255,255,.05)", beamsChipLine: beamsOn?"color-mix(in srgb,#34d399 40%,transparent)":"rgba(255,255,255,.08)", hasSecBypass: zByN>0, restoreAllSec:()=>this.restoreAllSec(), secAreaCols: this.state.isMobile ? "1fr" : "1.6fr 1fr",
+      armLabel: AMODE==="disarmed" ? "Disarmed" : "Armed · " + (AMODE==="home"?"Home":AMODE==="night"?"Night":"Away"),
+      armSub: zByN>0 ? (zByN+" zone"+(zByN>1?"s":"")+" bypassed · 31 monitored") : (AMODE!=="disarmed" ? "House secured · 31 zones" : "House open · 31 zones"),
+      armIcon: AMODE==="disarmed" ? "🛡️" : AMODE==="night" ? "🌙" : "🔒",
+      armDot: AMODE!=="disarmed" ? "#34d399" : "#fbbf24",
+      armLine: AMODE!=="disarmed" ? "color-mix(in srgb,#34d399 45%,transparent)" : "color-mix(in srgb,#fbbf24 40%,transparent)",
+      armFill: AMODE!=="disarmed" ? "color-mix(in srgb,#34d399 14%,transparent)" : "color-mix(in srgb,#fbbf24 12%,transparent)",
+      hue: S.hue, hueSwatch: `hsl(${S.hue} 80% 68%)`, customActive: S.accent==="custom"?1:0, setHue:(e)=>this.setHue(e),
+      densComfort: S.density==="comfortable"?1:0, densCompact: S.density==="compact"?1:0, setComfort:()=>this.setDensity("comfortable"), setCompact:()=>this.setDensity("compact"),
+      motionTrack: motion ? acc : "rgba(255,255,255,.16)", motionKnob: motion ? "22px" : "3px", toggleMotion:()=>this.toggleMotion(),
+      vOverview:v("overview"), vEnergy:v("energy"), vWater:v("water"), vIrrigation:v("irrigation"), vClimate:v("climate"), vSecurity:v("security"), vCameras:v("cameras"), vTraffic:v("traffic"), vSystem:v("system"), vMe:v("me"), vSettings:v("settings"),
+      vLights:v("lights"), vAppliances:v("appliances"), lightAreas, lightsOn, lightsTotal, lightsAllOff:()=>this.allOff(), applianceAreas, appTotalDraw, appOnCount, appTracked,
+    };
+  }
+}
+</script>
+</body>
+</html>

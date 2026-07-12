@@ -60,10 +60,11 @@
   const exMin = $derived((ha.num(E.ouraMedActivityMin) ?? 0) + (ha.num(E.ouraHighActivityMin) ?? 0));
   const exP = $derived(clamp(exMin / 30) * 100);
   const stepP = $derived(steps != null ? clamp(steps / stepsGoal) * 100 : 0);
+  // Apple-activity ring palette (kept local — not part of the Aurora token set).
   const RINGS = $derived([
-    { p: moveP, color: "#fb7185", r: 42, label: "Move" },
-    { p: exP, color: "#34d399", r: 32, label: "Exercise" },
-    { p: stepP, color: "#38bdf8", r: 22, label: "Steps" },
+    { p: moveP, color: "#fb2d55", r: 42, label: "Move" },
+    { p: exP, color: "#a3f335", r: 32, label: "Exercise" },
+    { p: stepP, color: "#2fe6de", r: 22, label: "Steps" },
   ]);
   const dash = (p: number, r: number) => { const c = 2 * Math.PI * r; return `${(p / 100) * c} ${c}`; };
 
@@ -76,6 +77,34 @@
       { name: "Light", v: light, color: "#818cf8" },
       { name: "Awake", v: awake, color: "rgba(255,255,255,.25)" },
     ].map((s) => ({ ...s, w: (s.v / tot) * 100, dur: dur(s.v) }));
+  });
+
+  // Sleep hypnogram — stage-over-time. Oura only exposes per-stage totals (no
+  // per-epoch data), so lay them out in a canonical cycle order (deep early,
+  // REM later) with each occurrence weighted so the totals match the real night.
+  const HYP = $derived.by(() => {
+    const real: Record<string, number> = {
+      Deep: ha.num(E.ouraDeep) ?? 0, REM: ha.num(E.ouraRem) ?? 0,
+      Light: ha.num(E.ouraLightSleep) ?? 0, Awake: ha.num(E.ouraAwake) ?? 0,
+    };
+    const tot = real.Deep + real.REM + real.Light + real.Awake || 1;
+    const seq: [string, number][] = [
+      ["Light", 1], ["Deep", 2], ["Light", 1], ["REM", 1], ["Light", 1], ["Deep", 1.4],
+      ["Light", 1], ["Awake", 0.4], ["REM", 1.3], ["Light", 1.2], ["Deep", 0.6], ["Light", 1],
+      ["REM", 1.4], ["Light", 1], ["Awake", 0.5], ["REM", 1.1],
+    ];
+    const wsum: Record<string, number> = { Deep: 0, REM: 0, Light: 0, Awake: 0 };
+    seq.forEach(([nm, w]) => (wsum[nm] += w));
+    const laneIdx: Record<string, number> = { Awake: 0, REM: 1, Light: 2, Deep: 3 };
+    const col: Record<string, string> = { Awake: "rgba(255,255,255,.28)", REM: "#22d3ee", Light: "#7dd3fc", Deep: "#6366f1" };
+    let x = 0;
+    const segs: { x: number; w: number; lane: number; col: string }[] = [];
+    for (const [nm, w] of seq) {
+      const frac = wsum[nm] ? (w / wsum[nm]) * (real[nm] / tot) : 0;
+      if (frac > 0.001) segs.push({ x, w: frac, lane: laneIdx[nm], col: col[nm] });
+      x += frac;
+    }
+    return { segs, lanes: ["Awake", "REM", "Light", "Deep"] };
   });
 
   // last workout
@@ -132,7 +161,7 @@
       <div class="card sc">
         <div class="ring" style="background:{ringBg(s.val, scoreColor(s.val))}"><div class="rc" style="color:{scoreColor(s.val)}">{n(s.val)}</div></div>
         <div>
-          <div class="scn">{s.name}</div>
+          <div class="scn">{s.name}{#if s.val != null && s.val >= 85}<span class="crown">👑</span>{/if}</div>
           <div class="scs">{s.sub}</div>
           {#if d != null && d !== 0}<div class="scd" style="color:{d > 0 ? 'var(--success)' : 'var(--warning)'}">{d > 0 ? "▲" : "▼"} {Math.abs(d)} vs 7-day avg</div>{:else}<div class="scd dim">– on your average</div>{/if}
         </div>
@@ -144,13 +173,21 @@
     <div class="card pad">
       <div class="rh"><span class="lb">Last night's sleep</span><span class="sub">{ha.state(E.ouraBedStart) ? "tracked" : "—"}</span></div>
       <div class="sd"><div class="sdur">{dur(ha.num(E.ouraTotalSleep))}</div><div class="sib">asleep · {dur(ha.num(E.ouraTimeInBed))} in bed</div></div>
-      <div class="stagebar">{#each stages as st}<div style="width:{st.w}%;background:{st.color}"></div>{/each}</div>
+      <svg class="hypno" viewBox="0 0 340 120" preserveAspectRatio="none">
+        {#each HYP.lanes as name, i}
+          <text x="0" y={8 + i * 28 + 12} class="hlbl">{name}</text>
+          <line x1="46" x2="338" y1={8 + i * 28 + 8} y2={8 + i * 28 + 8} class="hguide" />
+        {/each}
+        {#each HYP.segs as s}
+          <rect x={46 + s.x * 292} y={8 + s.lane * 28} width={Math.max(2, s.w * 292)} height="16" rx="4" fill={s.col} />
+        {/each}
+      </svg>
       <div class="stagekey">
         {#each stages as st}<div class="sk"><span class="skd" style="background:{st.color}"></span><span class="skn">{st.name}</span><span class="skv">{st.dur}</span></div>{/each}
       </div>
     </div>
     <div class="card pad">
-      <div class="lb" style="margin-bottom:14px">Recovery signals</div>
+      <div class="lb" style="margin-bottom:14px">Readiness contributors</div>
       <div class="sig">
         {#each signals as s}
           <div class="sigrow">
@@ -175,9 +212,9 @@
           {/each}
         </svg>
         <div class="acl">
-          <div class="acr"><span style="color:#fb7185">● Move</span><span class="acv">{n(ha.num(E.ouraActiveCal))} / {n(ha.num(E.ouraTargetCal))} kcal</span></div>
-          <div class="acr"><span style="color:#34d399">● Exercise</span><span class="acv">{n(exMin)} / 30 min</span></div>
-          <div class="acr"><span style="color:#38bdf8">● Steps</span><span class="acv">{n(steps)} / {n(stepsGoal)}</span></div>
+          <div class="acr"><span style="color:#fb2d55">● Move</span><span class="acv">{n(ha.num(E.ouraActiveCal))} / {n(ha.num(E.ouraTargetCal))} kcal</span></div>
+          <div class="acr"><span style="color:#a3f335">● Exercise</span><span class="acv">{n(exMin)} / 30 min</span></div>
+          <div class="acr"><span style="color:#2fe6de">● Steps</span><span class="acv">{n(steps)} / {n(stepsGoal)}</span></div>
           <div class="acr"><span>Total burned</span><span class="acv">{n(ha.num(E.ouraTotalCal))} kcal</span></div>
         </div>
       </div>
@@ -254,7 +291,10 @@
   .sd { display: flex; align-items: flex-end; gap: 13px; margin-bottom: 15px; }
   .sdur { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 0.9; }
   .sib { font-size: 12px; color: var(--muted); padding-bottom: 6px; }
-  .stagebar { display: flex; gap: 2px; height: 14px; border-radius: 7px; overflow: hidden; margin-bottom: 13px; }
+  .crown { margin-left: 5px; font-size: 13px; }
+  .hypno { width: 100%; height: auto; display: block; margin: 4px 0 14px; }
+  .hlbl { fill: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
+  .hguide { stroke: rgba(255, 255, 255, 0.06); stroke-width: 1; }
   .stagekey { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; }
   .sk { display: flex; align-items: center; gap: 8px; }
   .skd { width: 9px; height: 9px; flex-shrink: 0; border-radius: 3px; }
