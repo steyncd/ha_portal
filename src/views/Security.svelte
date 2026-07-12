@@ -3,6 +3,7 @@
   import { ha } from "../lib/store.svelte";
   import { E, ALARM_ZONES, ACCESS, type AlarmZone } from "../lib/entities";
   import { toast } from "../lib/toast.svelte";
+  import { clock } from "../lib/format";
 
   // ---- areas ----
   const homeState = $derived(ha.state(E.alarmHome));
@@ -97,7 +98,6 @@
     events = evs.filter((e) => e.t >= winStart).sort((a, b) => b.t - a.t);
   });
   const pos = (t: number) => Math.max(0, Math.min(100, ((t - winStart) / (24 * 3600_000)) * 100));
-  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 </script>
 
 <div class="col">

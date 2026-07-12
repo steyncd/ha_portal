@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
   import { E, IRR_ZONES, irrZoneSensor } from "../lib/entities";
-  import { n } from "../lib/format";
+  import { n, dateTime } from "../lib/format";
   import { toast } from "../lib/toast.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
 
@@ -37,7 +37,7 @@
     if (mins < 0) return "due";
     if (mins < 60) return `in ${mins}m`;
     const h = Math.floor(mins / 60);
-    return h < 24 ? `in ${h}h ${mins % 60}m` : new Date(d).toLocaleString(undefined, { weekday: "short", hour: "2-digit", minute: "2-digit" });
+    return h < 24 ? `in ${h}h ${mins % 60}m` : dateTime(d);
   }
 
   // weather-aware skip banner

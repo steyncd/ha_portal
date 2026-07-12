@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { E, ROOMS, ALARM_ZONES, CAMERAS } from "../lib/entities";
-  import { n, power, greeting } from "../lib/format";
+  import { n, power, greeting, clock as fmtClock, sastHour } from "../lib/format";
   import Overlay from "../lib/components/Overlay.svelte";
 
   let { onexit }: { onexit: () => void } = $props();
@@ -19,7 +19,7 @@
     loadHist = await ha.history(E.loads, 24);
   });
 
-  const clock = $derived(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
+  const clock = $derived(fmtClock(now));
   const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
   const wxTemp = $derived(ha.attr(E.weather, "temperature") as number | undefined);
   const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)).length);
@@ -32,7 +32,7 @@
   <button class="exit" onclick={onexit} title="Exit">✕</button>
   <div class="head">
     <div>
-      <div class="hi">{greeting(now.getHours())} · 302 Wyoming</div>
+      <div class="hi">{greeting(sastHour(now))} · 302 Wyoming</div>
       <div class="clock">{clock}</div>
     </div>
     <div class="wx">

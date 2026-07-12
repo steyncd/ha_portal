@@ -1,7 +1,7 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
   import { APPLIANCES } from "../lib/entities";
-  import { n } from "../lib/format";
+  import { n, clock, sastHour } from "../lib/format";
 
   type Tab = "me" | "kids";
   type Range = "today" | "yesterday" | "history";
@@ -29,7 +29,7 @@
   const AWAY = "rgba(255,255,255,.13)";
   const DAY = 86_400_000;
 
-  const clk = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  const clk = (t: number) => clock(t);
   const fmtDur = (ms: number) => { const m = Math.round(ms / 60000); if (m < 1) return "<1m"; if (m < 60) return `${m}m`; const h = Math.floor(m / 60); return `${h}h ${m % 60}m`; };
   const asc = (h: { t: number; s: string }[]) => [...h].sort((a, b) => a.t - b.t);
 
@@ -91,7 +91,7 @@
     if (r === "history") {
       // typical day: 24 hourly buckets, coloured by the most-active room that hour
       const buckets = Array.from({ length: 24 }, () => ({}) as Record<number, number>);
-      roomHists.forEach((h, i) => h.forEach((e) => { if (e.s === "on") { const hr = new Date(e.t).getHours(); buckets[hr][i] = (buckets[hr][i] ?? 0) + 1; } }));
+      roomHists.forEach((h, i) => h.forEach((e) => { if (e.s === "on") { const hr = sastHour(new Date(e.t)); buckets[hr][i] = (buckets[hr][i] ?? 0) + 1; } }));
       segs = buckets.map((b, hr) => {
         const top = Object.entries(b).sort((a, c) => c[1] - a[1])[0];
         const rm = top ? ROOMS[+top[0]] : null;

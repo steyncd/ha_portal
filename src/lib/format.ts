@@ -7,6 +7,34 @@ export function n(v: number | null, digits = 0): string {
   });
 }
 
+// ---- Dates & times ----
+// All times/dates render in South African time with en-ZA formatting, pinned
+// so they read the same regardless of the viewing device's timezone/locale.
+export const TZ = "Africa/Johannesburg";
+export const LOCALE = "en-ZA";
+
+/** "14:30" — 24-hour clock in SAST. */
+export function clock(t: number | Date): string {
+  return new Date(t).toLocaleTimeString(LOCALE, { timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false });
+}
+/** "2026/07/12" — en-ZA short date in SAST. */
+export function dateShort(t: number | Date = Date.now()): string {
+  return new Date(t).toLocaleDateString(LOCALE, { timeZone: TZ });
+}
+/** "Sun, 12 Jul" — weekday + day + month in SAST. */
+export function dateMedium(t: number | Date = Date.now()): string {
+  return new Date(t).toLocaleDateString(LOCALE, { timeZone: TZ, weekday: "short", day: "numeric", month: "short" });
+}
+/** "Sun 12 Jul, 14:30". */
+export function dateTime(t: number | Date): string {
+  return `${dateMedium(t)}, ${clock(t)}`;
+}
+/** Hour of day (0–23) in SAST — for greeting / hour bucketing. */
+export function sastHour(d: Date = new Date()): number {
+  const parts = new Intl.DateTimeFormat(LOCALE, { timeZone: TZ, hour: "numeric", hour12: false }).formatToParts(d);
+  return Number(parts.find((p) => p.type === "hour")?.value ?? 0) % 24;
+}
+
 /** Power in W, auto-scaling to kW above 1000. */
 export function power(w: number | null): { val: string; unit: string } {
   if (w == null) return { val: "—", unit: "W" };

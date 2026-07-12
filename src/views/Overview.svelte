@@ -5,7 +5,7 @@
   import { lightSheet } from "../lib/lightSheet.svelte";
   import { toast } from "../lib/toast.svelte";
   import { E, ROOMS, INDOOR_LIGHTS, ALL_LIGHTS, SCENES } from "../lib/entities";
-  import { n, power, greeting, tempColor } from "../lib/format";
+  import { n, power, greeting, tempColor, dateMedium, sastHour } from "../lib/format";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
   import Spark from "../lib/components/Spark.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
@@ -21,7 +21,7 @@
   });
 
   const now = new Date();
-  const dateStr = now.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+  const dateStr = dateMedium(now);
 
   const soc = $derived(ha.num(E.batterySoc));
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
@@ -95,7 +95,7 @@
 
 <div class="head">
   <div>
-    <h1>{greeting(now.getHours())}, Christo</h1>
+    <h1>{greeting(sastHour(now))}, Christo</h1>
     <p>{dateStr} · everything calm · running on your own power</p>
   </div>
   <div class="actions">
