@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E } from "../lib/entities";
-  import { n, dailyMax } from "../lib/format";
+  import { E, PUMPS } from "../lib/entities";
+  import { n, power, dailyMax } from "../lib/format";
   import AreaChart from "../lib/components/AreaChart.svelte";
   import BarChart from "../lib/components/BarChart.svelte";
 
@@ -23,11 +23,16 @@
     useBars = dailyMax(await ha.history(E.waterUsedToday, 24 * 7), 7);
   });
 
-  const pumps = [
-    { id: E.waterPump, icon: "💧", name: "Water Pump" },
-    { id: E.poolPump, icon: "🏊", name: "Pool Pump" },
-    { id: E.boreholePump, icon: "🕳️", name: "Borehole" },
-  ];
+  // pump state from live power: off → idling (on, low W) → pumping (on, high W)
+  function pumpState(p: (typeof PUMPS)[number]) {
+    const on = ha.isOn(p.sw);
+    const w = ha.num(p.power);
+    if (!on) return { label: "Off", pumping: false, w };
+    return { label: (w ?? 0) > p.threshold ? "Pumping" : "Idling", pumping: (w ?? 0) > p.threshold, w };
+  }
+  const bhPower = $derived(ha.num(E.boreholePower));
+  const bhOn = $derived(ha.isOn(E.boreholePump));
+  const bhPumping = $derived(bhOn && (bhPower ?? 0) > 40);
 </script>
 
 <div class="col">
@@ -52,11 +57,14 @@
     </div>
     <div class="right">
       <div class="card pad">
-        <div class="lb" style="margin-bottom:13px">Pumps</div>
+        <div class="lb" style="margin-bottom:13px">Pumps · live power</div>
         <div class="pgrid">
-          {#each pumps as p}
-            <button class="ptile" class:on={ha.isOn(p.id)} onclick={() => ha.toggle(p.id)}>
-              <span class="pi">{p.icon}</span><span class="pn">{p.name}</span><span class="ps">{ha.isOn(p.id) ? "Running" : "Off"}</span>
+          {#each PUMPS as p}
+            {@const st = pumpState(p)}
+            <button class="ptile" class:on={ha.isOn(p.sw)} class:pumping={st.pumping} onclick={() => ha.toggle(p.sw)}>
+              <span class="pi">{p.icon}</span><span class="pn">{p.label}</span>
+              <span class="pw">{st.w != null ? `${power(st.w).val} ${power(st.w).unit}` : "—"}</span>
+              <span class="ps" class:go={st.pumping}>{st.label}</span>
             </button>
           {/each}
         </div>
@@ -67,6 +75,23 @@
         <div class="card s"><div class="lb">Borehole</div><div class="sv">{n(ha.num(E.boreholeToday))}<span class="u"> L</span></div><div class="sub">{n(ha.num(E.boreholeMonth))} L month</div></div>
       </div>
     </div>
+  </div>
+
+  <!-- borehole live detail -->
+  <div class="card pad bh" class:go={bhPumping}>
+    <div class="rh">
+      <span class="lb">Borehole pump</span>
+      <span class="bhstate" class:go={bhPumping}>{!bhOn ? "Off" : bhPumping ? "● Pumping" : "○ Idling (standby)"}</span>
+    </div>
+    <div class="bhgrid">
+      <div class="bhm"><div class="bhv" style="color:{bhPumping ? 'var(--water)' : 'var(--muted)'}">{bhPower != null ? `${power(bhPower).val} ${power(bhPower).unit}` : "—"}</div><div class="bhk">Power now</div></div>
+      <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeFlow), 1)}<span class="uu"> L/min</span></div><div class="bhk">Flow rate</div></div>
+      <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeToday))}<span class="uu"> L</span></div><div class="bhk">Pumped today</div></div>
+      <div class="bhm"><div class="bhv">{ha.state(E.boreholeRunToday) ?? "—"}</div><div class="bhk">Run time today</div></div>
+      <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeEnergyToday), 2)}<span class="uu"> kWh</span></div><div class="bhk">Energy today</div></div>
+      <div class="bhm"><div class="bhv">R{n(ha.num(E.boreholeCostToday), 2)}</div><div class="bhk">Cost today</div></div>
+    </div>
+    <div class="note">Sitting at a few watts = idling on standby. A jump to hundreds of watts means it's actually drawing water.</div>
   </div>
 
   <div class="charts">
@@ -108,11 +133,26 @@
   .right { display: flex; flex-direction: column; gap: 14px; }
   .pad { padding: 18px; }
   .pgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-  .ptile { display: flex; flex-direction: column; gap: 7px; padding: 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); text-align: left; }
+  .ptile { display: flex; flex-direction: column; gap: 4px; padding: 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); text-align: left; }
   .ptile.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .ptile.pumping { background: color-mix(in srgb, var(--water) 18%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--water) 60%, transparent); }
   .pi { font-size: 18px; }
   .pn { font-size: 12.5px; font-weight: 600; }
-  .ps { font-size: 10.5px; color: var(--text-2); }
+  .pw { font-size: 15px; font-weight: 800; margin-top: 2px; }
+  .ps { font-size: 10.5px; color: var(--muted); }
+  .ps.go { color: var(--water); font-weight: 700; }
+  .bh { position: relative; overflow: hidden; }
+  .bh.go { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 40px -24px rgba(0, 0, 0, 0.8), inset 0 0 0 1px color-mix(in srgb, var(--water) 40%, transparent); }
+  .bhstate { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .bhstate.go { color: var(--water); }
+  .bhgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; margin: 4px 0 12px; }
+  @media (max-width: 760px) { .bhgrid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 420px) { .bhgrid { grid-template-columns: repeat(2, 1fr); } }
+  .bhm { min-width: 0; }
+  .bhv { font-size: 19px; font-weight: 800; }
+  .uu { font-size: 11px; color: var(--dim); font-weight: 600; }
+  .bhk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .note { font-size: 11.5px; color: var(--muted-2); }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .s { padding: 16px; }
   .sv { font-size: 24px; font-weight: 800; margin-top: 5px; }

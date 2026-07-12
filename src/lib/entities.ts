@@ -96,6 +96,15 @@ export const E = {
   waterPump: "switch.water_pump",
   poolPump: "switch.pool_pump",
   boreholePump: "switch.borehole_pump",
+
+  // Pump live power + detail (idle ≈ a few W, pumping = hundreds of W)
+  waterPumpPower: "sensor.water_pump_power",
+  poolPumpPower: "sensor.pool_pump_power_now",
+  boreholePower: "sensor.borehole_pump_power_now",
+  boreholeFlow: "sensor.borehole_pump_actual_flow_rate",
+  boreholeRunToday: "sensor.borehole_pump_run_time_today",
+  boreholeEnergyToday: "sensor.borehole_pump_energy",
+  boreholeCostToday: "sensor.borehole_pump_cost_today",
   heater: "switch.study_heater",
 
   notices: "sensor.home_notices",
@@ -164,6 +173,14 @@ export const E = {
 } as const;
 
 export type SceneDef = { id: string; label: string; icon: string };
+export type Pump = { sw: string; power: string; flow: string | null; label: string; icon: string; threshold: number };
+// threshold W above which the pump is actually moving water (vs just idling)
+export const PUMPS: Pump[] = [
+  { sw: "switch.water_pump", power: "sensor.water_pump_power", flow: null, label: "Water Pump", icon: "💧", threshold: 20 },
+  { sw: "switch.borehole_pump", power: "sensor.borehole_pump_power_now", flow: "sensor.borehole_pump_actual_flow_rate", label: "Borehole", icon: "🕳️", threshold: 40 },
+  { sw: "switch.pool_pump", power: "sensor.pool_pump_power_now", flow: null, label: "Pool Pump", icon: "🏊", threshold: 40 },
+];
+
 export const SCENES: SceneDef[] = [
   { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
   { id: "script.movie_mode", label: "Movie", icon: "🎬" },

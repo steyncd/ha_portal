@@ -217,6 +217,58 @@
   $effect(() => { if (tab === "me") loadMe(meRange); });
   $effect(() => { if (tab === "kids") loadKids(kidRange); });
 
+  // ---------- phone / device details ----------
+  const MEP = {
+    batt: "sensor.christos_iphone_battery_level", state: "sensor.christos_iphone_battery_state",
+    ssid: "sensor.christos_iphone_ssid", conn: "sensor.christos_iphone_connection_type",
+    steps: "sensor.christos_iphone_steps", dist: "sensor.christos_iphone_distance",
+    floors: "sensor.christos_iphone_floors_ascended", activity: "sensor.christos_iphone_activity",
+    storage: "sensor.christos_iphone_storage",
+  };
+  const KDP = {
+    batt: "sensor.kid_s_phone_battery_level", state: "sensor.kid_s_phone_battery_state",
+    health: "sensor.kid_s_phone_battery_health", temp: "sensor.kid_s_phone_battery_temperature",
+    charge: "sensor.kid_s_phone_remaining_charge_time", charger: "sensor.kid_s_phone_charger_type",
+    ssid: "sensor.kid_s_phone_wi_fi_connection", signal: "sensor.kid_s_phone_wi_fi_signal_strength", net: "sensor.kid_s_phone_network_type",
+    steps: "sensor.kid_s_phone_daily_steps", dist: "sensor.kid_s_phone_daily_distance", floors: "sensor.kid_s_phone_daily_floors",
+    activity: "sensor.kid_s_phone_detected_activity", ringer: "sensor.kid_s_phone_ringer_mode", dnd: "sensor.kid_s_phone_do_not_disturb_sensor",
+    lastApp: "sensor.kid_s_phone_last_used_app", alarm: "sensor.kid_s_phone_next_alarm", hr: "sensor.kid_s_phone_heart_rate",
+  };
+  const bad = (v: string | undefined) => !v || /^(unknown|unavailable|<not connected>|not connected)$/i.test(v);
+  function stat(id: string, label: string, digits = 0) {
+    const num = ha.num(id);
+    if (num != null) { const u = ha.unit(id); return { k: label, v: `${n(num, digits)}${u ? " " + u : ""}` }; }
+    const s = ha.state(id);
+    return { k: label, v: bad(s) ? "—" : (s as string) };
+  }
+  function netLabel(m: { ssid: string; signal: string; net: string }) {
+    const ssid = ha.state(m.ssid);
+    if (!bad(ssid)) return { k: "Wi-Fi", v: ssid as string };
+    return { k: "Network", v: bad(ha.state(m.net)) ? "—" : (ha.state(m.net) as string) };
+  }
+  const chargeState = (s: string | undefined) => s === "Charging" || s === "charging" ? "⚡ charging" : s === "Full" || s === "full" ? "fully charged" : "on battery";
+
+  const mePhone = $derived([
+    stat(MEP.steps, "Steps"), stat(MEP.dist, "Distance", 1), stat(MEP.floors, "Floors"),
+    { k: "Activity", v: bad(ha.state(MEP.activity)) ? "—" : (ha.state(MEP.activity) as string) },
+    ha.state(MEP.ssid) && !bad(ha.state(MEP.ssid)) ? { k: "Wi-Fi", v: ha.state(MEP.ssid) as string } : { k: "Connection", v: bad(ha.state(MEP.conn)) ? "—" : (ha.state(MEP.conn) as string) },
+    stat(MEP.storage, "Storage free"),
+  ].filter((c) => c.v !== "—"));
+  const meBatt = $derived(ha.num(MEP.batt));
+  const meBattState = $derived(ha.state(MEP.state));
+
+  const kidStats = $derived([
+    stat(KDP.steps, "Steps"), stat(KDP.dist, "Distance", 1), stat(KDP.floors, "Floors"),
+    { k: "Activity", v: bad(ha.state(KDP.activity)) ? "—" : (ha.state(KDP.activity) as string) },
+    netLabel(KDP),
+    stat(KDP.hr, "Heart rate"),
+    { k: "Ringer", v: bad(ha.state(KDP.ringer)) ? "—" : (ha.state(KDP.ringer) as string) },
+    { k: "Last app", v: bad(ha.state(KDP.lastApp)) ? "—" : (ha.state(KDP.lastApp) as string) },
+    stat(KDP.temp, "Battery temp"),
+    stat(KDP.health, "Battery health"),
+  ].filter((c) => c.v !== "—"));
+  const kidCharging = $derived(/charg/i.test(ha.state(KDP.state) ?? ""));
+
   const RANGES: { id: Range; label: string }[] = [
     { id: "today", label: "Today" }, { id: "yesterday", label: "Yesterday" }, { id: "history", label: "History" },
   ];
@@ -290,6 +342,17 @@
         {/each}
       {:else}<div class="note">No location history {hero.label}.</div>{/if}
     </div>
+
+    <!-- phone -->
+    <div class="card pad">
+      <div class="rh"><span class="lb">Christo's phone</span><span class="sub">iPhone · live</span></div>
+      <div class="phone">
+        <div class="pbatt"><div class="pbv" style="color:{meBatt != null && meBatt < 20 ? 'var(--error)' : 'var(--success)'}">{meBatt != null ? n(meBatt) : "—"}%</div><div class="pbk">{chargeState(meBattState)}</div></div>
+        <div class="chips">
+          {#each mePhone as c}<div class="chip"><span class="ck">{c.k}</span><span class="cv">{c.v}</span></div>{/each}
+        </div>
+      </div>
+    </div>
   {:else}
     <!-- kids -->
     <div class="card pad kidhead">
@@ -320,6 +383,16 @@
             <div class="row2"><span class="ri">{e.icon}</span><div class="rt2"><span class="rn">{e.txt}</span><span class="rd"> · {e.sub}</span></div><span class="rtm num">{e.t}</span></div>
           {/each}
         {:else}<div class="note">No phone activity for this range.</div>{/if}
+      </div>
+    </div>
+    <!-- device details -->
+    <div class="card pad">
+      <div class="rh"><span class="lb">Device details</span><span class="sub">{kidCharging ? "⚡ charging" : "on battery"}</span></div>
+      <div class="phone">
+        <div class="pbatt"><div class="pbv" style="color:{kidBattColor}">{kidNow.battery}%</div><div class="pbk">{kidCharging && !bad(ha.state(KDP.charge)) ? `${ha.state(KDP.charge)} left` : chargeState(ha.state(KDP.state))}</div></div>
+        <div class="chips">
+          {#each kidStats as c}<div class="chip"><span class="ck">{c.k}</span><span class="cv">{c.v}</span></div>{/each}
+        </div>
       </div>
     </div>
     <div class="foot">One shared phone for Liam &amp; Eben. Location from its <b>device_tracker</b> (GPS) — HA zone name inside a known zone, otherwise the reverse-geocoded address. Phone events from battery &amp; geofence sensors.</div>
@@ -395,4 +468,13 @@
   .kbk { font-size: 10px; color: var(--muted-2); }
   .foot { font-size: 11.5px; color: var(--muted-2); }
   .foot b { color: var(--text-2); }
+
+  .phone { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .pbatt { flex-shrink: 0; }
+  .pbv { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+  .pbk { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .chips { flex: 1; min-width: 220px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: flex; flex-direction: column; gap: 1px; padding: 8px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.045); }
+  .ck { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .cv { font-size: 13px; font-weight: 700; }
 </style>

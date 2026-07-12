@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E, APPLIANCES } from "../lib/entities";
+  import { E, APPLIANCES, PUMPS } from "../lib/entities";
   import { n, power, rand, dailyMax } from "../lib/format";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
   import AreaChart from "../lib/components/AreaChart.svelte";
@@ -189,6 +189,21 @@
       {/each}
     </div>
   </div>
+
+  <div class="card pad">
+    <div class="rh"><span class="lb">Pumps — live power</span><span class="sub">idle draw vs actually pumping</span></div>
+    <div class="appgrid">
+      {#each PUMPS as p}
+        {@const w = ha.num(p.power)}
+        {@const on = ha.isOn(p.sw)}
+        {@const pumping = on && (w ?? 0) > p.threshold}
+        <button class="app" class:on class:pumping onclick={() => ha.toggle(p.sw)} disabled={!ha.exists(p.sw)}>
+          <span class="al"><span class="an">{p.icon} {p.label}</span><span class="aw">{w != null ? `${power(w).val} ${power(w).unit}` : "—"}{p.flow && pumping ? ` · ${n(ha.num(p.flow), 1)} L/min` : ""}</span></span>
+          <span class="apill" class:apon={pumping}>{!on ? "OFF" : pumping ? "PUMPING" : "IDLE"}</span>
+        </button>
+      {/each}
+    </div>
+  </div>
 </div>
 
 <style>
@@ -249,6 +264,8 @@
   .appgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .app { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); text-align: left; }
   .app.on { background: color-mix(in srgb, var(--warning) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }
+  .app.pumping { background: color-mix(in srgb, var(--water) 16%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--water) 58%, transparent); }
+  .app.pumping .apill.apon { background: color-mix(in srgb, var(--water) 34%, transparent); }
   .app:disabled { opacity: 0.4; }
   .al { display: flex; flex-direction: column; gap: 2px; }
   .an { font-size: 13.5px; font-weight: 600; }

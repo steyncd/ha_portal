@@ -352,6 +352,42 @@ const ROWS: Row[] = [
   ["sensor.christos_iphone_geocoded_location", "14 Wyoming Ave, Sandton"],
   ["sensor.kid_s_phone_geocoded_location", "Redhill School, Morningside"],
   ["sensor.kid_s_phone_battery_level", "72", { unit_of_measurement: "%" }],
+
+  // Pump live power — borehole set high to demo "pumping"; water idling; pool off
+  ["switch.borehole_pump", "on"],
+  ["sensor.borehole_pump_power_now", "1123", { unit_of_measurement: "W" }],
+  ["sensor.borehole_pump_actual_flow_rate", "34", { unit_of_measurement: "L/min" }],
+  ["sensor.borehole_pump_run_time_today", "42 min"],
+  ["sensor.borehole_pump_energy", "1.9", { unit_of_measurement: "kWh" }],
+  ["sensor.borehole_pump_cost_today", "6.60", { unit_of_measurement: "R" }],
+  ["sensor.water_pump_power", "3", { unit_of_measurement: "W" }],
+  ["sensor.pool_pump_power_now", "0", { unit_of_measurement: "W" }],
+
+  // Christo's iPhone
+  ["sensor.christos_iphone_battery_level", "68", { unit_of_measurement: "%" }],
+  ["sensor.christos_iphone_battery_state", "Not Charging"],
+  ["sensor.christos_iphone_ssid", "Steyn-Home-5G"],
+  ["sensor.christos_iphone_connection_type", "Wi-Fi"],
+  ["sensor.christos_iphone_steps", "4820"],
+  ["sensor.christos_iphone_distance", "3.4", { unit_of_measurement: "km" }],
+  ["sensor.christos_iphone_floors_ascended", "6"],
+  ["sensor.christos_iphone_activity", "Walking"],
+  ["sensor.christos_iphone_storage", "42.1", { unit_of_measurement: "GB" }],
+
+  // Kids' phone extras (Android)
+  ["sensor.kid_s_phone_battery_state", "Charging"],
+  ["sensor.kid_s_phone_battery_health", "Good"],
+  ["sensor.kid_s_phone_battery_temperature", "29", { unit_of_measurement: "°C" }],
+  ["sensor.kid_s_phone_remaining_charge_time", "38 min"],
+  ["sensor.kid_s_phone_wi_fi_connection", "Redhill-Guest"],
+  ["sensor.kid_s_phone_network_type", "wifi"],
+  ["sensor.kid_s_phone_daily_steps", "6120"],
+  ["sensor.kid_s_phone_daily_distance", "4.1", { unit_of_measurement: "km" }],
+  ["sensor.kid_s_phone_daily_floors", "9"],
+  ["sensor.kid_s_phone_detected_activity", "Still"],
+  ["sensor.kid_s_phone_ringer_mode", "Vibrate"],
+  ["sensor.kid_s_phone_last_used_app", "YouTube Kids"],
+  ["sensor.kid_s_phone_heart_rate", "88", { unit_of_measurement: "bpm" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
