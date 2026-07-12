@@ -56,7 +56,18 @@
   let segs = $state<{ color: string; w: number; title: string }[]>([]);
   let legend = $state<{ label: string; color: string }[]>([]);
   let roomTime = $state<{ label: string; color: string; w: number; dur: string }[]>([]);
-  let applog = $state<{ icon: string; name: string; detail: string; t: string }[]>([]);
+  type ALog = { icon: string; name: string; detail: string; t: string; start: number; durMs: number; running: boolean };
+  let applog = $state<ALog[]>([]);
+  let appFilter = $state<"all" | "running">("all");
+  let appSort = $state<"recent" | "long" | "name">("recent");
+  const appView = $derived.by(() => {
+    const f = applog.filter((e) => (appFilter === "running" ? e.running : true));
+    const cmp: (a: ALog, b: ALog) => number =
+      appSort === "long" ? (a, b) => b.durMs - a.durMs
+      : appSort === "name" ? (a, b) => a.name.localeCompare(b.name)
+      : (a, b) => b.start - a.start;
+    return [...f].sort(cmp).slice(0, 12);
+  });
   type Place = { icon: string; name: string; tag: string; zone: boolean; sub: string; window: string; dur: string; start: number; durMs: number; count: number };
   // ---- places-list ordering + filtering ----
   type PFilter = "all" | "zone" | "geo";
@@ -142,24 +153,24 @@
     roomTime = times.map((x) => ({ label: x.label, color: x.color, w: (x.ms / maxMs) * 100, dur: fmtDur(x.ms) }));
 
     // ----- appliance activity -----
-    const runs: { icon: string; name: string; detail: string; t: string; start: number }[] = [];
+    const runs: ALog[] = [];
     applHists.forEach((h, i) => {
       const a = APPLIANCES[i]; const hh = asc(h); let onAt: number | null = null;
       for (const e of hh) {
         if (e.s === "on" && onAt == null) onAt = e.t;
         else if (e.s !== "on" && onAt != null) {
-          if (e.t >= start) runs.push({ icon: a.icon, name: a.label, detail: `ran ${fmtDur(e.t - onAt)}`, t: clk(onAt), start: onAt });
+          if (e.t >= start) runs.push({ icon: a.icon, name: a.label, detail: `ran ${fmtDur(e.t - onAt)}`, t: clk(onAt), start: onAt, durMs: e.t - onAt, running: false });
           onAt = null;
         }
       }
-      if (onAt != null) runs.push({ icon: a.icon, name: a.label, detail: "running now", t: clk(onAt), start: onAt });
+      if (onAt != null) runs.push({ icon: a.icon, name: a.label, detail: "running now", t: clk(onAt), start: onAt, durMs: Date.now() - onAt, running: true });
     });
     if (r === "history") {
-      const byName = new Map<string, { icon: string; name: string; count: number }>();
-      for (const x of runs) { const e = byName.get(x.name) ?? { icon: x.icon, name: x.name, count: 0 }; e.count++; byName.set(x.name, e); }
-      applog = [...byName.values()].sort((a, b) => b.count - a.count).map((e) => ({ icon: e.icon, name: e.name, detail: `${e.count} run${e.count === 1 ? "" : "s"} this week`, t: "" }));
+      const byName = new Map<string, { icon: string; name: string; count: number; durMs: number }>();
+      for (const x of runs) { const e = byName.get(x.name) ?? { icon: x.icon, name: x.name, count: 0, durMs: 0 }; e.count++; e.durMs += x.durMs; byName.set(x.name, e); }
+      applog = [...byName.values()].sort((a, b) => b.count - a.count).map((e) => ({ icon: e.icon, name: e.name, detail: `${e.count} run${e.count === 1 ? "" : "s"} · ${fmtDur(e.durMs)}`, t: "", start: 0, durMs: e.durMs, running: false }));
     } else {
-      applog = runs.sort((a, b) => b.start - a.start).slice(0, 8).map((e) => ({ icon: e.icon, name: e.name, detail: e.detail, t: e.t }));
+      applog = runs;
     }
 
     // ----- places -----
@@ -373,12 +384,24 @@
         {:else}<div class="note">No room activity recorded {hero.label}.</div>{/if}
       </div>
       <div class="card pad">
-        <div class="lb" style="margin-bottom:6px">Appliance activity</div>
-        {#if applog.length}
-          {#each applog as e}
+        <div class="rh"><span class="lb">Appliance activity</span><span class="sub">{appView.length} of {applog.length}</span></div>
+        <div class="pctl">
+          <div class="pseg">
+            {#each [["all", "All"], ["running", "Running"]] as [k, l]}
+              <button class:on={appFilter === k} onclick={() => (appFilter = k as typeof appFilter)}>{l}</button>
+            {/each}
+          </div>
+          <div class="pseg">
+            {#each [["recent", "Recent"], ["long", "Longest"], ["name", "A–Z"]] as [k, l]}
+              <button class:on={appSort === k} onclick={() => (appSort = k as typeof appSort)}>{l}</button>
+            {/each}
+          </div>
+        </div>
+        {#if appView.length}
+          {#each appView as e}
             <div class="row2"><span class="ri">{e.icon}</span><div class="rt2"><div class="rn">{e.name}</div><div class="rd">{e.detail}</div></div><span class="rtm num">{e.t}</span></div>
           {/each}
-        {:else}<div class="note">No appliance runs {hero.label}.</div>{/if}
+        {:else}<div class="note">{applog.length ? "No appliances match this filter." : `No appliance runs ${hero.label}.`}</div>{/if}
       </div>
     </div>
 

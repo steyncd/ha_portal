@@ -52,6 +52,18 @@
   const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)));
   const bypassedZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.bypass)));
 
+  // zones grid: filter + sort
+  let zoneFilter = $state<"all" | "active" | "bypassed" | "clear">("all");
+  let zoneSort = $state<"status" | "name">("status");
+  const zonesView = $derived.by(() => {
+    const rank = (z: AlarmZone) => (ha.isOn(z.id) ? 0 : ha.isOn(z.bypass) ? 1 : 2);
+    const f = ALARM_ZONES.filter((z) => {
+      const a = ha.isOn(z.id), b = ha.isOn(z.bypass);
+      return zoneFilter === "all" ? true : zoneFilter === "active" ? a : zoneFilter === "bypassed" ? b : !a && !b;
+    });
+    return [...f].sort((x, y) => (zoneSort === "name" ? 0 : rank(x) - rank(y)) || x.label.localeCompare(y.label));
+  });
+
   function toggleBypass(z: AlarmZone) {
     const bypassed = ha.isOn(z.bypass);
     const next = !bypassed;
@@ -177,20 +189,34 @@
   <!-- zones + per-zone bypass -->
   <div class="card pad">
     <div class="rh">
-      <span class="lb">Zones · {activeZones.length} active · {bypassedZones.length} bypassed</span>
+      <span class="lb">Zones · {zonesView.length} of {ALARM_ZONES.length}</span>
       {#if bypassedZones.length}<button class="restoreall" onclick={() => { bypassedZones.forEach((z) => toggleBypass(z)); }}>Restore all</button>{/if}
     </div>
+    <div class="zctl">
+      <div class="zseg">
+        {#each [["all", "All"], ["active", "Active"], ["bypassed", "Bypassed"], ["clear", "Clear"]] as [k, l]}
+          <button class:on={zoneFilter === k} onclick={() => (zoneFilter = k as typeof zoneFilter)}>{l}</button>
+        {/each}
+      </div>
+      <div class="zseg">
+        {#each [["status", "Status"], ["name", "A–Z"]] as [k, l]}
+          <button class:on={zoneSort === k} onclick={() => (zoneSort = k as typeof zoneSort)}>{l}</button>
+        {/each}
+      </div>
+    </div>
     <div class="zgrid">
-      {#each ALARM_ZONES as z}
-        {@const active = ha.isOn(z.id)}
-        {@const bypassed = ha.isOn(z.bypass)}
-        <div class="zrow" class:bypassed>
-          <span class="zd" class:active></span>
-          <span class="zn">{z.label}</span>
-          <span class="zstate">{active ? "Active" : "Clear"}</span>
-          <button class="byp" class:on={bypassed} onclick={() => toggleBypass(z)}>{bypassed ? "Restore" : "Bypass"}</button>
-        </div>
-      {/each}
+      {#if zonesView.length}
+        {#each zonesView as z}
+          {@const active = ha.isOn(z.id)}
+          {@const bypassed = ha.isOn(z.bypass)}
+          <div class="zrow" class:bypassed>
+            <span class="zd" class:active></span>
+            <span class="zn">{z.label}</span>
+            <span class="zstate">{active ? "Active" : "Clear"}</span>
+            <button class="byp" class:on={bypassed} onclick={() => toggleBypass(z)}>{bypassed ? "Restore" : "Bypass"}</button>
+          </div>
+        {/each}
+      {:else}<div class="note">No zones match this filter.</div>{/if}
     </div>
     <div class="note">Bypassed zones are excluded from arming until restored. Changes press the alarm's per-zone bypass / unbypass controls.</div>
   </div>
@@ -250,6 +276,10 @@
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
   .restoreall { font-size: 11.5px; font-weight: 600; color: var(--acc2); padding: 6px 12px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
   .restoreall:hover { background: rgba(255, 255, 255, 0.1); }
+  .zctl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .zseg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
+  .zseg button { padding: 6px 11px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .zseg button.on { background: var(--grad); color: #07131c; }
   .zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
   .zrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .zrow.bypassed { opacity: 0.55; background: color-mix(in srgb, var(--warning) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 26%, transparent); }
