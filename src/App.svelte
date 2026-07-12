@@ -16,6 +16,7 @@
   import Lights from "./views/Lights.svelte";
   import System from "./views/System.svelte";
   import Me from "./views/Me.svelte";
+  import Timeline from "./views/Timeline.svelte";
   import Settings from "./views/Settings.svelte";
   import TV from "./views/TV.svelte";
   import CommandPalette from "./lib/components/CommandPalette.svelte";
@@ -123,6 +124,7 @@
         {:else if view === "lights"}<Lights />
         {:else if view === "system"}<System />
         {:else if view === "me"}<Me />
+        {:else if view === "timeline"}<Timeline />
         {:else if view === "settings"}<Settings ontv={() => (tv = true)} />{/if}
       </div>
     </main>

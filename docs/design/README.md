@@ -137,10 +137,34 @@ bands, concentric rings, trend deltas.
 
 ---
 
+## 7. New view — Timeline (location & activity history)
+**File:** new `src/views/Timeline.svelte` · **NAV:** add `{ id:"timeline", name:"Timeline", icon:"🕒", group:"House" }` after `me`; add to `prefs.viewsOn`, the Settings enabled-views list, and the mobile More sheet.
+Two tabs — **Me** and **Liam & Eben** — each with a **Today / Yesterday / History** range switch.
+
+**Me tab** (range drives every block):
+- **"Your day" hero** — summary line + 3 stats (At home, Places, Appliance runs), recomputed per range.
+- **Movement through the house** — a 24h horizontal presence bar, segments colored by room, + legend. Derive from room motion state-history: `binary_sensor.helloliam_alarm_zone_0XX_pir_*` (main / kids / tv / lounge / kitchen / garage / passage / roof / front door), `binary_sensor.lounge_lounge_occupancy_sensor` (mmWave), `binary_sensor.house_interior_motion`; "Away" from `binary_sensor.nobody_home` / `person.christo_steyn` not-home. History = a typical-day (7-day average) bar.
+- **Time by room** — bars of summed duration per room (exclude Away); History = avg/day.
+- **Appliance activity** — log built from each `switch.*` on/off transition + its `sensor.*_power` (dishwasher, washing_machine, tumble_dryer, kettle, microwave, kitchen_air_fryer, nespresso, work_pc, study_heater, top_loader): time · action · duration · kWh. History = per-appliance run counts + weekly kWh.
+- **Places visited** — from `person.christo_steyn` state history → HA **zone name** when inside a zone, otherwise the **reverse-geocoded address** (a `sensor.<phone>_geocoded_location` helper, or reverse-geocode the tracker's `latitude`/`longitude`). Show arrive–leave + duration; tag each **Zone** vs **Geocoded**.
+
+**Liam & Eben tab** (one **shared** phone):
+- A single card: current location (zone or geocoded) + phone battery, then **one merged places list** + a **phone-activity feed** (geofence arrive/leave, charging, low-battery, left-safe-zones). Same Today/Yesterday/History switch; History = 7-day rollup (school weekdays, geocoded stops, safe-zone flags).
+- Wire to the **single shared** kids tracker (currently `person.hello_liam_en_eben`) — one `device_tracker`, not two.
+
+**Data reality:** there is no per-room "presence" entity — derive movement from PIR/occupancy **state history**. Zone-vs-geocoded: use the HA zone name if the point is inside a zone, else reverse-geocode the GPS. Kids share one phone → one list (not two people).
+
+**Acceptance:** both tabs render; the range switch changes the movement bar, time-by-room, appliance log and places; Me places are tagged Zone/Geocoded; the kids tab is a single shared-phone list with a working Today/Yesterday/History switch.
+
+---
+
 ## Design tokens
 Unchanged — use `CLAUDE.md` §"Aurora Glass" verbatim (the `:root` tokens already in `src/app.css`). No new
 tokens are introduced by these changes. Band/accent colors used above (`#fb2d55`, `#a3f335`, `#2fe6de` for the
 Apple activity rings) are the only literals not in the token set — keep them local to the Me activity ring.
+
+## Kickoff prompt for Claude Code
+> Apply the design re-sync described in this bundle's README to **`steyncd/ha_portal`** (`main`). Read **`CLAUDE.md`** for the Aurora-Glass tokens, entity map and data guardrails, then open **`HA Portal.dc.html`** (and **`Me Health.dc.html`**) as the visual target. Work item by item (1–7): update `src/views/` **Energy, Security, Irrigation, Traffic, Cameras, Me**, and add a new **`src/views/Timeline.svelte`** with its NAV / `prefs.viewsOn` / Settings / mobile-More wiring. Use the app's existing patterns — scoped CSS with the `--` tokens, the `home-assistant-js-websocket` store, the **history/logbook API** for the Timeline ranges, and hand-rolled inline-SVG. Honor the guardrails: no `climate.*` / `lock.*` / `cover.*` entities; per-room and per-area splits are **derived/estimated, not fabricated**; Liam & Eben **share one phone**. Match the prototype on desktop (~1240px) and mobile (~375–430px). When done, re-sync the repo's `docs/` copy from the updated `HA Portal.dc.html`.
 
 ## Files in this bundle
 - `HA Portal.dc.html` — full design, all six changes (open in a browser; needs `support.js`).

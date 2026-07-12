@@ -31,7 +31,7 @@ const DEFAULTS: Stored = {
   collapsed: false,
   viewsOn: {
     energy: true, water: true, irrigation: true, climate: true, appliances: true,
-    cameras: true, traffic: true, lights: true, system: true, me: true,
+    cameras: true, traffic: true, lights: true, system: true, me: true, timeline: true,
   },
   widgets: {
     scenes: true, lights: true, energyToday: true,

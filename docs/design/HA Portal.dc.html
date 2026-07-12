@@ -892,6 +892,128 @@
           </div>
         </sc-if>
 
+        <!-- ============ TIMELINE ============ -->
+        <sc-if value="{{ vTimeline }}" hint-placeholder-val="{{ false }}">
+          <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:6px;padding:5px;border-radius:14px;background:rgba(255,255,255,.05);align-self:flex-start">
+              <sc-for list="{{ tlTabs }}" as="tb" hint-placeholder-count="2">
+                <button onClick="{{ tb.select }}" style="position:relative;padding:9px 20px;border-radius:10px;border:none;background:none;cursor:pointer;font-size:13px;font-weight:700;color:{{ tb.fg }};overflow:hidden"><span style="position:absolute;inset:0;border-radius:10px;background:{{ t.grad }};opacity:{{ tb.active }}"></span><span style="position:relative">{{ tb.label }}</span></button>
+              </sc-for>
+            </div>
+
+            <!-- ===== ME TAB ===== -->
+            <sc-if value="{{ tlMe }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="display:flex;gap:6px;padding:5px;border-radius:12px;background:rgba(255,255,255,.05);align-self:flex-start">
+                  <sc-for list="{{ meRangeTabs }}" as="tb" hint-placeholder-count="3">
+                    <button onClick="{{ tb.select }}" style="position:relative;padding:8px 16px;border-radius:9px;border:none;background:none;cursor:pointer;font-size:12.5px;font-weight:700;color:{{ tb.fg }};overflow:hidden"><span style="position:absolute;inset:0;border-radius:9px;background:{{ t.grad }};opacity:{{ tb.active }}"></span><span style="position:relative">{{ tb.label }}</span></button>
+                  </sc-for>
+                </div>
+                <div style="padding:20px 22px;{{ SC }};display:flex;align-items:center;gap:18px;flex-wrap:wrap;position:relative;overflow:hidden">
+                  <span style="position:absolute;inset:0;background:radial-gradient(120% 150% at 0% 0%,color-mix(in srgb,{{ t.acc }} 15%,transparent),transparent 60%);pointer-events:none"></span>
+                  <div style="position:relative;flex:1;min-width:200px"><div style="{{ LB }};color:{{ t.acc }}">Your day</div><div style="font-size:22px;font-weight:800;letter-spacing:-.4px;margin-top:4px">{{ meDaySummary }}</div><div style="font-size:12.5px;color:#b6c5d6;margin-top:4px">{{ meDaySub }}</div></div>
+                  <div style="position:relative;display:flex;gap:20px;flex-shrink:0">
+                    <div style="text-align:center"><div style="font-size:22px;font-weight:800">{{ meAtHome }}</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">At home</div></div>
+                    <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:{{ t.acc }}">{{ mePlacesN }}</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Places</div></div>
+                    <div style="text-align:center"><div style="font-size:22px;font-weight:800;color:#fbbf24">{{ meApplN }}</div><div style="font-size:10px;color:#aebccd;text-transform:uppercase;letter-spacing:.05em;margin-top:2px">Appliance runs</div></div>
+                  </div>
+                </div>
+                <div style="padding:20px 22px;{{ SC }}">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px"><span style="{{ LB }}">Movement through the house · {{ meRangeCtx }}</span><span style="font-size:12px;color:#b6c5d6">from room sensors</span></div>
+                  <div style="display:flex;height:30px;border-radius:9px;overflow:hidden;gap:1px">
+                    <sc-for list="{{ presenceSegs }}" as="s" hint-placeholder-count="9">
+                      <div title="{{ s.title }}" style="width:{{ s.w }};background:{{ s.color }};min-width:1px"></div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;font-size:10px;color:#8ea3b8;margin-top:6px"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
+                  <div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-top:14px">
+                    <sc-for list="{{ roomLegend }}" as="r" hint-placeholder-count="6">
+                      <span style="display:inline-flex;align-items:center;gap:7px;font-size:11.5px;color:#c3d1e0"><span style="width:10px;height:10px;border-radius:3px;background:{{ r.color }}"></span>{{ r.label }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:{{ tlCols }};gap:14px">
+                  <div style="padding:20px 22px;{{ SC }}">
+                    <div style="{{ LB }};margin-bottom:14px">Time by room</div>
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                      <sc-for list="{{ roomTime }}" as="r" hint-placeholder-count="6">
+                        <div style="display:flex;align-items:center;gap:11px"><span style="width:118px;flex-shrink:0;font-size:12.5px;color:#dbe6f0">{{ r.label }}</span><div style="flex:1;height:9px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:{{ r.w }};background:{{ r.color }};border-radius:999px"></div></div><span style="width:58px;flex-shrink:0;text-align:right;font-size:11.5px;font-weight:700;color:#eef4fc">{{ r.dur }}</span></div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="padding:20px 22px;{{ SC }}">
+                    <div style="{{ LB }};margin-bottom:6px">Appliance activity</div>
+                    <div style="display:flex;flex-direction:column">
+                      <sc-for list="{{ applianceLog }}" as="e" hint-placeholder-count="6">
+                        <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                          <span style="width:33px;height:33px;flex-shrink:0;border-radius:9px;display:grid;place-items:center;font-size:15px;background:rgba(255,255,255,.05)">{{ e.icon }}</span>
+                          <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#eef4fc">{{ e.name }}</div><div style="font-size:11px;color:#aebccd">{{ e.detail }}</div></div>
+                          <span style="font-size:11.5px;color:#93a5b8;font-variant-numeric:tabular-nums">{{ e.t }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+                <div style="padding:20px 22px;{{ SC }}">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="{{ LB }}">Places visited {{ meRangeLabel }}</span><span style="font-size:12px;color:#b6c5d6">zone name · else geocoded</span></div>
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{ placesMe }}" as="p" hint-placeholder-count="4">
+                      <div style="display:flex;align-items:center;gap:14px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                        <span style="width:38px;height:38px;flex-shrink:0;border-radius:11px;display:grid;place-items:center;font-size:17px;background:{{ p.iconBg }}">{{ p.icon }}</span>
+                        <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:13.5px;font-weight:600;color:#eef4fc">{{ p.name }}</span><span style="font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:{{ p.tagFg }};background:{{ p.tagBg }};padding:2px 7px;border-radius:999px">{{ p.tag }}</span></div><div style="font-size:11.5px;color:#aebccd;margin-top:2px">{{ p.sub }}</div></div>
+                        <div style="text-align:right;flex-shrink:0"><div style="font-size:12px;font-weight:700;color:#eef4fc">{{ p.window }}</div><div style="font-size:11px;color:#93a5b8">{{ p.dur }}</div></div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-if>
+
+            <!-- ===== KIDS TAB (shared phone) ===== -->
+            <sc-if value="{{ tlKids }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:14px">
+                <div style="padding:18px 20px;{{ SC }};display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+                  <span style="width:46px;height:46px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,#38bdf8,#34d399);display:grid;place-items:center;font-size:14px;font-weight:800;color:#0b1017">L·E</span>
+                  <div style="flex:1;min-width:160px"><div style="font-size:16px;font-weight:800">Liam &amp; Eben</div><div style="font-size:12px;color:#34d399;margin-top:2px">{{ kidNow.icon }} {{ kidNow.loc }} · {{ kidNow.sub }}</div></div>
+                  <div style="text-align:right;flex-shrink:0"><div style="font-size:13px;font-weight:700;color:{{ kidBattColor }}">{{ kidNow.battery }}%</div><div style="font-size:10px;color:#93a5b8">shared phone</div></div>
+                </div>
+                <div style="display:flex;gap:6px;padding:5px;border-radius:12px;background:rgba(255,255,255,.05);align-self:flex-start">
+                  <sc-for list="{{ kidRangeTabs }}" as="tb" hint-placeholder-count="3">
+                    <button onClick="{{ tb.select }}" style="position:relative;padding:8px 16px;border-radius:9px;border:none;background:none;cursor:pointer;font-size:12.5px;font-weight:700;color:{{ tb.fg }};overflow:hidden"><span style="position:absolute;inset:0;border-radius:9px;background:{{ t.grad }};opacity:{{ tb.active }}"></span><span style="position:relative">{{ tb.label }}</span></button>
+                  </sc-for>
+                </div>
+                <div style="display:grid;grid-template-columns:{{ tlCols }};gap:14px">
+                  <div style="padding:18px 20px;{{ SC }}">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px"><span style="{{ LB }}">Places {{ kidRangeLabel }}</span><span style="font-size:12px;color:#b6c5d6">zone · else geocoded</span></div>
+                    <div style="display:flex;flex-direction:column">
+                      <sc-for list="{{ kidPlaces }}" as="p" hint-placeholder-count="3">
+                        <div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                          <span style="width:34px;height:34px;flex-shrink:0;border-radius:10px;display:grid;place-items:center;font-size:16px;background:{{ p.iconBg }}">{{ p.icon }}</span>
+                          <div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap"><span style="font-size:13px;font-weight:600;color:#eef4fc">{{ p.name }}</span><span style="font-size:9px;font-weight:700;text-transform:uppercase;color:{{ p.tagFg }};background:{{ p.tagBg }};padding:2px 6px;border-radius:999px">{{ p.tag }}</span></div><div style="font-size:11px;color:#aebccd;margin-top:1px">{{ p.sub }}</div></div>
+                          <div style="text-align:right;flex-shrink:0"><div style="font-size:11.5px;font-weight:700;color:#eef4fc">{{ p.window }}</div><div style="font-size:10.5px;color:#93a5b8">{{ p.dur }}</div></div>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                  <div style="padding:18px 20px;{{ SC }}">
+                    <div style="{{ LB }};margin-bottom:6px">Phone activity</div>
+                    <div style="display:flex;flex-direction:column">
+                      <sc-for list="{{ kidEvents }}" as="e" hint-placeholder-count="5">
+                        <div style="display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)">
+                          <span style="width:44px;text-align:center;font-size:14px;flex-shrink:0">{{ e.icon }}</span>
+                          <div style="flex:1;min-width:0"><span style="font-size:12.5px;color:#eef4fc">{{ e.txt }}</span><span style="font-size:11px;color:#93a5b8"> · {{ e.sub }}</span></div>
+                          <span style="font-size:11px;color:#93a5b8;font-variant-numeric:tabular-nums;flex-shrink:0">{{ e.t }}</span>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </div>
+                </div>
+                <div style="font-size:11.5px;color:#8ea3b8">One shared phone for Liam &amp; Eben. Location from its <b style="color:#c3d1e0">device_tracker</b> (GPS) — HA zone name inside a known zone, otherwise the reverse-geocoded address. Phone events from battery &amp; geofence sensors.</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
         <!-- ============ SETTINGS ============ -->
         <sc-if value="{{ vSettings }}" hint-placeholder-val="{{ false }}">
           <div style="max-width:1180px;margin:0 auto;display:flex;flex-direction:column;gap:14px">
@@ -1153,6 +1275,7 @@ class Component extends DCLogic {
     { id:"lights", name:"Lights", icon:"💡", group:"House" },
     { id:"system", name:"System", icon:"🖥️", group:"House" },
     { id:"me", name:"Me", icon:"👤", group:"House" },
+    { id:"timeline", name:"Timeline", icon:"🕒", group:"House" },
     { id:"settings", name:"Settings", icon:"⚙️", group:"House" },
   ];
   HOUSE = [
@@ -1227,9 +1350,9 @@ class Component extends DCLogic {
     sleepScore7:[76,81,68,84,79,88,82], steps7:[6120,8450,3980,7200,9100,5400,2607],
   };
   state = {
-    nav: "overview", collapsed: false, isMobile: false, moreOpen: false,
+    nav: "overview", collapsed: false, isMobile: false, moreOpen: false, timelineTab: "me", kidsRange: "today", meRange: "today",
     settings: { accent:"violet", hue:262, density:"comfortable", motion:true },
-    viewsOn: { energy:true, water:true, irrigation:true, climate:true, appliances:true, security:true, cameras:true, traffic:true, lights:true, system:true, me:true },
+    viewsOn: { energy:true, water:true, irrigation:true, climate:true, appliances:true, security:true, cameras:true, traffic:true, lights:true, system:true, me:true, timeline:true },
     scene: null, armed: false, confirm: false, armMode:"disarmed", secBypass:{}, beamsOn:false, bright: 72, room: "tv", sankeyHover: null, sankeyPin: null,
     lights: { kitchen:false, under:true, mainlamp:true, liam:false, guestlamp:false, dining:false, bed3lamp:false, living:false, tvlamp:false, study:true, fire:true, loungelamps:false, roomlamps:true, street:true, driveway:false, gatespot:false, studyyard:false },
     pumps: { water:true, pool:false, borehole:false },
@@ -1525,7 +1648,7 @@ class Component extends DCLogic {
     // mobile
     const MT = [["overview","Home","🏠"],["energy","Energy","⚡"],["climate","Rooms","🛋️"],["security","Security","🛡️"],["more","More","⋯"]];
     const mobileTabs = MT.map(([id,name,icon]) => { const active = id==="more"?this.state.moreOpen:this.state.nav===id; return { id,name,icon, filter: active?`drop-shadow(0 0 7px ${acc})`:"grayscale(.4) opacity(.6)", color: active?"#eaf1ff":"#98abbf", select: id==="more"?()=>this.setState(s=>({moreOpen:!s.moreOpen})):()=>this.setNav(id) }; });
-    const MORE = [["water","Water","💧"],["irrigation","Irrigation","🌿"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"],["settings","Settings","⚙️"]];
+    const MORE = [["water","Water","💧"],["irrigation","Irrigation","🌿"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"],["timeline","Timeline","🕒"],["settings","Settings","⚙️"]];
     const moreItems = MORE.map(([id,name,icon]) => ({ id,name,icon, select:()=>this.setNav(id) }));
 
     // scenes
@@ -1598,7 +1721,7 @@ class Component extends DCLogic {
 
     // settings
     const accentList = this.PAL.map(p => ({ id:p.id, s0:p.sw, active:S.accent===p.id?1:0, select:()=>this.setAccent(p.id) }));
-    const viewDefs = [["energy","Energy","⚡"],["water","Water","💧"],["irrigation","Irrigation","🌿"],["climate","Climate","🌡️"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"]];
+    const viewDefs = [["energy","Energy","⚡"],["water","Water","💧"],["irrigation","Irrigation","🌿"],["climate","Climate","🌡️"],["appliances","Appliances","🔌"],["cameras","Cameras","📷"],["traffic","Traffic","🚗"],["lights","Lights","💡"],["system","System","🖥️"],["me","Me","👤"],["timeline","Timeline","🕒"]];
     const viewList = viewDefs.map(([k,name,icon]) => ({ key:k, name, icon, glow:this.state.viewsOn[k]?1:0, toggle:()=>this.toggleView(k) }));
 
     // ===== charts + history + activity =====
@@ -1800,6 +1923,108 @@ class Component extends DCLogic {
     const _allA = AAREAS.flatMap(a=>a.items);
     const appTotalDraw = fmtW(_allA.reduce((s,x)=>s+(AP[x[0]]?x[3]:0),0)), appOnCount = _allA.filter(x=>AP[x[0]]).length, appTracked = _allA.length;
 
+    // ===== timeline / history =====
+    const fmtHM = h => { const H=Math.floor(h), M=Math.round((h-H)*60); return String(H).padStart(2,"0")+":"+String(M%60).padStart(2,"0"); };
+    const fmtDur = h => { const H=Math.floor(h), M=Math.round((h-H)*60); return (H?H+"h ":"")+M+"m"; };
+    const RM = { main:{label:"Main Bedroom",color:"#818cf8"}, study:{label:"Study / Work PC",color:acc}, tv:{label:"TV Room",color:"#38bdf8"}, kitchen:{label:"Kitchen",color:"#fbbf24"}, lounge:{label:"Lounge",color:"#34d399"}, patio:{label:"Patio",color:"#fb923c"}, away:{label:"Away / out",color:"rgba(255,255,255,.13)"} };
+    const mkPlace = (color) => (p) => ({ ...p, iconBg: p.zone?`color-mix(in srgb, ${color} 16%,transparent)`:"rgba(255,255,255,.06)", tag:p.zone?"Zone":"Geocoded", tagFg:p.zone?color:"#aebccd", tagBg:p.zone?`color-mix(in srgb, ${color} 16%,transparent)`:"rgba(255,255,255,.07)" });
+    const MR = this.state.meRange;
+    const MEDATA = {
+      today: { ctx:"24h", label:"today", places:3, summary:"Home since 17:45 · most time in the Study", sub:"Office 09:15–16:30 · one stop on the way home",
+        pres:[[0,6.33,"main"],[6.33,6.83,"kitchen"],[6.83,8.17,"study"],[8.17,8.67,"main"],[8.67,17.75,"away"],[17.75,18.5,"kitchen"],[18.5,21.5,"tv"],[21.5,22.17,"kitchen"],[22.17,24,"main"]],
+        appl:[["06:25","Kettle","☕","boiled · 3 min · 0.05 kWh"],["06:42","Nespresso","☕","1 shot · 0.02 kWh"],["06:50","Work PC","💻","powered on"],["08:05","Dishwasher","🍽️","started · eco cycle"],["08:12","Work PC","💻","session ended · 1h 22m · 0.28 kWh"],["18:05","Microwave","🍲","ran 4 min · 0.09 kWh"],["18:12","Air Fryer","🍟","ran 22 min · 0.61 kWh"],["20:18","Dishwasher","🍽️","finished · 1.1 kWh"],["21:40","Kettle","☕","boiled · 2 min · 0.04 kWh"]],
+        placesList:[
+          { name:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", zone:true, window:"until 08:40", dur:"overnight" },
+          { name:"Entelect", sub:"The Woodlands Office Park, Woodmead", icon:"💼", zone:true, window:"09:15–16:30", dur:"7h 15m" },
+          { name:"Woolworths Food", sub:"Design Quarter, Fourways", icon:"🛒", zone:false, window:"16:52–17:18", dur:"26m" },
+          { name:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", zone:true, window:"since 17:45", dur:"5h 20m" },
+        ] },
+      yesterday: { ctx:"yesterday", label:"yesterday", places:2, summary:"Worked from home · quick gym run", sub:"9h 40m at the desk · gym 15:00–16:00",
+        pres:[[0,6.5,"main"],[6.5,7,"kitchen"],[7,12.5,"study"],[12.5,13,"kitchen"],[13,15,"study"],[15,16,"away"],[16,17.75,"study"],[17.75,18.5,"kitchen"],[18.5,22,"tv"],[22,24,"main"]],
+        appl:[["06:30","Kettle","☕","boiled · 3 min"],["06:45","Nespresso","☕","2 shots · 0.04 kWh"],["07:05","Work PC","💻","powered on"],["12:35","Microwave","🍲","ran 3 min · 0.07 kWh"],["12:55","Air Fryer","🍟","ran 18 min · 0.5 kWh"],["17:10","Work PC","💻","session ended · 9h 40m · 1.9 kWh"],["19:30","Dishwasher","🍽️","started · normal"],["21:20","Kettle","☕","boiled · 2 min"]],
+        placesList:[
+          { name:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", zone:true, window:"until 15:00", dur:"most of day" },
+          { name:"Virgin Active", sub:"Fourways · gym zone", icon:"🏋️", zone:true, window:"15:08–15:56", dur:"48m" },
+          { name:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", zone:true, window:"from 16:12", dur:"rest of day" },
+        ] },
+      history: { ctx:"typical day · 7-day avg", label:"· last 7 days", places:5, summary:"Last 7 days · most time in the Study", sub:"Avg 7h out · 5 office days · gym 3×",
+        pres:[[0,6.5,"main"],[6.5,7,"kitchen"],[7,9,"study"],[9,16.5,"away"],[16.5,18,"kitchen"],[18,21.5,"tv"],[21.5,22,"kitchen"],[22,24,"main"]],
+        appl:[["5×","Work PC","💻","41h 20m · 8.6 kWh this week"],["19×","Kettle","☕","0.9 kWh this week"],["12×","Nespresso","☕","0.2 kWh"],["11×","Microwave","🍲","0.8 kWh"],["6×","Dishwasher","🍽️","6.4 kWh"],["4×","Air Fryer","🍟","2.3 kWh"]],
+        placesList:[
+          { name:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", zone:true, window:"every night", dur:"~15h / day" },
+          { name:"Entelect", sub:"The Woodlands, Woodmead · zone", icon:"💼", zone:true, window:"4 work days", dur:"avg 7h 10m" },
+          { name:"Virgin Active", sub:"Fourways · gym zone", icon:"🏋️", zone:true, window:"Mon · Wed · Fri", dur:"3 visits" },
+          { name:"Woolworths Food", sub:"Design Quarter · geocoded", icon:"🛒", zone:false, window:"2 stops", dur:"groceries" },
+          { name:"Curro Aurora", sub:"School run · zone", icon:"🎒", zone:true, window:"5 mornings", dur:"drop-off" },
+        ] },
+    };
+    const meCur = MEDATA[MR] || MEDATA.today;
+    const PRES = meCur.pres;
+    const presenceSegs = PRES.map(([a,b,k])=>({ w:((b-a)/24*100).toFixed(2)+"%", color:RM[k].color, title:RM[k].label+" · "+fmtHM(a)+"–"+fmtHM(b) }));
+    const usedKeys = PRES.map(p=>p[2]).filter((k,i,arr)=>arr.indexOf(k)===i);
+    const roomLegend = usedKeys.map(k=>({ label:RM[k].label, color:RM[k].color }));
+    const rtm = {}; PRES.forEach(([a,b,k])=>{ if(k!=="away") rtm[k]=(rtm[k]||0)+(b-a); });
+    const maxRtm = Math.max(...Object.values(rtm), 0.01);
+    const roomTime = Object.keys(rtm).sort((x,y)=>rtm[y]-rtm[x]).map(k=>({ label:RM[k].label, color:RM[k].color, w:(rtm[k]/maxRtm*100).toFixed(0)+"%", dur:fmtDur(rtm[k]) }));
+    const awayH = PRES.filter(p=>p[2]==="away").reduce((s,p)=>s+(p[1]-p[0]),0);
+    const applianceLog = meCur.appl.map(([t,name,icon,detail])=>({ t, name, icon, detail }));
+    const placesMe = meCur.placesList.map(mkPlace(acc));
+    const meAtHome = fmtDur(24-awayH);
+    const mePlacesN = meCur.places;
+    const meApplN = applianceLog.length;
+    const meRangeCtx = meCur.ctx, meRangeLabel = meCur.label;
+    const meRangeTabs = [["today","Today"],["yesterday","Yesterday"],["history","History"]].map(([k,label])=>({ label, active:MR===k?1:0, fg:MR===k?"#07131c":"#c3d1e0", select:()=>this.setState({ meRange:k }) }));
+    const meDaySummary = meCur.summary;
+    const meDaySub = meCur.sub + " · " + applianceLog.length + (MR==="history"?" appliances used":" appliance runs");
+    const TT = this.state.timelineTab;
+    const tlTabs = [["me","Me"],["kids","Liam & Eben"]].map(([k,label])=>({ label, active:TT===k?1:0, fg:TT===k?"#07131c":"#c3d1e0", select:()=>this.setState({ timelineTab:k }) }));
+    const tlMe = TT==="me", tlKids = TT==="kids", tlCols = this.state.isMobile ? "1fr" : "1fr 1fr";
+    const kidNow = { loc:"Home", sub:"302 Wyoming St · Home zone", icon:"🏠", battery:64 };
+    const kidBattColor = kidNow.battery<20?"#fb7185":kidNow.battery<50?"#fbbf24":"#34d399";
+    const KR = this.state.kidsRange;
+    const kidRangeTabs = [["today","Today"],["yesterday","Yesterday"],["history","History"]].map(([k,label])=>({ label, active:KR===k?1:0, fg:KR===k?"#07131c":"#c3d1e0", select:()=>this.setState({ kidsRange:k }) }));
+    const KIDDATA = {
+      today: { label:"today", places:[
+          { name:"Home", sub:"Home zone", icon:"🏠", zone:true, window:"until 06:55", dur:"overnight" },
+          { name:"Curro Aurora", sub:"School zone · Roodepoort", icon:"🎒", zone:true, window:"07:19–14:05", dur:"6h 46m" },
+          { name:"Home", sub:"Home zone", icon:"🏠", zone:true, window:"since 14:30", dur:"7h 30m" },
+        ], events:[
+          ["07:19","🎒","Arrived School","Curro Aurora"],
+          ["14:05","🚶","Left School","geofence exit"],
+          ["14:30","🏠","Arrived Home","geofence enter"],
+          ["15:10","🔋","Charging started","64%"],
+          ["16:40","📱","Phone unlocked","last activity"],
+        ] },
+      yesterday: { label:"yesterday", places:[
+          { name:"Home", sub:"Home zone", icon:"🏠", zone:true, window:"until 06:58", dur:"overnight" },
+          { name:"Curro Aurora", sub:"School zone · Roodepoort", icon:"🎒", zone:true, window:"07:15–13:35", dur:"6h 20m" },
+          { name:"Kobus' House", sub:"12 Oak Ave, Little Falls", icon:"📍", zone:false, window:"14:05–16:40", dur:"2h 35m" },
+          { name:"Home", sub:"Home zone", icon:"🏠", zone:true, window:"from 16:58", dur:"rest of day" },
+        ], events:[
+          ["07:15","🎒","Arrived School","Curro Aurora"],
+          ["13:35","🚶","Left School","early · half day"],
+          ["14:05","📍","Arrived Kobus' House","geocoded address"],
+          ["16:40","🚶","Left Kobus' House","geofence exit"],
+          ["16:58","🏠","Arrived Home","geofence enter"],
+        ] },
+      history: { label:"· last 7 days", places:[
+          { name:"Curro Aurora", sub:"School zone · Roodepoort", icon:"🎒", zone:true, window:"5 school days", dur:"avg 6h 20m" },
+          { name:"Home", sub:"Home zone", icon:"🏠", zone:true, window:"every night", dur:"~15h / day" },
+          { name:"Cricket Club", sub:"Louwlardia Sports · geocoded", icon:"🏏", zone:false, window:"Tue · Thu", dur:"2 visits" },
+          { name:"Kobus' House", sub:"12 Oak Ave · geocoded", icon:"📍", zone:false, window:"Wed", dur:"1 visit" },
+        ], events:[
+          ["Mon–Fri","🎒","School each weekday","avg arrive 07:17"],
+          ["Wed","📍","Visited Kobus' House","geocoded stop"],
+          ["Tue/Thu","🏏","Cricket practice","Louwlardia"],
+          ["Sat","⚠️","Left safe zones 1×","flagged 16:20"],
+          ["7 days","🔋","2 low-battery alerts","below 20%"],
+        ] },
+    };
+    const kidCur = KIDDATA[KR] || KIDDATA.today;
+    const kidPlaces = kidCur.places.map(mkPlace("#38bdf8"));
+    const kidEvents = kidCur.events.map(([t,icon,txt,sub])=>({ t, icon, txt, sub }));
+    const kidRangeLabel = kidCur.label;
+
     const v = id => this.state.nav === id;
     return {
       t, SC, LB, greeting: this.greeting(),
@@ -1848,6 +2073,7 @@ class Component extends DCLogic {
       motionTrack: motion ? acc : "rgba(255,255,255,.16)", motionKnob: motion ? "22px" : "3px", toggleMotion:()=>this.toggleMotion(),
       vOverview:v("overview"), vEnergy:v("energy"), vWater:v("water"), vIrrigation:v("irrigation"), vClimate:v("climate"), vSecurity:v("security"), vCameras:v("cameras"), vTraffic:v("traffic"), vSystem:v("system"), vMe:v("me"), vSettings:v("settings"),
       vLights:v("lights"), vAppliances:v("appliances"), lightAreas, lightsOn, lightsTotal, lightsAllOff:()=>this.allOff(), applianceAreas, appTotalDraw, appOnCount, appTracked,
+      vTimeline:v("timeline"), tlTabs, tlMe, tlKids, tlCols, presenceSegs, roomLegend, roomTime, applianceLog, placesMe, kidNow, kidBattColor, kidRangeTabs, kidPlaces, kidEvents, kidRangeLabel, meDaySummary, meDaySub, meAtHome, mePlacesN, meApplN, meRangeTabs, meRangeCtx, meRangeLabel,
     };
   }
 }

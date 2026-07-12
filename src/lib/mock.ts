@@ -339,6 +339,19 @@ const ROWS: Row[] = [
   ["input_boolean.oura_readiness_actions_enabled", "on"],
   ["input_boolean.oura_activity_nudge_enabled", "on"],
   ["input_boolean.printer_ink_notifications", "on"],
+
+  // Timeline — room PIRs, geocoded locations, kids phone
+  ["binary_sensor.main_room_pir", "off"],
+  ["binary_sensor.helloliam_alarm_zone_003_pir_kids_room", "off"],
+  ["binary_sensor.helloliam_alarm_zone_007_pir_tv_room", "on"],
+  ["binary_sensor.lounge_pir", "off"],
+  ["binary_sensor.kitchen_pir", "off"],
+  ["binary_sensor.garage_pir", "off"],
+  ["binary_sensor.passage_pir", "off"],
+  ["binary_sensor.guest_room_pir", "off"],
+  ["sensor.christos_iphone_geocoded_location", "14 Wyoming Ave, Sandton"],
+  ["sensor.kid_s_phone_geocoded_location", "Redhill School, Morningside"],
+  ["sensor.kid_s_phone_battery_level", "72", { unit_of_measurement: "%" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
