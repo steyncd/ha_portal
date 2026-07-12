@@ -258,6 +258,7 @@
   .zn { font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .zstate { font-size: 10.5px; color: var(--muted-2); flex-shrink: 0; }
   .byp { flex-shrink: 0; padding: 6px 11px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); font-size: 11px; font-weight: 700; color: var(--text-2); }
+  @media (max-width: 640px) { .byp { min-height: 40px; padding: 8px 14px; } }
   .byp:hover { background: rgba(255, 255, 255, 0.15); color: var(--text); }
   .byp.on { background: color-mix(in srgb, var(--warning) 26%, transparent); color: #fff; }
   .note { font-size: 11.5px; color: var(--muted-2); margin-top: 12px; }

@@ -139,5 +139,6 @@
   .ln { font-size: 12.5px; font-weight: 600; }
   .ls { font-size: 11px; color: var(--text-2); }
   .tune { width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); font-size: 14px; }
+  @media (max-width: 640px) { .tune { width: 36px; height: 36px; font-size: 16px; } }
   .none { padding: 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); font-size: 12.5px; color: var(--muted-2); }
 </style>

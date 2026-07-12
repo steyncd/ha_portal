@@ -129,4 +129,5 @@
   .qs { font-size: 10.5px; color: var(--text-2); }
   .tune { position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); color: #dbe6f0; font-size: 14px; }
   .tune:hover { background: rgba(255, 255, 255, 0.18); }
+  @media (max-width: 640px) { .tune { width: 36px; height: 36px; font-size: 16px; } }
 </style>

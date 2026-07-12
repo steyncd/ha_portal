@@ -222,6 +222,7 @@
   .tab.active { background: var(--grad); color: #0b1017; }
   .ch2 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
   .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+  @media (max-width: 430px) { .stats3 { grid-template-columns: 1fr; } }
   .st { padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .sv { font-size: 16px; font-weight: 800; }
   .sk { font-size: 11px; color: var(--muted); margin-top: 2px; }

@@ -316,6 +316,7 @@
   .wkt { font-size: 17px; font-weight: 800; }
   .wki { font-size: 12px; color: var(--muted); text-transform: capitalize; }
   .wkgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 430px) { .wkgrid { grid-template-columns: 1fr; } }
   .wkgrid > div { padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .wkv { font-size: 15px; font-weight: 800; }
   .wkk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
