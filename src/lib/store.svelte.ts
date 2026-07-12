@@ -131,9 +131,16 @@ class HAStore {
   ): Promise<{ t: number; s: string }[]> {
     if (this.#mock) {
       const cur = this.state(entityId);
-      if (!cur || cur === "None" || cur === "unknown") return [];
+      if (!cur || cur === "None" || cur === "unknown" || cur === "unavailable") return [];
       const now = Date.now();
-      return [cur, "CA 214-882", "WK 09-JHB", "CA 118-540"].map((s, i) => ({ t: now - i * 5400_000, s }));
+      if (entityId.includes("plate")) return [cur, "CA 214-882", "WK 09-JHB", "CA 118-540"].map((s, i) => ({ t: now - i * 5400_000, s }));
+      // generic: a few plausible transitions ending at the current state
+      const alt = cur === "on" ? "off" : cur === "off" ? "on" : "disarmed";
+      return [
+        { t: now - 40 * 60_000, s: cur },
+        { t: now - 3 * 3600_000, s: alt },
+        { t: now - 8 * 3600_000, s: cur },
+      ];
     }
     if (!this.#conn) return [];
     const end = new Date();

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { E, ALARM_ZONES, ACCESS, type AlarmZone } from "../lib/entities";
   import { toast } from "../lib/toast.svelte";
@@ -71,6 +72,32 @@
     }
   });
   const acOk = $derived(ha.state(E.alarmAcPower) === "on");
+
+  // ---- 24h event timeline (from real state-change history) ----
+  type Ev = { t: number; label: string; color: string; icon: string };
+  let events = $state<Ev[]>([]);
+  const winStart = Date.now() - 24 * 3600_000;
+  onMount(async () => {
+    const doors = ACCESS.slice(0, 5);
+    const [al, ...zs] = await Promise.all([
+      ha.historyStates(E.alarmHome, 24),
+      ...doors.map((d) => ha.historyStates(d.id, 24)),
+    ]);
+    const evs: Ev[] = [];
+    for (const e of al)
+      evs.push({
+        t: e.t,
+        icon: "🛡️",
+        label: `Alarm ${e.s.replace(/_/g, " ")}`,
+        color: e.s.startsWith("armed") ? "var(--success)" : e.s === "triggered" ? "var(--error)" : "var(--warning)",
+      });
+    zs.forEach((hist, i) => {
+      for (const e of hist) if (e.s === "on") evs.push({ t: e.t, icon: doors[i].icon, label: doors[i].label, color: "var(--water)" });
+    });
+    events = evs.filter((e) => e.t >= winStart).sort((a, b) => b.t - a.t);
+  });
+  const pos = (t: number) => Math.max(0, Math.min(100, ((t - winStart) / (24 * 3600_000)) * 100));
+  const clock = (t: number) => new Date(t).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 </script>
 
 <div class="col">
@@ -93,6 +120,28 @@
       <span class="itxt"><strong>{activeZones.length} zone{activeZones.length > 1 ? "s" : ""} active now</strong> · {activeZones.map((z) => z.label).join(", ")}</span>
     {:else}
       <span class="itxt">All zones clear</span>
+    {/if}
+  </div>
+
+  <!-- 24h activity timeline -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">Activity · last 24h</span><span class="sub">{events.length} event{events.length === 1 ? "" : "s"}</span></div>
+    <div class="tl">
+      <div class="tlaxis"><span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>now</span></div>
+      <div class="tltrack">
+        {#each events as e}
+          <span class="tlmark" style="left:{pos(e.t)}%;color:{e.color};background:{e.color}" title="{e.label} · {clock(e.t)}"></span>
+        {/each}
+      </div>
+    </div>
+    {#if events.length}
+      <div class="tllist">
+        {#each events.slice(0, 5) as e}
+          <div class="tle"><span class="tli">{e.icon}</span><span class="tll">{e.label}</span><span class="tlt num">{clock(e.t)}</span></div>
+        {/each}
+      </div>
+    {:else}
+      <div class="note">No security events in the last 24 hours.</div>
     {/if}
   </div>
 
@@ -174,6 +223,16 @@
   .idot { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 8px var(--success); flex-shrink: 0; }
   .idot.live { background: var(--warning); box-shadow: 0 0 8px var(--warning); animation: pulse 1.6s ease-in-out infinite; }
 
+  .tl { margin-bottom: 4px; }
+  .tlaxis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-2); margin-bottom: 5px; }
+  .tltrack { position: relative; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
+  .tlmark { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
+  .tllist { margin-top: 12px; display: flex; flex-direction: column; gap: 2px; }
+  .tle { display: flex; align-items: center; gap: 11px; padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
+  .tle:last-child { border-bottom: none; }
+  .tli { font-size: 14px; width: 20px; text-align: center; }
+  .tll { flex: 1; font-size: 12.5px; color: var(--text-2); }
+  .tlt { font-size: 11.5px; color: var(--muted-2); }
   .areas { display: grid; grid-template-columns: 1.6fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .areas { grid-template-columns: 1fr; } }
   .pad { padding: 20px; }
