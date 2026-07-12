@@ -97,10 +97,11 @@
   async function loadMe(r: Range) {
     const { start, end, dayStart, ctx, label } = windowFor(r);
     const hrs = Math.ceil((Date.now() - start) / 3_600_000) + 1;
-    const [roomHists, personHist, applHists] = await Promise.all([
+    const [roomHists, personHist, applHists, geoHist] = await Promise.all([
       Promise.all(ROOMS.map((rm) => ha.historyStates(rm.id, hrs))),
       ha.historyStates(PERSON, hrs),
       Promise.all(APPLIANCES.map((a) => ha.historyStates(a.sw, hrs))),
+      ha.historyStates(MY_GEO, hrs),
     ]);
 
     // ----- movement bar -----
@@ -163,7 +164,7 @@
 
     // ----- places -----
     const ps = personSegs(personHist, start, end);
-    places = r === "history" ? dedupePlaces(ps) : ps.map(placeRow);
+    places = r === "history" ? dedupePlaces(ps, geoHist) : ps.map((p) => placeRow(p, geoHist));
 
     // ----- hero -----
     const homeMs = ps.filter((p) => p.s === "home").reduce((s, p) => s + (p.end - p.start), 0);
@@ -178,20 +179,37 @@
     };
   }
 
-  function placeRow(p: { s: string; start: number; end: number }) {
+  // reverse-geocoded address that was current at time t (last reading ≤ t, else earliest).
+  function geoAt(geoHist: { t: number; s: string }[], t: number): string | null {
+    if (!geoHist.length) return null;
+    const asc2 = asc(geoHist);
+    let val: string | null = null;
+    for (const e of asc2) { if (e.t <= t) val = e.s; else break; }
+    return val ?? asc2[0].s;
+  }
+  // name for a not_home ("away") segment: the address at that time, else generic.
+  function awayName(geoHist: { t: number; s: string }[], t: number): string {
+    return geoAt(geoHist, t) ?? "Out & about";
+  }
+  function placeRow(p: { s: string; start: number; end: number }, geoHist: { t: number; s: string }[]) {
     const zone = p.s !== "not_home";
     return {
       icon: p.s === "home" ? "🏠" : zone ? "📍" : "🗺️",
-      name: p.s === "not_home" ? (ha.state(MY_GEO) ?? "Out & about") : placeName(p.s),
+      name: zone ? placeName(p.s) : awayName(geoHist, p.start),
       tag: zone ? "Zone" : "Geocoded", zone,
       sub: `${clk(p.start)} – ${clk(p.end)}`,
       window: clk(p.start), dur: fmtDur(p.end - p.start),
       start: p.start, durMs: p.end - p.start, count: 1,
     };
   }
-  function dedupePlaces(ps: { s: string; start: number; end: number }[]) {
+  function dedupePlaces(ps: { s: string; start: number; end: number }[], geoHist: { t: number; s: string }[]) {
     const m = new Map<string, { name: string; zone: boolean; ms: number; count: number }>();
-    for (const p of ps) { const name = placeName(p.s); const e = m.get(name) ?? { name, zone: p.s !== "not_home", ms: 0, count: 0 }; e.ms += p.end - p.start; e.count++; m.set(name, e); }
+    for (const p of ps) {
+      const zone = p.s !== "not_home";
+      const name = zone ? placeName(p.s) : awayName(geoHist, p.start);
+      const e = m.get(name) ?? { name, zone, ms: 0, count: 0 };
+      e.ms += p.end - p.start; e.count++; m.set(name, e);
+    }
     return [...m.values()].sort((a, b) => b.ms - a.ms).map((e) => ({
       icon: e.name === "Home" ? "🏠" : e.zone ? "📍" : "🗺️", name: e.name,
       tag: e.zone ? "Zone" : "Geocoded", zone: e.zone,
@@ -217,9 +235,9 @@
   async function loadKids(r: Range) {
     const { start, end } = windowFor(r);
     const hrs = Math.ceil((Date.now() - start) / 3_600_000) + 1;
-    const hist = await ha.historyStates(KID, hrs);
+    const [hist, geoHist] = await Promise.all([ha.historyStates(KID, hrs), ha.historyStates(KID_GEO, hrs)]);
     const ps = personSegs(hist, start, end);
-    kidPlaces = r === "history" ? dedupePlaces(ps) : ps.map(placeRow);
+    kidPlaces = r === "history" ? dedupePlaces(ps, geoHist) : ps.map((p) => placeRow(p, geoHist));
     // phone-activity feed from zone transitions + battery
     const evs: { icon: string; txt: string; sub: string; t: string }[] = [];
     for (let i = 1; i < ps.length; i++) {
