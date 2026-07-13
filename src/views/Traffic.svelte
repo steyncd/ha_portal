@@ -13,10 +13,8 @@
   ]);
 
   let weekBars = $state<{ label: string; value: number | null }[]>([]);
-  let plateHist = $state<{ t: number; s: string }[]>([]);
   onMount(async () => {
     weekBars = dailyMax(await ha.history(E.vehiclesToday, 24 * 7), 7);
-    plateHist = await ha.historyStates(E.lastPlate, 24 * 30);
   });
 
   // ---- ANPR: known-vs-unknown + repeat-visitor tracking ----
@@ -33,16 +31,31 @@
     return m;
   });
 
+  // owner of a plate: known-plate match first, then vehicle-description fallback
+  const ownerOf = (plate: string, vehicle = "") => {
+    const k = norm(plate);
+    if (!BAD.has(k) && known.get(k)) return known.get(k)!;
+    const v = vehicle.toLowerCase();
+    if (v.includes("jetta")) return "Christo";
+    if (v.includes("trailblazer")) return "Mandri";
+    return "";
+  };
+
+  // ---- full detection log (sensor.anpr_log, newest first) ----
+  type Det = { i: number; ts: number; plate: string; vehicle: string; camera: string };
+  const detections = $derived.by<Det[]>(() => {
+    const ev = (ha.attr("sensor.anpr_log", "events") as { i: number; ts: string; plate: string; vehicle: string; camera: string }[]) ?? [];
+    return ev.map((e) => ({ i: e.i, ts: Date.parse((e.ts || "").replace(" ", "T")) || 0, plate: e.plate || "", vehicle: e.vehicle || "", camera: e.camera || "" }));
+  });
+
   type Visitor = { plate: string; count: number; last: number; owner: string };
   const visitors = $derived.by(() => {
     const m = new Map<string, Visitor>();
-    for (const p of plateHist) {
-      const raw = p.s.trim();
-      const k = norm(raw);
+    for (const d of detections) {
+      const k = norm(d.plate);
       if (BAD.has(k)) continue;
-      const e = m.get(k) ?? { plate: raw, count: 0, last: 0, owner: known.get(k) ?? "" };
-      e.count++;
-      if (p.t > e.last) e.last = p.t;
+      const e = m.get(k) ?? { plate: d.plate, count: 0, last: 0, owner: ownerOf(d.plate, d.vehicle) };
+      e.count++; if (d.ts > e.last) e.last = d.ts; e.owner = ownerOf(d.plate, d.vehicle);
       m.set(k, e);
     }
     return [...m.values()].sort((a, b) => b.count - a.count || b.last - a.last);
@@ -53,29 +66,39 @@
     const knownDet = visitors.filter((v) => v.owner).reduce((s, v) => s + v.count, 0);
     return { total, unique: visitors.length, knownPlates: visitors.filter((v) => v.owner).length, unknownPlates: visitors.filter((v) => !v.owner).length, knownDet, unknownDet: total - knownDet };
   });
-  const repeats = $derived(visitors.filter((v) => v.count >= 2));
-  const recentUnknown = $derived([...visitors].filter((v) => !v.owner).sort((a, b) => b.last - a.last).slice(0, 6));
   const configured = $derived(known.size > 0);
 
-  // latest LLM-Vision recognition (plate + make/model + which camera + owner)
-  const latest = $derived.by(() => {
-    const plate = ha.state(E.lastPlate);
-    if (!plate || ["None", "unknown", "unavailable"].includes(plate)) return null;
-    return {
-      plate,
-      vehicle: (ha.attr(E.lastPlate, "vehicle") as string) || "",
-      camera: (ha.attr(E.lastPlate, "camera") as string) || "",
-      owner: (ha.attr(E.lastPlate, "owner") as string) || "",
-      when: (ha.attr(E.lastPlate, "recognized_at") as string) || "",
-    };
-  });
-
-  function ago(t: number) {
-    const m = Math.round((Date.now() - t) / 60000);
-    if (m < 60) return `${m}m ago`;
-    const h = Math.round(m / 60);
-    return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
+  // ---- known-plate management (edits input_text.known_vehicle_plates) ----
+  const knownRaw = $derived.by(() =>
+    (ha.state(E.knownPlates) ?? "").split(",").map((p) => { const [pl, nm] = p.split("="); return { plate: (pl || "").trim(), name: (nm || "").trim() }; }).filter((x) => x.plate),
+  );
+  function saveKnown(pairs: { plate: string; name: string }[]) {
+    ha.setText(E.knownPlates, pairs.filter((p) => p.plate).map((p) => `${p.plate}=${p.name}`).join(","));
   }
+  let kpNew = $state({ plate: "", name: "" });
+  function addKnown() {
+    const plate = kpNew.plate.trim().toUpperCase(); if (!plate) return;
+    saveKnown([...knownRaw.filter((p) => norm(p.plate) !== norm(plate)), { plate, name: kpNew.name.trim() }]);
+    kpNew = { plate: "", name: "" };
+  }
+  const removeKnown = (plate: string) => saveKnown(knownRaw.filter((p) => p.plate !== plate));
+  const tagDetection = (plate: string, name: string) => {
+    const p = plate.trim().toUpperCase(); if (!p || !name.trim()) return;
+    saveKnown([...knownRaw.filter((x) => norm(x.plate) !== norm(p)), { plate: p, name: name.trim() }]);
+  };
+
+  // ---- correct a misread plate ----
+  let editIdx = $state<number | null>(null);
+  let editVal = $state("");
+  const startEdit = (d: Det) => { editIdx = d.i; editVal = d.plate; };
+  function saveEdit() { if (editIdx != null && editVal.trim()) ha.anprCorrect(editIdx, editVal.trim().toUpperCase()); editIdx = null; }
+  let tagIdx = $state<number | null>(null);
+  let tagName = $state("");
+  const startTag = (d: Det) => { tagIdx = d.i; tagName = ownerOf(d.plate, d.vehicle); };
+  function saveTag(d: Det) { if (tagName.trim()) tagDetection(d.plate, tagName); tagIdx = null; }
+
+  function hhmm(ts: number) { const d = new Date(ts); return isNaN(+d) ? "" : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; }
+  function dayLabel(ts: number) { const d = new Date(ts); const t = new Date(); const y = new Date(Date.now() - 864e5); if (d.toDateString() === t.toDateString()) return "Today"; if (d.toDateString() === y.toDateString()) return "Yesterday"; return d.toLocaleDateString(undefined, { day: "numeric", month: "short" }); }
 
   // peak callouts
   const peakSlot = $derived([...tod].sort((a, b) => (b.value ?? 0) - (a.value ?? 0))[0]);
@@ -94,19 +117,6 @@
     <div class="card k"><div class="lb">🚗 Vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month</div></div>
     <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
   </div>
-
-  {#if latest}
-    <div class="card pad latest">
-      <div class="rh"><span class="lb">Latest recognition</span><span class="sub">LLM Vision · {latest.camera || "—"}</span></div>
-      <div class="latrow">
-        <div class="latplate">{latest.plate}</div>
-        <div class="latmeta">
-          <div class="latveh">{latest.vehicle || "Vehicle"}</div>
-          <div class="latsub">{latest.owner ? `👤 ${latest.owner}` : "Unknown vehicle"}{latest.when ? ` · ${latest.when.slice(11, 16)}` : ""}</div>
-        </div>
-      </div>
-    </div>
-  {/if}
 
   <div class="card pad">
     <div class="rh"><span class="lb">Sidewalk traffic by time of day</span><span class="int">{ha.state(E.trafficIntensity) ?? "—"}</span></div>
@@ -134,44 +144,63 @@
     <BarChart bars={weekBars} height={150} />
   </div>
 
-  <!-- ANPR: known vs unknown + repeat visitors -->
+  <!-- ANPR summary -->
+  <div class="split2">
+    <div class="card sk"><div class="lb">Recognitions</div><div class="big">{anpr.total}</div><div class="sub">{anpr.unique} unique plates</div></div>
+    <div class="card sk"><div class="lb">Known</div><div class="big" style="color:var(--success)">{anpr.knownDet}</div><div class="sub">{anpr.knownPlates} tagged vehicles</div></div>
+    <div class="card sk"><div class="lb">Unknown</div><div class="big" style="color:var(--warning)">{anpr.unknownDet}</div><div class="sub">{anpr.unknownPlates} untagged</div></div>
+  </div>
+
+  <!-- Known vehicles manager -->
   <div class="card pad">
-    <div class="rh"><span class="lb">ANPR · gate + driveway · known vs unknown · 30 days</span><span class="sub">{anpr.total} recognitions · {anpr.unique} plates</span></div>
-    {#if plateHist.length}
-      <div class="split">
-        <div class="seg kn" style="flex:{Math.max(anpr.knownDet, 0.001)}"><span class="segn">{anpr.knownDet}</span><span class="segl">known · {anpr.knownPlates} plates</span></div>
-        <div class="seg un" style="flex:{Math.max(anpr.unknownDet, 0.001)}"><span class="segn">{anpr.unknownDet}</span><span class="segl">unknown · {anpr.unknownPlates} plates</span></div>
+    <div class="rh"><span class="lb">Known vehicles</span><span class="sub">tag a plate → labelled everywhere</span></div>
+    {#if knownRaw.length}
+      <div class="kplist">
+        {#each knownRaw as p}
+          <div class="kprow"><span class="plate">{p.plate}</span><span class="who">{p.name || "—"}</span><button class="xbtn" title="Remove" onclick={() => removeKnown(p.plate)}>✕</button></div>
+        {/each}
       </div>
+    {:else}<div class="sub" style="margin-bottom:12px">No vehicles tagged yet — add one below or tag a detection.</div>{/if}
+    <div class="kpadd">
+      <input class="in plate-in" placeholder="PLATE" bind:value={kpNew.plate} />
+      <input class="in" placeholder="Owner / name" bind:value={kpNew.name} onkeydown={(e) => e.key === "Enter" && addKnown()} />
+      <button class="addbtn" onclick={addKnown} disabled={!kpNew.plate.trim()}>Add</button>
+    </div>
+  </div>
 
-      <div class="anpr2">
-        <div>
-          <div class="subhd">Repeat visitors</div>
-          {#if repeats.length}
-            <div class="vlist">
-              {#each repeats.slice(0, 8) as v}
-                <div class="vrow" class:kn={v.owner}><span class="plate">{v.plate}</span><span class="who">{v.owner || "Unknown"}</span><span class="cnt">{v.count}×</span><span class="pago">{ago(v.last)}</span></div>
-              {/each}
+  <!-- Full detection log -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">Detections · gate + driveway</span><span class="sub">{detections.length} logged{ha.num("sensor.anpr_log") ? ` · ${ha.num("sensor.anpr_log")} total` : ""}</span></div>
+    {#if detections.length}
+      <div class="detlist">
+        {#each detections as d}
+          {@const owner = ownerOf(d.plate, d.vehicle)}
+          <div class="detrow" class:kn={owner}>
+            <div class="dt"><span class="dtt">{hhmm(d.ts)}</span><span class="dtd">{dayLabel(d.ts)}</span></div>
+            <div class="dmid">
+              {#if editIdx === d.i}
+                <input class="in plate-in" bind:value={editVal} onkeydown={(e) => e.key === "Enter" && saveEdit()} />
+              {:else}
+                <span class="plate">{d.plate || "—"}</span>
+              {/if}
+              <span class="dveh">{d.vehicle || "vehicle"}{d.camera ? ` · ${d.camera}` : ""}</span>
             </div>
-          {:else}<div class="sub">No plate seen more than once yet.</div>{/if}
-        </div>
-        <div>
-          <div class="subhd">Recent unknown</div>
-          {#if recentUnknown.length}
-            <div class="vlist">
-              {#each recentUnknown as v}
-                <div class="vrow"><span class="plate">{v.plate}</span><span class="who"></span><span class="cnt">{v.count}×</span><span class="pago">{ago(v.last)}</span></div>
-              {/each}
+            <span class="downer">{owner || ""}</span>
+            <div class="dacts">
+              {#if editIdx === d.i}
+                <button class="mini ok" onclick={saveEdit}>Save</button><button class="mini" onclick={() => (editIdx = null)}>✕</button>
+              {:else if tagIdx === d.i}
+                <input class="in tag-in" placeholder="name" bind:value={tagName} onkeydown={(e) => e.key === "Enter" && saveTag(d)} />
+                <button class="mini ok" onclick={() => saveTag(d)}>Tag</button><button class="mini" onclick={() => (tagIdx = null)}>✕</button>
+              {:else}
+                <button class="mini" title="Fix a misread plate" onclick={() => startEdit(d)}>✎</button>
+                <button class="mini" title="Tag owner" onclick={() => startTag(d)}>🏷️</button>
+              {/if}
             </div>
-          {:else}<div class="sub">Every recognised plate is known 👍</div>{/if}
-        </div>
+          </div>
+        {/each}
       </div>
-
-      {#if !configured}
-        <div class="hint">Tip: add <code>PLATE=Name</code> pairs to <code>input_text.known_vehicle_plates</code> in HA to label household vehicles — everything else then shows as unknown.</div>
-      {/if}
-    {:else}
-      <div class="sub">No plates recognised in the last 30 days.</div>
-    {/if}
+    {:else}<div class="sub">No plates detected yet. A car at the gate or driveway will appear here.</div>{/if}
   </div>
 </div>
 
@@ -197,27 +226,37 @@
   .cov { font-size: 20px; font-weight: 800; }
   .cov .vs { font-size: 12px; color: var(--muted); font-weight: 600; }
   .cok { display: block; font-size: 11px; color: var(--muted); margin-top: 3px; }
-  .split { display: flex; gap: 4px; height: 56px; margin-bottom: 20px; }
-  .seg { display: flex; flex-direction: column; justify-content: center; padding: 0 15px; border-radius: 11px; min-width: 0; overflow: hidden; }
-  .seg.kn { background: color-mix(in srgb, var(--success) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 45%, transparent); }
-  .seg.un { background: color-mix(in srgb, var(--warning) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 42%, transparent); }
-  .segn { font-size: 19px; font-weight: 800; }
-  .segl { font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .anpr2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-  @media (max-width: 640px) { .anpr2 { grid-template-columns: 1fr; } }
-  .subhd { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 11px; }
-  .vlist { display: flex; flex-direction: column; gap: 6px; }
-  .vrow { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
-  .vrow.kn { background: color-mix(in srgb, var(--success) 10%, transparent); }
-  .plate { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
-  .latrow { display: flex; align-items: center; gap: 16px; }
-  .latplate { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 800; letter-spacing: 1px; padding: 8px 14px; border-radius: 12px; background: color-mix(in srgb, var(--acc) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent); white-space: nowrap; }
-  .latmeta { min-width: 0; }
-  .latveh { font-size: 15px; font-weight: 700; text-transform: capitalize; }
-  .latsub { font-size: 12px; color: var(--muted); margin-top: 3px; }
-  .who { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cnt { font-size: 12px; font-weight: 800; color: var(--acc); }
-  .pago { font-size: 10.5px; color: var(--muted-2); }
-  .hint { margin-top: 14px; font-size: 11.5px; color: var(--muted-2); }
-  .hint code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 5px; font-size: 11px; }
+  .plate { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 14px; font-weight: 700; letter-spacing: 0.5px; }
+  .who { font-size: 12.5px; color: var(--text-2); }
+  /* ANPR summary tiles */
+  .split2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 560px) { .split2 { grid-template-columns: 1fr; } }
+  .sk { padding: 15px 18px; }
+  .sk .big { font-size: 26px; font-weight: 800; margin-top: 4px; }
+  /* known vehicles manager */
+  .kplist { display: flex; flex-direction: column; gap: 7px; margin-bottom: 14px; max-height: 220px; overflow-y: auto; }
+  .kprow { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 10px; background: color-mix(in srgb, var(--success) 9%, transparent); }
+  .xbtn { width: 24px; height: 24px; border-radius: 7px; background: rgba(255, 255, 255, 0.06); color: var(--muted-2); font-size: 12px; }
+  .xbtn:hover { color: var(--error); background: color-mix(in srgb, var(--error) 16%, transparent); }
+  .kpadd { display: flex; gap: 8px; }
+  .in { background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 9px; padding: 8px 11px; color: var(--text); font-size: 13px; min-width: 0; }
+  .in:focus { outline: none; border-color: var(--acc); }
+  .plate-in { width: 120px; font-family: ui-monospace, Menlo, monospace; font-weight: 700; text-transform: uppercase; }
+  .kpadd .in:not(.plate-in) { flex: 1; }
+  .addbtn { padding: 8px 16px; border-radius: 9px; background: color-mix(in srgb, var(--acc) 20%, transparent); color: var(--acc); font-weight: 700; font-size: 13px; }
+  .addbtn:disabled { opacity: 0.4; }
+  /* detection log */
+  .detlist { display: flex; flex-direction: column; gap: 6px; max-height: 460px; overflow-y: auto; }
+  .detrow { display: grid; grid-template-columns: 60px 1fr auto auto; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
+  .detrow.kn { background: color-mix(in srgb, var(--success) 10%, transparent); }
+  .dt { display: flex; flex-direction: column; line-height: 1.15; }
+  .dtt { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dtd { font-size: 10px; color: var(--muted-2); }
+  .dmid { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+  .dveh { font-size: 11px; color: var(--muted); text-transform: capitalize; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .downer { font-size: 12.5px; font-weight: 700; color: var(--success); white-space: nowrap; }
+  .dacts { display: flex; align-items: center; gap: 5px; }
+  .mini { padding: 5px 9px; border-radius: 8px; background: rgba(255, 255, 255, 0.07); color: var(--text-2); font-size: 12px; }
+  .mini.ok { background: color-mix(in srgb, var(--acc) 22%, transparent); color: var(--acc); font-weight: 700; }
+  .tag-in { width: 96px; }
 </style>

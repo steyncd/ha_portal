@@ -480,6 +480,12 @@ class HAStore {
     return this.#svc("script", "coffee_flag_event", { index, who });
   }
 
+  /** Correct a misread plate in the ANPR detection log (by full-log index). */
+  anprCorrect(index: number, plate: string) {
+    if (this.#mock) return;
+    return this.#svc("script", "anpr_correct", { index, plate });
+  }
+
   setText(entity_id: string, value: string) {
     if (this.#mock) return this.#setMock(entity_id, value);
     return this.#svc("input_text", "set_value", { entity_id, value });
