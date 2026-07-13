@@ -9,6 +9,40 @@ import { HASS_URL } from "./config";
 
 type Status = "connecting" | "connected" | "error";
 
+/**
+ * Race a promise against a timeout. HA's WebSocket `sendMessagePromise` never
+ * resolves if a command silently gets no response (flaky link, recorder busy),
+ * which would hang any `Promise.all` waiting on it forever. This guarantees a
+ * fallback value after `ms` so callers (e.g. Insights) never stall.
+ */
+function withTimeout<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
+  return new Promise<T>((resolve) => {
+    let done = false;
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        resolve(fallback);
+      }
+    }, ms);
+    p.then(
+      (v) => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(v);
+        }
+      },
+      () => {
+        if (!done) {
+          done = true;
+          clearTimeout(timer);
+          resolve(fallback);
+        }
+      },
+    );
+  });
+}
+
 export type Reminder = {
   uid?: string;
   summary: string;
@@ -103,14 +137,18 @@ class HAStore {
     const end = new Date();
     const start = new Date(end.getTime() - hours * 3_600_000);
     try {
-      const res = (await this.#conn.sendMessagePromise({
-        type: "history/history_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        entity_ids: [entityId],
-        minimal_response: true,
-        no_attributes: true,
-      })) as Record<string, Array<Record<string, unknown>>>;
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "history/history_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          entity_ids: [entityId],
+          minimal_response: true,
+          no_attributes: true,
+        }),
+        20_000,
+        {},
+      )) as Record<string, Array<Record<string, unknown>>>;
       const arr = res?.[entityId] ?? [];
       const out: { t: number; v: number }[] = [];
       for (const p of arr) {
@@ -171,14 +209,18 @@ class HAStore {
     const end = new Date();
     const start = new Date(end.getTime() - hours * 3_600_000);
     try {
-      const res = (await this.#conn.sendMessagePromise({
-        type: "history/history_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        entity_ids: [entityId],
-        minimal_response: true,
-        no_attributes: true,
-      })) as Record<string, Array<Record<string, unknown>>>;
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "history/history_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          entity_ids: [entityId],
+          minimal_response: true,
+          no_attributes: true,
+        }),
+        20_000,
+        {},
+      )) as Record<string, Array<Record<string, unknown>>>;
       const arr = res?.[entityId] ?? [];
       const out: { t: number; s: string }[] = [];
       let prev = "";
@@ -215,14 +257,18 @@ class HAStore {
       return Number.isFinite(n) ? n : null;
     };
     try {
-      const res = (await this.#conn.sendMessagePromise({
-        type: "recorder/statistics_during_period",
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        statistic_ids: [statisticId],
-        period,
-        types: ["mean", "min", "max", "sum", "change"],
-      })) as Record<string, Array<Record<string, unknown>>>;
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "recorder/statistics_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          statistic_ids: [statisticId],
+          period,
+          types: ["mean", "min", "max", "sum", "change"],
+        }),
+        20_000,
+        {},
+      )) as Record<string, Array<Record<string, unknown>>>;
       const arr = res?.[statisticId] ?? [];
       return arr
         .map((p) => {

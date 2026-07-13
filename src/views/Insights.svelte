@@ -138,7 +138,8 @@
 
   onMount(async () => {
     if (restoreCache()) { ready = true; refreshing = true; } // instant paint from last visit
-    const trendsP = buildTrends();
+    try {
+    const trendsP = buildTrends().catch(() => [] as Trend[]);
     const [roomHists, applHists, loadHist, alarmHist, nobodyHist, waterHist, gridHist, vehHist, plateHist, alarmHist30, gateOcc] = await Promise.all([
       Promise.all(ROOMS.map((r) => ha.historyStates(r.id, HRS))),
       Promise.all(APPLIANCES.map((a) => ha.historyStates(a.sw, HRS))),
@@ -258,10 +259,13 @@
     if (armVsTypical?.pct != null && Math.abs(armVsTypical.pct) >= 30) hl.push({ icon: "🛡️", text: `You've armed ${Math.abs(armVsTypical.pct)}% ${armVsTypical.pct > 0 ? "more" : "less"} than usual this week.` });
 
     headlines = hl.slice(0, 6);
-
-    ready = true;
-    refreshing = false;
-    saveCache();
+    } catch (e) {
+      console.error("[Insights] analysis failed", e);
+    } finally {
+      ready = true;
+      refreshing = false;
+      saveCache();
+    }
   });
 
   const hourTicks = [0, 6, 12, 18];
