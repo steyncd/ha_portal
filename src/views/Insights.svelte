@@ -91,6 +91,7 @@
   let ready = $state(false);
   let heat = $state<{ room: string; color: string; cells: number[]; total: number }[]>([]);
   let heatMax = $state(1);
+  let heatDays = $state(DAYS);
   let busiest = $state("—");
   let appUsage = $state<{ name: string; icon: string; hours: number; perDay: string; now: number | null; w: number }[]>([]);
   let standby = $state<number | null>(null);
@@ -110,7 +111,7 @@
   const CACHE_KEY = "ha_portal_insights_v1";
   function saveCache() {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), d: { heat, heatMax, busiest, appUsage, standby, armByHour, armMax, typicalArm, forgot, unarmedNow, vsTypical, headlines, trends, armVsTypical, loiter } }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), d: { heat, heatMax, heatDays, busiest, appUsage, standby, armByHour, armMax, typicalArm, forgot, unarmedNow, vsTypical, headlines, trends, armVsTypical, loiter } }));
     } catch { /* quota / private mode — skip */ }
   }
   function restoreCache(): boolean {
@@ -118,7 +119,7 @@
       const raw = localStorage.getItem(CACHE_KEY);
       if (!raw) return false;
       const { d } = JSON.parse(raw);
-      heat = d.heat; heatMax = d.heatMax; busiest = d.busiest; appUsage = d.appUsage; standby = d.standby;
+      heat = d.heat; heatMax = d.heatMax; heatDays = d.heatDays ?? DAYS; busiest = d.busiest; appUsage = d.appUsage; standby = d.standby;
       armByHour = d.armByHour; armMax = d.armMax; typicalArm = d.typicalArm; forgot = d.forgot; unarmedNow = d.unarmedNow;
       vsTypical = d.vsTypical; headlines = d.headlines; trends = d.trends; armVsTypical = d.armVsTypical; loiter = d.loiter;
       return true;
@@ -153,11 +154,23 @@
     ]);
 
     // ---- movement heatmap (room × hour of day) ----
-    const grid = ROOMS.map((r, i) => {
-      const cells = Array(24).fill(0);
-      for (const e of roomHists[i]) if (e.s === "on") cells[sastHour(new Date(e.t))]++;
-      return { room: r.label, color: r.color, cells, total: cells.reduce((a, b) => a + b, 0) };
-    });
+    // Prefer the server-side, months-deep grid (sensor.movement_heatmap_90d,
+    // built by scripts/insights_heatmap.py over 90 days of InfluxDB). Fall back
+    // to a client-side 7-day compute from recorder history if it's unavailable.
+    const colorOf = (label: string) => ROOMS.find((r) => r.label === label)?.color ?? "var(--acc)";
+    const server = ha.attr("sensor.movement_heatmap_90d", "rooms") as { room: string; cells: number[] }[] | undefined;
+    let grid: { room: string; color: string; cells: number[]; total: number }[];
+    if (Array.isArray(server) && server.length && server.some((r) => r.cells?.some((c) => c > 0))) {
+      grid = server.map((r) => ({ room: r.room, color: colorOf(r.room), cells: r.cells, total: r.cells.reduce((a, b) => a + b, 0) }));
+      heatDays = (ha.attr("sensor.movement_heatmap_90d", "days") as number) ?? 90;
+    } else {
+      grid = ROOMS.map((r, i) => {
+        const cells = Array(24).fill(0);
+        for (const e of roomHists[i]) if (e.s === "on") cells[sastHour(new Date(e.t))]++;
+        return { room: r.label, color: r.color, cells, total: cells.reduce((a, b) => a + b, 0) };
+      });
+      heatDays = DAYS;
+    }
     heatMax = Math.max(1, ...grid.flatMap((g) => g.cells));
     heat = grid;
     busiest = [...grid].sort((a, b) => b.total - a.total)[0]?.total ? [...grid].sort((a, b) => b.total - a.total)[0].room : "—";
@@ -233,7 +246,7 @@
     };
     vsTypical = [
       cmp("Water used", waterHist, E.waterUsedToday, true, ha.num("sensor.water_use_90d_baseline")),
-      cmp("Grid import", gridHist, E.gridImportToday, true),
+      cmp("Grid import", gridHist, E.gridImportToday, true, ha.num("sensor.grid_import_90d_baseline")),
       cmp("Vehicles past gate", vehHist, E.vehiclesToday, false),
     ];
 
@@ -244,7 +257,7 @@
     // most significant long-term trend, phrased for the feed
     const topBad = trends.find((t) => t.good === false && Math.abs(t.deltaPct) >= 10);
     if (topBad) hl.push({ icon: topBad.def.domain === "water" ? "💧" : "🔌", text: `${topBad.headline} — ${topBad.detail.replace(/\.$/, "")}.` });
-    if (busiest !== "—") hl.push({ icon: "🚶", text: `${busiest} is your most-used room this week.` });
+    if (busiest !== "—") hl.push({ icon: "🚶", text: `${busiest} is your most-used room${heatDays >= 90 ? " (90-day)" : " this week"}.` });
     if (typicalArm !== "—") hl.push({ icon: "🛡️", text: `You usually arm around ${typicalArm}${forgot ? ` · left home un-armed ${forgot}× this week` : ""}.` });
     if (standby != null) hl.push({ icon: "🔌", text: `Overnight base load averages ${Math.round(standby)} W (01:00–04:00).` });
     const w = vsTypical[0];
@@ -325,7 +338,7 @@
 
     <!-- movement heatmap -->
     <div class="card pad">
-      <div class="rh"><span class="lb">Movement by room & hour · {DAYS}-day pattern</span><span class="sub">from PIR sensors</span></div>
+      <div class="rh"><span class="lb">Movement by room & hour · {heatDays}-day pattern{#if heatDays >= 90}<span class="vs90">90d</span>{/if}</span><span class="sub">from PIR sensors</span></div>
       <div class="heatscroll">
         <div class="heat">
           <div class="hrow hhead"><span class="hlbl"></span><div class="hcells">{#each Array(24) as _, hr}<span class="htick">{hourTicks.includes(hr) ? hr + "h" : ""}</span>{/each}</div></div>
