@@ -86,7 +86,12 @@
     {#if !isMobile}
       <aside class:collapsed={prefs.collapsed}>
         <div class="brand">
-          <span class="logo">◆</span>
+          <span class="logo" aria-label="Steyn Home">
+            <svg viewBox="0 0 72 72" width="100%" height="100%" fill="none" aria-hidden="true">
+              <path d="M20 34 L36 21 L52 34 V52 a2 2 0 0 1-2 2 H22 a2 2 0 0 1-2-2 Z" stroke="#0b1220" stroke-width="4" stroke-linejoin="round"/>
+              <path d="M25 45 h6 l3 -7 l4 12 l3 -5 h6" stroke="#0b1220" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
           <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
