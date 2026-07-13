@@ -474,6 +474,12 @@ class HAStore {
     return this.#svc("script", "dispatch_reminder", { ...rest, tmpl: template ?? "" });
   }
 
+  /** Reassign a logged coffee to me / mandri / guest (only "me" counts). */
+  coffeeFlag(index: number, who: "me" | "mandri" | "guest") {
+    if (this.#mock) return;
+    return this.#svc("script", "coffee_flag_event", { index, who });
+  }
+
   setText(entity_id: string, value: string) {
     if (this.#mock) return this.#setMock(entity_id, value);
     return this.#svc("input_text", "set_value", { entity_id, value });

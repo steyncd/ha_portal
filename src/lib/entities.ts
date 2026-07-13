@@ -163,6 +163,12 @@ export const E = {
   ouraCurrentHR: "sensor.oura_current_heart_rate",
   ouraRestingHR: "sensor.oura_lowest_sleep_heart_rate",
   ouraSteps: "sensor.oura_steps",
+  coffeeLog: "sensor.coffee_log",
+  meDeskTime: "sensor.me_desk_time_today",
+  meTimeAway: "sensor.me_time_away_today",
+  meStudyTime: "sensor.me_study_time_today",
+  meKitchenTime: "sensor.me_kitchen_time_today",
+  meLoungeTime: "sensor.me_lounge_time_today",
   ouraActiveCal: "sensor.oura_active_calories",
   ouraTotalCal: "sensor.oura_total_calories",
   ouraTargetCal: "sensor.oura_target_calories",
@@ -312,7 +318,7 @@ export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) =>
   a.lights.filter((l) => !l.id.startsWith("group.")).map((l) => l.id),
 );
 
-export type Appliance = { sw: string; power: string; label: string; icon: string };
+export type Appliance = { sw: string; power: string; label: string; icon: string; threshold?: number };
 export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
 
 // Appliances grouped into logical areas — source of truth for the Appliances page.

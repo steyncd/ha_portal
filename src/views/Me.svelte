@@ -57,6 +57,21 @@
   const steps = $derived(ha.num(E.ouraSteps));
   const stepsGoal = $derived(ha.num("input_number.oura_steps_goal") ?? 8000);
   const moveP = $derived(clamp((ha.num(E.ouraActiveCal) ?? 0) / Math.max(1, ha.num(E.ouraTargetCal) ?? 500)) * 100);
+  // ---- today so far + coffee ----
+  const hm = (hours: number | null) => { if (hours == null) return "—"; const h = Math.floor(hours); const m = Math.round((hours - h) * 60); return `${h}:${String(m).padStart(2, "0")}`; };
+  const hhmm = (iso: string) => { const d = new Date(iso.replace(" ", "T")); return isNaN(+d) ? iso : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  const coffeesMine = $derived(ha.num(E.coffeeLog) ?? 0);
+  const coffeeEvents = $derived(((ha.attr(E.coffeeLog, "events") as { i: number; ts: string; who: string }[] | undefined) ?? []).slice().reverse());
+  const coffeeTotal = $derived((ha.attr(E.coffeeLog, "total") as number | undefined) ?? coffeeEvents.length);
+  const roomsToday = $derived([
+    { name: "Study", h: ha.num(E.meStudyTime) },
+    { name: "Kitchen", h: ha.num(E.meKitchenTime) },
+    { name: "Lounge", h: ha.num(E.meLoungeTime) },
+  ]);
+  const roomMax = $derived(Math.max(1, ...roomsToday.map((r) => r.h ?? 0)));
+  const WHO = [{ k: "me", label: "Mine" }, { k: "mandri", label: "Mandri" }, { k: "guest", label: "Guest" }] as const;
+  function flagCoffee(i: number, who: "me" | "mandri" | "guest") { ha.coffeeFlag(i, who); toast.show(who === "me" ? "Marked as yours" : who === "mandri" ? "Marked as Mandri's" : "Marked as guest"); }
+
   const exMin = $derived((ha.num(E.ouraMedActivityMin) ?? 0) + (ha.num(E.ouraHighActivityMin) ?? 0));
   const exP = $derived(clamp(exMin / 30) * 100);
   const stepP = $derived(steps != null ? clamp(steps / stepsGoal) * 100 : 0);
@@ -154,6 +169,42 @@
 
   <!-- headline insight -->
   <div class="card insight"><span class="ii">{insight.icon}</span><span class="it">{insight.text}</span></div>
+
+  <!-- today so far -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">Today so far</span><span class="sub">since wake</span></div>
+    <div class="tsf">
+      <div class="tstat"><div class="tsv">{coffeesMine}</div><div class="tsk">☕ Coffees</div></div>
+      <div class="tstat"><div class="tsv">{hm(ha.num(E.meDeskTime))}</div><div class="tsk">💻 Desk time</div></div>
+      <div class="tstat"><div class="tsv">{n(steps)}</div><div class="tsk">👟 Steps</div></div>
+      <div class="tstat"><div class="tsv">{hm(ha.num(E.meTimeAway))}</div><div class="tsk">🚗 Time away</div></div>
+    </div>
+    <div class="rooms">
+      <div class="roomshd">Rooms today</div>
+      {#each roomsToday as r}
+        <div class="roomrow"><span class="roomn">{r.name}</span><div class="roombar"><div class="roomfill" style="width:{((r.h ?? 0) / roomMax) * 100}%"></div></div><span class="roomv">{hm(r.h)}</span></div>
+      {/each}
+    </div>
+  </div>
+
+  <!-- coffee today (tap to reassign so it doesn't count as yours) -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">☕ Coffee · today</span><span class="sub">{coffeesMine} yours · {coffeeTotal} made · tap to flag</span></div>
+    {#if coffeeEvents.length}
+      <div class="cflist">
+        {#each coffeeEvents as c}
+          <div class="cfrow">
+            <span class="cft">{hhmm(c.ts)}</span>
+            <div class="cfwho">
+              {#each WHO as w}
+                <button class="cfbtn" class:on={c.who === w.k} onclick={() => flagCoffee(c.i, w.k)}>{w.label}</button>
+              {/each}
+            </div>
+          </div>
+        {/each}
+      </div>
+    {:else}<div class="sub">No coffees logged today yet.</div>{/if}
+  </div>
 
   <div class="scores">
     {#each scores as s}
@@ -288,6 +339,26 @@
   .pad { padding: 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .sub { font-size: 12px; color: var(--dim); }
+  /* today so far */
+  .tsf { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 560px) { .tsf { grid-template-columns: repeat(2, 1fr); } }
+  .tstat { padding: 13px 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .tsv { font-size: 22px; font-weight: 800; }
+  .tsk { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .rooms { margin-top: 16px; }
+  .roomshd { font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  .roomrow { display: grid; grid-template-columns: 70px 1fr auto; align-items: center; gap: 12px; padding: 5px 0; }
+  .roomn { font-size: 12.5px; color: var(--text-2); }
+  .roombar { height: 8px; border-radius: 5px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+  .roomfill { height: 100%; border-radius: 5px; background: var(--orange, #fbbf24); }
+  .roomv { font-size: 12px; font-weight: 700; color: var(--text-2); font-variant-numeric: tabular-nums; }
+  /* coffee today */
+  .cflist { display: flex; flex-direction: column; gap: 8px; }
+  .cfrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 13px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
+  .cft { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .cfwho { display: flex; gap: 6px; }
+  .cfbtn { padding: 6px 12px; border-radius: 9px; font-size: 12px; font-weight: 700; color: var(--muted); background: rgba(255, 255, 255, 0.05); }
+  .cfbtn.on { color: var(--acc); background: color-mix(in srgb, var(--acc) 20%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 45%, transparent); }
   .sd { display: flex; align-items: flex-end; gap: 13px; margin-bottom: 15px; }
   .sdur { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 0.9; }
   .sib { font-size: 12px; color: var(--muted); padding-bottom: 6px; }

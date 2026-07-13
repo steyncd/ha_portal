@@ -63,8 +63,8 @@
   const ROOMS = [
     { label: "Main", id: "binary_sensor.main_room_pir", color: "#a78bfa" },
     { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#f472b6" },
-    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#38bdf8" },
-    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#34d399" },
+    { label: "Study", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#38bdf8" },
+    { label: "TV Room", id: "binary_sensor.lounge_pir", color: "#34d399" },
     { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#fbbf24" },
     { label: "Garage", id: "binary_sensor.garage_pir", color: "#fb923c" },
     { label: "Passage", id: "binary_sensor.passage_pir", color: "#22d3ee" },
@@ -78,6 +78,15 @@
     const h = asc(hist); let tot = 0, on: number | null = null;
     for (const e of h) { if (e.s === "on" && on == null) on = e.t; else if (e.s !== "on" && on != null) { tot += e.t - on; on = null; } }
     if (on != null) tot += Date.now() - on;
+    return tot;
+  }
+  // total time a numeric (power) series was at/above `thr` — the sample holds
+  // until the next reading, so we credit each interval by its leading value.
+  function sumAbove(hist: { t: number; v: number }[], thr: number) {
+    const h = [...hist].sort((a, b) => a.t - b.t); let tot = 0;
+    for (let i = 0; i < h.length; i++) {
+      if (h[i].v >= thr) tot += (i + 1 < h.length ? h[i + 1].t : Date.now()) - h[i].t;
+    }
     return tot;
   }
   // on→off intervals with duration (for gate dwell / loitering)
@@ -139,9 +148,13 @@
     if (restoreCache()) { ready = true; refreshing = true; } // instant paint from last visit
     try {
     const trendsP = buildTrends().catch(() => [] as Trend[]);
+    // Skip the 8 room-history fetches when the server-side 90-day heatmap is
+    // available — it makes the cold load much faster over the remote link.
+    const serverHeat = ha.attr("sensor.movement_heatmap_90d", "rooms") as { room: string; cells: number[] }[] | undefined;
+    const haveServerHeat = Array.isArray(serverHeat) && serverHeat.length > 0 && serverHeat.some((r) => r.cells?.some((c) => c > 0));
     const [roomHists, applHists, loadHist, alarmHist, nobodyHist, waterHist, gridHist, vehHist, plateHist, alarmHist30, gateOcc] = await Promise.all([
-      Promise.all(ROOMS.map((r) => ha.historyStates(r.id, HRS))),
-      Promise.all(APPLIANCES.map((a) => ha.historyStates(a.sw, HRS))),
+      haveServerHeat ? Promise.resolve([] as { t: number; s: string }[][]) : Promise.all(ROOMS.map((r) => ha.historyStates(r.id, HRS))),
+      Promise.all(APPLIANCES.map((a) => ha.history(a.power, HRS))),
       ha.history(E.loads, HRS),
       ha.historyStates(E.alarmHome, HRS),
       ha.historyStates(E.nobodyHome, HRS),
@@ -158,10 +171,9 @@
     // built by scripts/insights_heatmap.py over 90 days of InfluxDB). Fall back
     // to a client-side 7-day compute from recorder history if it's unavailable.
     const colorOf = (label: string) => ROOMS.find((r) => r.label === label)?.color ?? "var(--acc)";
-    const server = ha.attr("sensor.movement_heatmap_90d", "rooms") as { room: string; cells: number[] }[] | undefined;
     let grid: { room: string; color: string; cells: number[]; total: number }[];
-    if (Array.isArray(server) && server.length && server.some((r) => r.cells?.some((c) => c > 0))) {
-      grid = server.map((r) => ({ room: r.room, color: colorOf(r.room), cells: r.cells, total: r.cells.reduce((a, b) => a + b, 0) }));
+    if (haveServerHeat && serverHeat) {
+      grid = serverHeat.map((r) => ({ room: r.room, color: colorOf(r.room), cells: r.cells, total: r.cells.reduce((a, b) => a + b, 0) }));
       heatDays = (ha.attr("sensor.movement_heatmap_90d", "days") as number) ?? 90;
     } else {
       grid = ROOMS.map((r, i) => {
@@ -175,9 +187,12 @@
     heat = grid;
     busiest = [...grid].sort((a, b) => b.total - a.total)[0]?.total ? [...grid].sort((a, b) => b.total - a.total)[0].room : "—";
 
-    // ---- appliance usage (run-time over the week) ----
+    // ---- appliance usage (actual RUN-TIME from power draw, not switch on-state) ----
+    // A smart plug reads "on" 24/7 for a fridge; real run-time is when it's
+    // actually drawing power. Integrate the time each appliance's power ≥ its
+    // threshold (default 10 W to ignore standby).
     appUsage = APPLIANCES.map((a, i) => {
-      const ms = sumOn(applHists[i]);
+      const ms = sumAbove(applHists[i], a.threshold ?? 10);
       return { name: a.label, icon: a.icon, hours: ms / 3_600_000, perDay: fmtHrs(ms / DAYS), now: ha.num(a.power), w: ha.num(a.power) ?? 0 };
     }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
 
@@ -289,7 +304,7 @@
 
 <div class="col">
   <div class="head">
-    <div><h1>Insights</h1><p>Long-term trends + {DAYS}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</p></div>
+    <div><h1>Insights</h1><p>Long-term trends + {heatDays}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</p></div>
   </div>
 
   {#if !ready}
