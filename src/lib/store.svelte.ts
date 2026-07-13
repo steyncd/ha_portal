@@ -331,18 +331,13 @@ class HAStore {
     }
   }
 
-  /** Create a reminder event. `start`/`end` are naive-local ISO (no offset). */
+  /** Create a reminder event via the calendar CRUD WS command (supports rrule,
+   *  unlike the calendar.create_event service). `start`/`end` are naive-local ISO. */
   createReminder(ev: { summary: string; description: string; start: string; end: string; rrule?: string }) {
-    if (this.#mock) return;
-    const service_data: Record<string, unknown> = {
-      summary: ev.summary, description: ev.description,
-      start_date_time: ev.start, end_date_time: ev.end,
-    };
-    if (ev.rrule) service_data.rrule = ev.rrule;
-    return this.#conn?.sendMessagePromise({
-      type: "call_service", domain: "calendar", service: "create_event",
-      target: { entity_id: "calendar.reminders" }, service_data,
-    });
+    if (this.#mock || !this.#conn) return;
+    const event: Record<string, unknown> = { summary: ev.summary, description: ev.description, dtstart: ev.start, dtend: ev.end };
+    if (ev.rrule) event.rrule = ev.rrule;
+    return this.#conn.sendMessagePromise({ type: "calendar/event/create", entity_id: "calendar.reminders", event });
   }
 
   deleteReminder(uid: string, recurrence_id?: string | null) {
