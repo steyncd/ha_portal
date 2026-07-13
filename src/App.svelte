@@ -14,6 +14,7 @@
   import Cameras from "./views/Cameras.svelte";
   import Traffic from "./views/Traffic.svelte";
   import Lights from "./views/Lights.svelte";
+  import Reminders from "./views/Reminders.svelte";
   import System from "./views/System.svelte";
   import Me from "./views/Me.svelte";
   import Timeline from "./views/Timeline.svelte";
@@ -123,6 +124,7 @@
         {:else if view === "cameras"}<Cameras />
         {:else if view === "traffic"}<Traffic />
         {:else if view === "lights"}<Lights />
+        {:else if view === "reminders"}<Reminders />
         {:else if view === "system"}<System />
         {:else if view === "me"}<Me />
         {:else if view === "timeline"}<Timeline />

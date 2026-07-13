@@ -1,6 +1,6 @@
 export type ViewId =
   | "overview" | "energy" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "system" | "me" | "timeline" | "insights" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "me" | "timeline" | "insights" | "settings";
 
 export type NavItem = { id: ViewId; name: string; icon: string; group: "" | "Systems" | "Safety" | "House" };
 
@@ -15,6 +15,7 @@ export const NAV: NavItem[] = [
   { id: "cameras", name: "Cameras", icon: "📷", group: "Safety" },
   { id: "traffic", name: "Traffic", icon: "🚗", group: "Safety" },
   { id: "lights", name: "Lights", icon: "💡", group: "House" },
+  { id: "reminders", name: "Reminders", icon: "⏰", group: "House" },
   { id: "system", name: "System", icon: "🖥️", group: "House" },
   { id: "me", name: "Me", icon: "👤", group: "House" },
   { id: "timeline", name: "Timeline", icon: "🕒", group: "House" },

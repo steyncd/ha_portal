@@ -5,8 +5,19 @@ import {
   type Connection,
   type HassEntities,
 } from "./ha";
+import { HASS_URL } from "./config";
 
 type Status = "connecting" | "connected" | "error";
+
+export type Reminder = {
+  uid?: string;
+  summary: string;
+  description?: string;
+  start?: { dateTime?: string; date?: string };
+  end?: { dateTime?: string; date?: string };
+  rrule?: string | null;
+  recurrence_id?: string | null;
+};
 
 /**
  * Single reactive source of truth for the live Home Assistant state.
@@ -17,6 +28,7 @@ class HAStore {
   status = $state<Status>("connecting");
   error = $state("");
   #conn: Connection | undefined;
+  #auth: { accessToken: string; expired: boolean; refreshAccessToken: () => Promise<void> } | undefined;
   #mock = false;
 
   async init() {
@@ -32,8 +44,9 @@ class HAStore {
       return;
     }
     try {
-      const { connection } = await connect();
+      const { auth, connection } = await connect();
       this.#conn = connection;
+      this.#auth = auth;
       subscribeEntities(connection, (ents) => {
         this.entities = ents;
       });
@@ -286,6 +299,84 @@ class HAStore {
   notify(message: string) {
     if (this.#mock) return;
     return this.#svc("notify", "notify", { message });
+  }
+
+  // ---- reminders (calendar.reminders) ----
+  async #token(): Promise<string> {
+    if (this.#auth?.expired) { try { await this.#auth.refreshAccessToken(); } catch { /* use stale */ } }
+    return this.#auth?.accessToken ?? "";
+  }
+
+  /** Upcoming reminder events over the next `days` (REST — includes uid + rrule). */
+  async listReminders(days = 60): Promise<Reminder[]> {
+    if (this.#mock) {
+      const iso = (h: number) => new Date(Date.now() + h * 3_600_000).toISOString();
+      return [
+        { uid: "m1", summary: "Take out the bins", description: '{"announce":"media_player.study_speaker","wa":["christo"]}', start: { dateTime: iso(14) }, rrule: "FREQ=WEEKLY;BYDAY=TU" },
+        { uid: "m2", summary: "Pool service", description: '{"wa":["christo","mandri"]}', start: { dateTime: iso(72) }, rrule: null },
+        { uid: "m3", summary: "Give kids their vitamins", description: '{"announce":"media_player.study_speaker","wa":["liam_eben"]}', start: { dateTime: iso(20) }, rrule: "FREQ=DAILY" },
+      ];
+    }
+    const start = new Date().toISOString();
+    const end = new Date(Date.now() + days * 86_400_000).toISOString();
+    try {
+      const res = await fetch(`${HASS_URL}/api/calendars/calendar.reminders?start=${start}&end=${end}`, {
+        headers: { Authorization: `Bearer ${await this.#token()}` },
+      });
+      if (!res.ok) return [];
+      return (await res.json()) as Reminder[];
+    } catch {
+      return [];
+    }
+  }
+
+  /** Create a reminder event. `start`/`end` are naive-local ISO (no offset). */
+  createReminder(ev: { summary: string; description: string; start: string; end: string; rrule?: string }) {
+    if (this.#mock) return;
+    const service_data: Record<string, unknown> = {
+      summary: ev.summary, description: ev.description,
+      start_date_time: ev.start, end_date_time: ev.end,
+    };
+    if (ev.rrule) service_data.rrule = ev.rrule;
+    return this.#conn?.sendMessagePromise({
+      type: "call_service", domain: "calendar", service: "create_event",
+      target: { entity_id: "calendar.reminders" }, service_data,
+    });
+  }
+
+  deleteReminder(uid: string, recurrence_id?: string | null) {
+    if (this.#mock || !this.#conn) return;
+    const msg = recurrence_id
+      ? { type: "calendar/event/delete", entity_id: "calendar.reminders", uid, recurrence_id, recurrence_range: "THISEVENT" }
+      : { type: "calendar/event/delete", entity_id: "calendar.reminders", uid };
+    return this.#conn.sendMessagePromise(msg);
+  }
+
+  /** Fire a reminder right now (announce + WhatsApp) — used by "Send test". */
+  dispatchReminder(data: { message?: string; template?: string; announce?: string; wa?: string[] }) {
+    if (this.#mock) return;
+    return this.#svc("script", "dispatch_reminder", data);
+  }
+
+  setText(entity_id: string, value: string) {
+    if (this.#mock) return this.#setMock(entity_id, value);
+    return this.#svc("input_text", "set_value", { entity_id, value });
+  }
+
+  /** Render a Jinja template server-side (one-shot) — for live message preview. */
+  async renderTemplate(template: string): Promise<string> {
+    if (this.#mock) return template.replace(/\{[^}]+\}/g, "…");
+    if (!this.#conn) return "";
+    return new Promise<string>((resolve) => {
+      let unsub: (() => void) | undefined;
+      let done = false;
+      const finish = (v: string) => { if (!done) { done = true; resolve(v); if (unsub) unsub(); } };
+      this.#conn!
+        .subscribeMessage((m: { result?: string }) => finish(m.result ?? ""), { type: "render_template", template })
+        .then((u) => { unsub = u; if (done) u(); })
+        .catch(() => finish(""));
+      setTimeout(() => finish(""), 2500);
+    });
   }
 }
 
