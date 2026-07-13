@@ -99,7 +99,7 @@
   let typicalArm = $state("—");
   let forgot = $state(0);
   let unarmedNow = $state(false);
-  let vsTypical = $state<{ label: string; today: string; pct: number | null; good: boolean }[]>([]);
+  let vsTypical = $state<{ label: string; today: string; pct: number | null; good: boolean; months?: boolean }[]>([]);
   let headlines = $state<{ icon: string; text: string }[]>([]);
   let trends = $state<Trend[]>([]);
   let armVsTypical = $state<{ week: number; pct: number | null } | null>(null);
@@ -221,14 +221,18 @@
       for (const p of h) { const d = new Date(p.t); d.setHours(0, 0, 0, 0); m.set(d.getTime(), Math.max(m.get(d.getTime()) ?? 0, p.v)); }
       return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([, v]) => v);
     };
-    const cmp = (label: string, hist: { t: number; v: number }[], todayId: string, lowerBetter: boolean) => {
-      const days = peaks(hist); const today = ha.num(todayId);
-      const prior = days.slice(0, -1); const avg = prior.length ? prior.reduce((a, b) => a + b, 0) / prior.length : null;
+    // baseline90d (optional): a months-deep InfluxDB baseline. When present it
+    // replaces the shallow client-side "prior days" average → genuinely months-deep.
+    const cmp = (label: string, hist: { t: number; v: number }[], todayId: string, lowerBetter: boolean, baseline90d: number | null = null) => {
+      const today = ha.num(todayId);
+      let avg = baseline90d != null && baseline90d > 0 ? baseline90d : null;
+      let months = avg != null;
+      if (avg == null) { const prior = peaks(hist).slice(0, -1); avg = prior.length ? prior.reduce((a, b) => a + b, 0) / prior.length : null; months = false; }
       const pct = avg != null && avg > 0 && today != null ? Math.round(((today - avg) / avg) * 100) : null;
-      return { label, today: today != null ? n(today) : "—", pct, good: pct == null ? true : lowerBetter ? pct <= 0 : pct >= 0 };
+      return { label, today: today != null ? n(today) : "—", pct, good: pct == null ? true : lowerBetter ? pct <= 0 : pct >= 0, months };
     };
     vsTypical = [
-      cmp("Water used", waterHist, E.waterUsedToday, true),
+      cmp("Water used", waterHist, E.waterUsedToday, true, ha.num("sensor.water_use_90d_baseline")),
       cmp("Grid import", gridHist, E.gridImportToday, true),
       cmp("Vehicles past gate", vehHist, E.vehiclesToday, false),
     ];
@@ -310,10 +314,10 @@
     <div class="vs">
       {#each vsTypical as v}
         <div class="card vscard">
-          <div class="vslbl">{v.label}</div>
+          <div class="vslbl">{v.label}{#if v.months}<span class="vs90" title="Compared against a 90-day InfluxDB baseline">90d</span>{/if}</div>
           <div class="vsval">{v.today}</div>
           {#if v.pct != null && v.pct !== 0}
-            <div class="vspct" style="color:{v.good ? 'var(--success)' : 'var(--warning)'}">{v.pct > 0 ? "▲" : "▼"} {Math.abs(v.pct)}% vs typical</div>
+            <div class="vspct" style="color:{v.good ? 'var(--success)' : 'var(--warning)'}">{v.pct > 0 ? "▲" : "▼"} {Math.abs(v.pct)}% vs {v.months ? "90-day norm" : "typical"}</div>
           {:else}<div class="vspct dim">≈ on your average</div>{/if}
         </div>
       {/each}
@@ -401,6 +405,7 @@
   @media (max-width: 640px) { .vs { grid-template-columns: 1fr; } }
   .vscard { padding: 16px 18px; }
   .vslbl { font-size: 11.5px; color: var(--muted); }
+  .vs90 { margin-left: 6px; font-size: 9px; font-weight: 800; letter-spacing: .5px; color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent); padding: 1px 5px; border-radius: 6px; vertical-align: middle; }
   .vsval { font-size: 26px; font-weight: 800; margin-top: 4px; }
   .vspct { font-size: 12px; font-weight: 700; margin-top: 3px; }
   .vspct.dim { color: var(--muted-2); font-weight: 500; }
