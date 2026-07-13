@@ -191,6 +191,14 @@ const ROWS: Row[] = [
   ["sensor.study_heater_current_consumption", "0", { unit_of_measurement: "W" }],
   ["switch.dining_room_alarm_cctv_power_monitor", "on"],
   ["sensor.dining_room_alarm_cctv_power_monitor_power", "48", { unit_of_measurement: "W" }],
+  ["switch.main_tv_plug", "on"],
+  ["sensor.main_tv_plug_current_consumption", "4.2", { unit_of_measurement: "W" }],
+  ["switch.main_bedroom_plugs", "on"],
+  ["sensor.main_bedroom_plugs_current_consumption", "18.8", { unit_of_measurement: "W" }],
+  ["switch.hallway_bedroom_and_living_room_lights", "on"],
+  ["sensor.hallway_bedroom_and_living_room_lights_power", "81", { unit_of_measurement: "W" }],
+  ["light.street_lights", "on"],
+  ["sensor.street_lights_street_lights_power", "62.8", { unit_of_measurement: "W" }],
 
   // Traffic
   ["sensor.vehicles_today", "935"],

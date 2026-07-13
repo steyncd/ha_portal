@@ -343,6 +343,17 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
   { name: "Security & Systems", icon: "🛡️", items: [
     { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️" },
   ] },
+  { name: "Living & Media", icon: "📺", items: [
+    { sw: "switch.main_tv_plug", power: "sensor.main_tv_plug_current_consumption", label: "Main TV Plug", icon: "📺" },
+  ] },
+  { name: "Bedrooms", icon: "🛏️", items: [
+    { sw: "switch.main_bedroom_plugs", power: "sensor.main_bedroom_plugs_current_consumption", label: "Main Bedroom Plugs", icon: "🔌" },
+  ] },
+  { name: "Lighting", icon: "💡", items: [
+    // Metered lighting circuits (DB-board Tuya breaker + the street-lights ESPHome relay).
+    { sw: "switch.hallway_bedroom_and_living_room_lights", power: "sensor.hallway_bedroom_and_living_room_lights_power", label: "Bedroom & Living Lights", icon: "💡" },
+    { sw: "light.street_lights", power: "sensor.street_lights_street_lights_power", label: "Street Lights", icon: "🏮" },
+  ] },
 ];
 
 // Flat list (derived) — used by the Energy view's live-draw grid.
