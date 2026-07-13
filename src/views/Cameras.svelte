@@ -12,6 +12,9 @@
     { icon: "👤", cam: "Frigate", txt: `${n(ha.num(E.personDetections))} person events`, t: "today" },
   ]);
   const online = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
+  // Some cameras (raw RTSP) 500 on the snapshot proxy — track which failed so we
+  // show a clean "no snapshot" placeholder instead of a broken image.
+  let failed = $state<Record<string, boolean>>({});
 
   // refresh snapshot stills periodically (cache-bust)
   let tick = $state(0);
@@ -43,10 +46,10 @@
       {@const up = ha.available(c.id)}
       <div class="cam card">
         <div class="feed">
-          {#if src}
-            <img {src} alt="{c.label} snapshot" loading="lazy" />
+          {#if src && !failed[c.id]}
+            <img {src} alt="" loading="lazy" onerror={() => (failed = { ...failed, [c.id]: true })} />
           {:else}
-            <span class="fl">{up ? `${c.label}…` : "offline"}</span>
+            <span class="fl">{up ? "no snapshot" : "offline"}</span>
           {/if}
           <span class="rec" class:off={!up}><span class="rd"></span>{up ? (ha.state(c.id) === "recording" ? "REC" : "LIVE") : "OFFLINE"}</span>
         </div>

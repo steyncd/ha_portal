@@ -206,9 +206,9 @@ export const SCENES: SceneDef[] = [
 
 // Camera feeds (live streams need HLS/WebRTC wiring; shown as labelled tiles for now).
 export const CAMERAS: { id: string; label: string; sub: string }[] = [
-  { id: "camera.main_gate", label: "Main Gate", sub: "ANPR" },
-  { id: "camera.driveway", label: "Driveway", sub: "Frigate" },
-  { id: "camera.gate_outside", label: "Gate Outside", sub: "street" },
+  { id: "camera.main_gate_ai", label: "Main Gate", sub: "ANPR" },
+  { id: "camera.driveway_ai", label: "Driveway", sub: "Frigate" },
+  { id: "camera.gate_hires", label: "Gate", sub: "hi-res" },
   { id: "camera.sidewalk_ai", label: "Sidewalk", sub: "AI" },
   { id: "camera.store_room", label: "Store Room", sub: "indoor" },
   { id: "camera.ids_7216hqhi_m1_s1620231215ccwray1010746wcvu_201", label: "Back Yard", sub: "HIK" },

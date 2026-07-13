@@ -5,7 +5,7 @@
   type Node = { label: string; value: number; color: string };
   let { sources, sinks, height = 240 }: { sources: Node[]; sinks: Node[]; height?: number } = $props();
 
-  const W = 440;
+  const W = 1100;
   const NW = 9; // node bar width
   const PAD = 14;
   const cx = W / 2;
@@ -78,7 +78,7 @@
 
 {#if geo.srcN.length || geo.snkN.length}
   <div class="sankey">
-    <svg viewBox="0 0 {W} {geo.H}" style="width:100%;height:{geo.H}px;display:block">
+    <svg viewBox="0 0 {W} {geo.H}" style="width:100%;height:auto;display:block">
       {#each geo.linksIn as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
       {#each geo.linksOut as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
       {#each geo.srcN as n}<rect x="0" y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color} />{/each}
