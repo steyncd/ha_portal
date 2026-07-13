@@ -25,7 +25,9 @@
 
   // ---- message template library (message_templates.json store) ----
   let store = $state<Record<string, Record<string, string>>>({});
-  function loadStore() { store = structuredClone(ha.messageTemplates()); }
+  // JSON clone (not structuredClone) — messageTemplates() returns a Svelte $state
+  // proxy, which structuredClone cannot copy (it throws).
+  function loadStore() { store = JSON.parse(JSON.stringify(ha.messageTemplates() ?? {})); }
   const msgKeys = $derived(Object.keys(store));
 
   // ---- reminder list ----
