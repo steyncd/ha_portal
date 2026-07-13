@@ -152,9 +152,13 @@
     // available — it makes the cold load much faster over the remote link.
     const serverHeat = ha.attr("sensor.movement_heatmap_90d", "rooms") as { room: string; cells: number[] }[] | undefined;
     const haveServerHeat = Array.isArray(serverHeat) && serverHeat.length > 0 && serverHeat.some((r) => r.cells?.some((c) => c > 0));
+    // Appliance run-time is precomputed server-side (sensor.appliance_runtime_7d,
+    // from InfluxDB power) — skip the heavy 7-day per-appliance power fetches.
+    const serverAppl = ha.attr("sensor.appliance_runtime_7d", "appliances") as { name: string; hours: number }[] | undefined;
+    const haveServerAppl = Array.isArray(serverAppl) && serverAppl.length > 0;
     const [roomHists, applHists, loadHist, alarmHist, nobodyHist, waterHist, gridHist, vehHist, plateHist, alarmHist30, gateOcc] = await Promise.all([
       haveServerHeat ? Promise.resolve([] as { t: number; s: string }[][]) : Promise.all(ROOMS.map((r) => ha.historyStates(r.id, HRS))),
-      Promise.all(APPLIANCES.map((a) => ha.history(a.power, HRS))),
+      haveServerAppl ? Promise.resolve([] as { t: number; v: number }[][]) : Promise.all(APPLIANCES.map((a) => ha.history(a.power, HRS))),
       ha.history(E.loads, HRS),
       ha.historyStates(E.alarmHome, HRS),
       ha.historyStates(E.nobodyHome, HRS),
@@ -188,13 +192,22 @@
     busiest = [...grid].sort((a, b) => b.total - a.total)[0]?.total ? [...grid].sort((a, b) => b.total - a.total)[0].room : "—";
 
     // ---- appliance usage (actual RUN-TIME from power draw, not switch on-state) ----
-    // A smart plug reads "on" 24/7 for a fridge; real run-time is when it's
-    // actually drawing power. Integrate the time each appliance's power ≥ its
-    // threshold (default 10 W to ignore standby).
-    appUsage = APPLIANCES.map((a, i) => {
-      const ms = sumAbove(applHists[i], a.threshold ?? 10);
-      return { name: a.label, icon: a.icon, hours: ms / 3_600_000, perDay: fmtHrs(ms / DAYS), now: ha.num(a.power), w: ha.num(a.power) ?? 0 };
-    }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
+    // A smart plug reads "on" 24/7 for a fridge; real run-time is the time it's
+    // actually drawing power. Prefer the server-side InfluxDB figure; else
+    // integrate 7-day client power history above each appliance's threshold.
+    const iconOf = (label: string) => APPLIANCES.find((a) => a.label === label)?.icon ?? "🔌";
+    const powerOf = (label: string) => APPLIANCES.find((a) => a.label === label)?.power;
+    if (haveServerAppl && serverAppl) {
+      appUsage = serverAppl.map((a) => {
+        const p = powerOf(a.name);
+        return { name: a.name, icon: iconOf(a.name), hours: a.hours, perDay: fmtHrs((a.hours * 3_600_000) / DAYS), now: p ? ha.num(p) : null, w: (p ? ha.num(p) : 0) ?? 0 };
+      }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
+    } else {
+      appUsage = APPLIANCES.map((a, i) => {
+        const ms = sumAbove(applHists[i], a.threshold ?? 10);
+        return { name: a.label, icon: a.icon, hours: ms / 3_600_000, perDay: fmtHrs(ms / DAYS), now: ha.num(a.power), w: ha.num(a.power) ?? 0 };
+      }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
+    }
 
     // ---- standby load (avg house load 01:00–04:00) ----
     const night = loadHist.filter((p) => { const h = sastHour(new Date(p.t)); return h >= 1 && h < 4; });
@@ -341,7 +354,7 @@
     <!-- this week vs typical -->
     <div class="vs">
       {#each vsTypical as v}
-        <div class="card vscard">
+        <div class="card vscard" title="{v.label}: {v.today} today vs your {v.months ? '90-day' : 'recent'} average.{v.pct != null && v.pct !== 0 ? ` That's ${Math.abs(v.pct)}% ${v.pct > 0 ? 'above' : 'below'} normal.` : ' Right on your usual level.'}">
           <div class="vslbl">{v.label}{#if v.months}<span class="vs90" title="Compared against a 90-day InfluxDB baseline">90d</span>{/if}</div>
           <div class="vsval">{v.today}</div>
           {#if v.pct != null && v.pct !== 0}
@@ -353,7 +366,7 @@
 
     <!-- movement heatmap -->
     <div class="card pad">
-      <div class="rh"><span class="lb">Movement by room & hour · {heatDays}-day pattern{#if heatDays >= 90}<span class="vs90">90d</span>{/if}</span><span class="sub">from PIR sensors</span></div>
+      <div class="rh"><span class="lb" title="Motion detections per room, split by hour of day, totalled over the last {heatDays} days. Each square is one room × one hour (00:00–23:00); darker = more motion at that hour. Read a row to see when a room is busiest.">Movement by room & hour · {heatDays}-day pattern{#if heatDays >= 90}<span class="vs90">90d</span>{/if}</span><span class="sub">from PIR sensors</span></div>
       <div class="heatscroll">
         <div class="heat">
           <div class="hrow hhead"><span class="hlbl"></span><div class="hcells">{#each Array(24) as _, hr}<span class="htick">{hourTicks.includes(hr) ? hr + "h" : ""}</span>{/each}</div></div>
@@ -368,12 +381,12 @@
     <div class="two">
       <!-- appliance usage -->
       <div class="card pad">
-        <div class="rh"><span class="lb">Appliance run-time · {DAYS} days</span><span class="sub">hrs / day avg</span></div>
+        <div class="rh"><span class="lb" title="How long each appliance was actually DRAWING POWER (≥10 W), averaged per day over the last 7 days — measured from power, not how long its smart plug was switched on. So an always-on fridge shows only its compressor run-time.">Appliance run-time · {DAYS} days</span><span class="sub">hrs / day avg</span></div>
         {#if appUsage.length}
           <div class="applist">
             {#each appUsage as a}
               {@const max = appUsage[0].hours}
-              <div class="approw"><span class="appic">{a.icon}</span><span class="appn">{a.name}</span><div class="apptrack"><div class="appfill" style="width:{(a.hours / max) * 100}%"></div></div><span class="appd">{a.perDay}</span></div>
+              <div class="approw" title="{a.name}: drew power about {a.perDay} per day on average over the last 7 days ({n(a.hours, 1)} h total). Bar length is relative to the busiest appliance.{a.now != null ? ` Currently ${n(a.now)} W.` : ''}"><span class="appic">{a.icon}</span><span class="appn">{a.name}</span><div class="apptrack"><div class="appfill" style="width:{(a.hours / max) * 100}%"></div></div><span class="appd">{a.perDay}</span></div>
             {/each}
           </div>
         {:else}<div class="note">No appliance activity in the window.</div>{/if}
@@ -381,9 +394,9 @@
 
       <!-- security rhythm -->
       <div class="card pad">
-        <div class="rh"><span class="lb">Security rhythm</span><span class="sub">arms by hour · {DAYS} days</span></div>
+        <div class="rh"><span class="lb" title="When you ARM the alarm, counted by hour of day over the last 7 days. Each bar is one hour (00:00–23:00); taller = you armed more often at that hour. The tallest cluster is your usual arming time.">Security rhythm</span><span class="sub">arms by hour · {DAYS} days</span></div>
         <div class="armbars">
-          {#each armByHour as v, hr}<div class="armcol"><div class="armbar" style="height:{Math.max(3, (v / armMax) * 100)}%;opacity:{v ? 1 : 0.25}"></div>{#if hourTicks.includes(hr)}<span class="armtick">{hr}h</span>{/if}</div>{/each}
+          {#each armByHour as v, hr}<div class="armcol" title="{String(hr).padStart(2,'0')}:00 — armed {v} time{v === 1 ? '' : 's'} in the last 7 days"><div class="armbar" style="height:{Math.max(3, (v / armMax) * 100)}%;opacity:{v ? 1 : 0.25}"></div>{#if hourTicks.includes(hr)}<span class="armtick">{hr}h</span>{/if}</div>{/each}
         </div>
         <div class="secstats">
           <div class="ss2"><span class="ssv">{typicalArm}</span><span class="ssk">usual arm time</span></div>
