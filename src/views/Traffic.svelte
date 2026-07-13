@@ -3,6 +3,7 @@
   import { ha } from "../lib/store.svelte";
   import { E } from "../lib/entities";
   import { n, thousands, dailyMax } from "../lib/format";
+  import { toast } from "../lib/toast.svelte";
   import BarChart from "../lib/components/BarChart.svelte";
 
   const tod = $derived([
@@ -72,19 +73,26 @@
   const knownRaw = $derived.by(() =>
     (ha.state(E.knownPlates) ?? "").split(",").map((p) => { const [pl, nm] = p.split("="); return { plate: (pl || "").trim(), name: (nm || "").trim() }; }).filter((x) => x.plate),
   );
-  function saveKnown(pairs: { plate: string; name: string }[]) {
-    ha.setText(E.knownPlates, pairs.filter((p) => p.plate).map((p) => `${p.plate}=${p.name}`).join(","));
+  async function saveKnown(pairs: { plate: string; name: string }[], toastMsg = "Saved") {
+    const value = pairs.filter((p) => p.plate).map((p) => `${p.plate}=${p.name}`).join(",");
+    try {
+      await ha.setText(E.knownPlates, value);
+      toast.show(toastMsg);
+    } catch (e) {
+      toast.show("Couldn't save — try again");
+      console.error("[Traffic] save known plates failed", e);
+    }
   }
   let kpNew = $state({ plate: "", name: "" });
   function addKnown() {
     const plate = kpNew.plate.trim().toUpperCase(); if (!plate) return;
-    saveKnown([...knownRaw.filter((p) => norm(p.plate) !== norm(plate)), { plate, name: kpNew.name.trim() }]);
+    saveKnown([...knownRaw.filter((p) => norm(p.plate) !== norm(plate)), { plate, name: kpNew.name.trim() }], `Saved ${plate}`);
     kpNew = { plate: "", name: "" };
   }
-  const removeKnown = (plate: string) => saveKnown(knownRaw.filter((p) => p.plate !== plate));
+  const removeKnown = (plate: string) => saveKnown(knownRaw.filter((p) => p.plate !== plate), "Removed");
   const tagDetection = (plate: string, name: string) => {
     const p = plate.trim().toUpperCase(); if (!p || !name.trim()) return;
-    saveKnown([...knownRaw.filter((x) => norm(x.plate) !== norm(p)), { plate: p, name: name.trim() }]);
+    saveKnown([...knownRaw.filter((x) => norm(x.plate) !== norm(p)), { plate: p, name: name.trim() }], `Tagged ${p} → ${name.trim()}`);
   };
 
   // ---- correct a misread plate ----
