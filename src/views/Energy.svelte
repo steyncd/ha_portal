@@ -32,6 +32,20 @@
 
   const indep = $derived(ha.num(E.gridIndepToday));
 
+  // Power reconciliation — computed HA-side (sensor.power_reconciliation), portal just reads it
+  type Budget = { total_w: number; accounted_w: number; unknown_w: number; pct: number; devices: { name: string; w: number }[]; warnings: string[] };
+  const budget = $derived(ha.attr(E.powerReconciliation, "data") as Budget | null | undefined);
+  // Robust totals: victron_total_home_consumption can be unavailable → fall back to the
+  // live load sensor so "unidentified" and % are always correct.
+  const pbAccounted = $derived(budget?.devices?.reduce((s, d) => s + d.w, 0) ?? 0);
+  const pbTotal = $derived(Math.max(budget?.total_w ?? 0, ha.num(E.loads) ?? 0, pbAccounted));
+  const pbUnknown = $derived(Math.max(0, pbTotal - pbAccounted));
+  const pbPct = $derived(pbTotal > 0 ? Math.round((pbAccounted / pbTotal) * 100) : 0);
+
+  // per-device energy + cost today (sensor.energy_cost_attribution), HA-computed
+  type Cost = { tariff: number; total_kwh: number; total_cost: number; devices: { name: string; kwh: number; cost: number }[]; warnings: string[] };
+  const cost = $derived(ha.attr(E.costAttribution, "data") as Cost | null | undefined);
+
   // Victron charge state (Bulk → Absorption → Float)
   const CHARGE = ["Bulk", "Absorption", "Float"];
   const chargeState = $derived((ha.state(E.inverterState) ?? "").trim());
@@ -43,10 +57,23 @@
     { label: "Grid", value: Math.max(0, ha.num(E.gridPower) ?? 0), color: "var(--water)" },
     { label: "Battery", value: Math.max(0, -(ha.num(E.batteryPower) ?? 0)), color: "var(--acc)" },
   ]);
-  const sinks = $derived([
-    { label: "Monitored", value: ha.num(E.monitoredLoads) ?? 0, color: "var(--success)" },
-    { label: "Other", value: ha.num(E.unmonitoredLoads) ?? 0, color: "var(--muted)" },
-  ]);
+  const SINK_PALETTE = ["#a78bfa", "#34d399", "#38bdf8", "#fbbf24", "#fb7185", "#22d3ee", "#c084fc", "#fb923c"];
+  const sinks = $derived.by(() => {
+    // prefer the per-device reconciliation breakdown; fall back to monitored/other
+    if (budget && budget.devices?.length) {
+      // show devices ≥5W individually; roll the rest into "Other devices"
+      const shown = budget.devices.filter((d) => d.w >= 5).slice(0, 8);
+      const restW = budget.devices.filter((d) => !shown.includes(d)).reduce((s, d) => s + d.w, 0);
+      const out = shown.map((d, i) => ({ label: d.name, value: d.w, color: SINK_PALETTE[i % SINK_PALETTE.length] }));
+      if (restW > 0) out.push({ label: "Other devices", value: restW, color: "#64748b" });
+      if (pbUnknown > 0) out.push({ label: "Unidentified", value: pbUnknown, color: "var(--muted)" });
+      return out;
+    }
+    return [
+      { label: "Monitored", value: ha.num(E.monitoredLoads) ?? 0, color: "var(--success)" },
+      { label: "Other", value: ha.num(E.unmonitoredLoads) ?? 0, color: "var(--muted)" },
+    ];
+  });
 
   const victron = $derived([
     { icon: "🔌", color: "var(--water)", name: "Inverter / VE.Bus", rows: [
@@ -150,9 +177,51 @@
   <!-- where energy flowed -->
   <div class="card pad">
     <div class="rh"><span class="lb">Where energy flows now</span><span class="sub">live · estimated split</span></div>
-    <Sankey {sources} {sinks} height={200} />
-    <div class="note">Sinks split from monitored plugs vs estimated unmonitored load — live snapshot, not a daily total.</div>
+    <Sankey {sources} {sinks} height={240} />
+    <div class="note">Live snapshot: power sources (left) → home → each metered device (right), with any unidentified load. Device split from the HA-side reconciliation, refreshed every 5 min.</div>
   </div>
+
+  <!-- power budget · reconciliation (device sum vs inverter total) -->
+  {#if budget && pbTotal > 0}
+    <div class="card pad">
+      <div class="rh"><span class="lb">Power budget · reconciliation</span><span class="sub">device meters vs live load · HA-computed, 5-min</span></div>
+      <div class="pbtop">
+        <div class="pbm"><div class="pbv">{power(pbTotal).val} {power(pbTotal).unit}</div><div class="pbk">Home load</div></div>
+        <div class="pbm"><div class="pbv" style="color:{pbPct >= 80 ? 'var(--success)' : pbPct >= 55 ? 'var(--warning)' : 'var(--error)'}">{pbPct}%</div><div class="pbk">Accounted for</div></div>
+        <div class="pbm"><div class="pbv" style="color:{pbUnknown > pbTotal * 0.35 ? 'var(--warning)' : 'var(--muted)'}">{power(pbUnknown).val} {power(pbUnknown).unit}</div><div class="pbk">Unidentified</div></div>
+      </div>
+      <div class="pbbar"><div class="pbfill" style="width:{Math.min(100, pbPct)}%"></div></div>
+      <div class="devlist">
+        {#each budget.devices.slice(0, 10) as d}
+          <div class="drow"><span class="dn">{d.name}</span><div class="dtrack"><div class="dfill" style="width:{Math.min(100, (d.w / pbTotal) * 100)}%"></div></div><span class="dw">{power(d.w).val} {power(d.w).unit}</span></div>
+        {/each}
+        {#if pbUnknown > 0}
+          <div class="drow"><span class="dn dim">Unidentified load</span><div class="dtrack"><div class="dfill mut" style="width:{Math.min(100, (pbUnknown / pbTotal) * 100)}%"></div></div><span class="dw">{power(pbUnknown).val} {power(pbUnknown).unit}</span></div>
+        {/if}
+      </div>
+      {#if budget.warnings?.length}
+        <div class="warns">{#each budget.warnings as w}<div class="warn">⚠ {w}</div>{/each}</div>
+      {/if}
+      <div class="note">Sum of every individually-metered device vs the inverter's reported total. A large unidentified slice = loads without their own meter (or a device double-counted inside the aircons/oven group).</div>
+    </div>
+  {/if}
+
+  <!-- cost attribution today (per-device kWh × tariff) -->
+  {#if cost && cost.devices?.length}
+    <div class="card pad">
+      <div class="rh"><span class="lb">Cost today · by device</span><span class="sub">{cost.total_kwh} kWh · R{cost.total_cost.toFixed(2)} @ R{cost.tariff.toFixed(2)}/kWh</span></div>
+      <div class="devlist">
+        {#each cost.devices.slice(0, 12) as d}
+          {@const max = cost.devices[0].cost || 1}
+          <div class="drow"><span class="dn">{d.name}</span><div class="dtrack"><div class="dfill" style="width:{Math.min(100, (d.cost / max) * 100)}%"></div></div><span class="dw">R{d.cost.toFixed(2)}<span class="dkwh"> · {d.kwh} kWh</span></span></div>
+        {/each}
+      </div>
+      {#if cost.warnings?.length}
+        <div class="warns">{#each cost.warnings as w}<div class="warn">⚠ {w}</div>{/each}</div>
+      {/if}
+      <div class="note">Each device's own daily-energy meter × your tariff. Devices without a dedicated energy meter (lights, fans, router) aren't attributed here — they show up in the reconciliation's unidentified slice above.</div>
+    </div>
+  {/if}
 
   <div class="card pad">
     <div class="rh"><span class="lb">Victron system · inverter &amp; chargers</span><span class="ok">● {ha.state(E.gridLostAlarm) === "0" ? "VE.Bus OK · grid connected" : "grid lost"}</span></div>
@@ -242,6 +311,24 @@
   .sv { font-size: 16px; font-weight: 800; }
   .sk { font-size: 11px; color: var(--muted); margin-top: 2px; }
 
+  .pbtop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .pbm { display: flex; flex-direction: column; gap: 3px; }
+  .pbv { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .pbk { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .pbbar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 22%, transparent); overflow: hidden; margin-bottom: 16px; }
+  .pbfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 60%, var(--acc))); transition: width 0.6s; }
+  .devlist { display: flex; flex-direction: column; gap: 8px; }
+  .drow { display: grid; grid-template-columns: 130px 1fr auto; align-items: center; gap: 12px; }
+  @media (max-width: 480px) { .drow { grid-template-columns: 96px 1fr auto; } }
+  .dn { font-size: 12.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dn.dim { color: var(--muted); font-style: italic; }
+  .dtrack { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); overflow: hidden; }
+  .dfill { height: 100%; border-radius: 999px; background: var(--grad); }
+  .dfill.mut { background: color-mix(in srgb, var(--muted) 55%, transparent); }
+  .dw { font-size: 12px; font-weight: 700; min-width: 52px; text-align: right; white-space: nowrap; }
+  .dkwh { font-size: 10.5px; font-weight: 500; color: var(--muted); }
+  .warns { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+  .warn { font-size: 11.5px; color: #fecaca; background: color-mix(in srgb, var(--error) 12%, transparent); padding: 7px 11px; border-radius: 9px; }
   .flowlegend { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 18px; font-size: 12px; color: var(--dim); margin-top: 6px; }
   .note { font-size: 11.5px; color: var(--muted-2); margin-top: 10px; }
 

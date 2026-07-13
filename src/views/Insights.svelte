@@ -3,9 +3,64 @@
   import { ha } from "../lib/store.svelte";
   import { E, APPLIANCES } from "../lib/entities";
   import { n, sastHour } from "../lib/format";
+  import TrendCard from "../lib/components/TrendCard.svelte";
+  import { analyze, analyzeScalars, toSeries, rank, type MetricDef, type Trend, type StatPoint } from "../lib/trends";
 
   const DAYS = 7;
   const HRS = 24 * DAYS;
+
+  // Long-term trend metrics — pulled from LTS (months), with a 30-day history fallback.
+  const METRICS: MetricDef[] = [
+    { key: "standby", label: "Overnight standby load", stat: "sensor.all_standby_power", unit: " W", goodUp: false, domain: "energy" },
+    { key: "baseline", label: "Baseline house load", stat: "sensor.estimated_baseline_load", unit: " W", goodUp: false, domain: "energy" },
+    { key: "eff", label: "Borehole efficiency", stat: E.boreholeEfficiency, unit: " L/kWh", goodUp: true, domain: "water" },
+    { key: "bhpow", label: "Borehole power draw", stat: E.boreholeAvgPower, unit: " W", goodUp: false, domain: "water" },
+    { key: "wateravg", label: "Daily water use", stat: E.waterAvg7d, unit: " L", goodUp: false, domain: "water" },
+  ];
+
+  // bucket raw {t,v} history into one point per day (fallback when LTS is thin)
+  function dailyFromHistory(raw: { t: number; v: number }[]): StatPoint[] {
+    const m = new Map<number, { s: number; c: number; mn: number; mx: number }>();
+    for (const p of raw) {
+      const d = new Date(p.t); d.setHours(0, 0, 0, 0);
+      const k = d.getTime();
+      const e = m.get(k) ?? { s: 0, c: 0, mn: p.v, mx: p.v };
+      e.s += p.v; e.c++; e.mn = Math.min(e.mn, p.v); e.mx = Math.max(e.mx, p.v);
+      m.set(k, e);
+    }
+    return [...m.entries()].sort((a, b) => a[0] - b[0]).map(([t, e]) => ({ t, mean: e.s / e.c, min: e.mn, max: e.mx, sum: e.s, change: null }));
+  }
+
+  // server-side InfluxQL baselines (months of real InfluxDB history) — [90d baseline, 7d recent]
+  const INFLUX: Record<string, [string, string]> = {
+    standby: ["sensor.standby_power_90d_baseline", "sensor.standby_power_7d_recent"],
+    baseline: ["sensor.baseline_load_90d_baseline", "sensor.baseline_load_7d_recent"],
+    bhpow: ["sensor.borehole_power_90d_baseline", "sensor.borehole_power_7d_recent"],
+    wateravg: ["sensor.water_use_90d_baseline", "sensor.water_use_7d_recent"],
+    eff: ["sensor.borehole_efficiency_90d_baseline", "sensor.borehole_efficiency_7d_recent"],
+  };
+
+  async function buildTrends(): Promise<Trend[]> {
+    const results = await Promise.all(
+      METRICS.map(async (def) => {
+        // sparkline series (short, cheap) for the visual
+        let pts = await ha.statistics(def.stat, { period: "day", days: def.days ?? 90 });
+        if (pts.length < 6) pts = dailyFromHistory(await ha.history(def.stat, 24 * 30));
+        // prefer the server-side months-deep baseline where available
+        const inf = INFLUX[def.key];
+        if (inf) {
+          const base = ha.num(inf[0]);
+          const recent = ha.num(inf[1]);
+          if (base != null && recent != null && base > 0) {
+            const t = analyzeScalars(def, base, recent, toSeries(pts));
+            if (t) return t;
+          }
+        }
+        return analyze(def, pts); // fallback: derive from the client series
+      }),
+    );
+    return rank(results.filter((t): t is Trend => t != null));
+  }
 
   const ROOMS = [
     { label: "Main", id: "binary_sensor.main_room_pir", color: "#a78bfa" },
@@ -20,11 +75,19 @@
 
   const asc = (h: { t: number; s: string }[]) => [...h].sort((a, b) => a.t - b.t);
   const fmtHrs = (ms: number) => { const h = ms / 3_600_000; return h < 1 ? `${Math.round(h * 60)}m` : `${h.toFixed(1)}h`; };
+  const whenAgo = (t: number) => { const m = Math.round((Date.now() - t) / 60000); if (m < 60) return `${m}m ago`; const h = Math.round(m / 60); return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`; };
   function sumOn(hist: { t: number; s: string }[]) {
     const h = asc(hist); let tot = 0, on: number | null = null;
     for (const e of h) { if (e.s === "on" && on == null) on = e.t; else if (e.s !== "on" && on != null) { tot += e.t - on; on = null; } }
     if (on != null) tot += Date.now() - on;
     return tot;
+  }
+  // on→off intervals with duration (for gate dwell / loitering)
+  function intervalsOn(hist: { t: number; s: string }[]) {
+    const h = asc(hist); const out: { s: number; e: number; dur: number }[] = []; let on: number | null = null;
+    for (const e of h) { if (e.s === "on" && on == null) on = e.t; else if (e.s !== "on" && on != null) { out.push({ s: on, e: e.t, dur: e.t - on }); on = null; } }
+    if (on != null) out.push({ s: on, e: Date.now(), dur: Date.now() - on });
+    return out;
   }
 
   let ready = $state(false);
@@ -40,11 +103,43 @@
   let unarmedNow = $state(false);
   let vsTypical = $state<{ label: string; today: string; pct: number | null; good: boolean }[]>([]);
   let headlines = $state<{ icon: string; text: string }[]>([]);
+  let trends = $state<Trend[]>([]);
+  let armVsTypical = $state<{ week: number; pct: number | null } | null>(null);
+  let loiter = $state<{ total: number; week: number; longestMin: number; recent: { t: number; min: number }[] } | null>(null);
+  let refreshing = $state(false);
+
+  // Cache the computed analysis so repeat visits paint instantly, then refresh in the background.
+  const CACHE_KEY = "ha_portal_insights_v1";
+  function saveCache() {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), d: { heat, heatMax, busiest, appUsage, standby, armByHour, armMax, typicalArm, forgot, unarmedNow, vsTypical, headlines, trends, armVsTypical, loiter } }));
+    } catch { /* quota / private mode — skip */ }
+  }
+  function restoreCache(): boolean {
+    try {
+      const raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return false;
+      const { d } = JSON.parse(raw);
+      heat = d.heat; heatMax = d.heatMax; busiest = d.busiest; appUsage = d.appUsage; standby = d.standby;
+      armByHour = d.armByHour; armMax = d.armMax; typicalArm = d.typicalArm; forgot = d.forgot; unarmedNow = d.unarmedNow;
+      vsTypical = d.vsTypical; headlines = d.headlines; trends = d.trends; armVsTypical = d.armVsTypical; loiter = d.loiter;
+      return true;
+    } catch { return false; }
+  }
 
   const armedNow = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
 
+  // learned alert baselines (from the trend_watch HA package; null until it's loaded)
+  const baselines = $derived.by(() => ({
+    wb: ha.num("input_number.water_use_baseline"),
+    gb: ha.num("input_number.grid_import_baseline"),
+    days: ha.num("input_number.trend_watch_days"),
+  }));
+
   onMount(async () => {
-    const [roomHists, applHists, loadHist, alarmHist, nobodyHist, waterHist, gridHist, vehHist] = await Promise.all([
+    if (restoreCache()) { ready = true; refreshing = true; } // instant paint from last visit
+    const trendsP = buildTrends();
+    const [roomHists, applHists, loadHist, alarmHist, nobodyHist, waterHist, gridHist, vehHist, plateHist, alarmHist30, gateOcc] = await Promise.all([
       Promise.all(ROOMS.map((r) => ha.historyStates(r.id, HRS))),
       Promise.all(APPLIANCES.map((a) => ha.historyStates(a.sw, HRS))),
       ha.history(E.loads, HRS),
@@ -53,6 +148,9 @@
       ha.history(E.waterUsedToday, HRS),
       ha.history(E.gridImportToday, HRS),
       ha.history(E.vehiclesToday, HRS),
+      ha.historyStates(E.lastPlate, 24 * 30),
+      ha.historyStates(E.alarmHome, 24 * 30),
+      ha.historyStates("binary_sensor.main_gate_ai_person_occupancy", 24 * 30),
     ]);
 
     // ---- movement heatmap (room × hour of day) ----
@@ -99,6 +197,25 @@
     forgot = f;
     unarmedNow = ha.isOn(E.nobodyHome) && !armedNow;
 
+    // ---- arms this week vs typical (over 30 days) ----
+    const armEvents: number[] = [];
+    prevArmed = false;
+    for (const e of asc(alarmHist30)) { const a = e.s.startsWith("armed"); if (a && !prevArmed) armEvents.push(e.t); prevArmed = a; }
+    const wkAgo = Date.now() - 7 * 86_400_000;
+    const thisWk = armEvents.filter((t) => t >= wkAgo).length;
+    const priorWks = armEvents.filter((t) => t < wkAgo).length / (23 / 7);
+    armVsTypical = { week: thisWk, pct: priorWks > 0 ? Math.round(((thisWk - priorWks) / priorWks) * 100) : null };
+
+    // ---- gate dwell / loitering (person present ≥3 min at the gate) ----
+    const iv = intervalsOn(gateOcc);
+    const loiters = iv.filter((x) => x.dur >= 3 * 60_000);
+    loiter = {
+      total: loiters.length,
+      week: loiters.filter((x) => x.e >= wkAgo).length,
+      longestMin: iv.length ? Math.round(Math.max(...iv.map((x) => x.dur)) / 60_000) : 0,
+      recent: [...loiters].sort((a, b) => b.e - a.e).slice(0, 4).map((x) => ({ t: x.e, min: Math.round(x.dur / 60_000) })),
+    };
+
     // ---- this week vs typical ----
     const peaks = (h: { t: number; v: number }[]) => {
       const m = new Map<number, number>();
@@ -118,16 +235,33 @@
     ];
 
     // ---- headline insights ----
+    trends = await trendsP;
     const hl: { icon: string; text: string }[] = [];
     if (unarmedNow) hl.push({ icon: "🚨", text: "Nobody home and the alarm is disarmed right now." });
+    // most significant long-term trend, phrased for the feed
+    const topBad = trends.find((t) => t.good === false && Math.abs(t.deltaPct) >= 10);
+    if (topBad) hl.push({ icon: topBad.def.domain === "water" ? "💧" : "🔌", text: `${topBad.headline} — ${topBad.detail.replace(/\.$/, "")}.` });
     if (busiest !== "—") hl.push({ icon: "🚶", text: `${busiest} is your most-used room this week.` });
     if (typicalArm !== "—") hl.push({ icon: "🛡️", text: `You usually arm around ${typicalArm}${forgot ? ` · left home un-armed ${forgot}× this week` : ""}.` });
     if (standby != null) hl.push({ icon: "🔌", text: `Overnight standby load averages ${Math.round(standby)} W.` });
     const w = vsTypical[0];
     if (w?.pct != null && Math.abs(w.pct) >= 25) hl.push({ icon: "💧", text: `Water use is ${Math.abs(w.pct)}% ${w.pct > 0 ? "above" : "below"} your weekly norm.` });
-    headlines = hl.slice(0, 5);
+
+    // gate ANPR security insight (known-vehicle share + unknown plates this month)
+    const knownMap = new Map<string, string>();
+    for (const pair of (ha.state(E.knownPlates) ?? "").split(",")) { const [p, name] = pair.split("="); if (p && name) knownMap.set(p.toUpperCase().replace(/\s+/g, ""), name.trim()); }
+    const badPlate = new Set(["UNKNOWN", "UNAVAILABLE", "NONE", ""]);
+    let kn = 0, unk = 0; const unkSet = new Set<string>();
+    for (const p of plateHist) { const k = p.s.trim().toUpperCase().replace(/\s+/g, ""); if (badPlate.has(k)) continue; if (knownMap.get(k)) kn++; else { unk++; unkSet.add(k); } }
+    if (kn + unk > 0) hl.push({ icon: "🚗", text: `Gate ANPR: ${Math.round((kn / (kn + unk)) * 100)}% of recognitions are known vehicles${unkSet.size ? ` · ${unkSet.size} unknown plate${unkSet.size > 1 ? "s" : ""} this month` : ""}.` });
+    if (loiter && loiter.week > 0) hl.push({ icon: "🚷", text: `Someone dwelled at the gate 3 min+ ${loiter.week}× this week.` });
+    if (armVsTypical?.pct != null && Math.abs(armVsTypical.pct) >= 30) hl.push({ icon: "🛡️", text: `You've armed ${Math.abs(armVsTypical.pct)}% ${armVsTypical.pct > 0 ? "more" : "less"} than usual this week.` });
+
+    headlines = hl.slice(0, 6);
 
     ready = true;
+    refreshing = false;
+    saveCache();
   });
 
   const hourTicks = [0, 6, 12, 18];
@@ -136,7 +270,7 @@
 
 <div class="col">
   <div class="head">
-    <div><h1>Insights</h1><p>Patterns from the last {DAYS} days · computed live from history</p></div>
+    <div><h1>Insights</h1><p>Long-term trends + {DAYS}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</p></div>
   </div>
 
   {#if !ready}
@@ -146,6 +280,27 @@
     {#if headlines.length}
       <div class="card pad hl">
         {#each headlines as h}<div class="hlrow"><span class="hli">{h.icon}</span><span>{h.text}</span></div>{/each}
+      </div>
+    {/if}
+
+    <!-- long-term trends (retrospective, from LTS/history) -->
+    {#if trends.length}
+      <div class="card pad">
+        <div class="rh"><span class="lb">Long-term trends · months of history</span><span class="sub">each metric vs its own baseline</span></div>
+        <div class="tgrid">
+          {#each trends as t (t.def.key)}<TrendCard trend={t} />{/each}
+        </div>
+      </div>
+    {/if}
+
+    <!-- learned alert baselines (from the trend_watch HA package) -->
+    {#if baselines.wb != null || baselines.gb != null || baselines.days != null}
+      <div class="card pad">
+        <div class="rh"><span class="lb">Learned alert baselines</span><span class="sub">{baselines.days != null ? `${Math.round(baselines.days)} days learned${baselines.days < 14 ? " · maturing" : " · active"}` : "from trend_watch"}</span></div>
+        <div class="blines">
+          <div class="bl"><span class="blk">💧 Water / day</span><span class="blv">{baselines.wb ? `${n(baselines.wb)} L` : "learning…"}</span><span class="blt">{baselines.wb ? `pushes alert above ${n(baselines.wb * 1.3)} L` : "seeds at 23:55 · matures ~14 days"}</span></div>
+          <div class="bl"><span class="blk">🔌 Grid import / day</span><span class="blv">{baselines.gb ? `${n(baselines.gb, 1)} kWh` : "learning…"}</span><span class="blt">{baselines.gb ? `pushes alert above ${n(baselines.gb * 1.4, 1)} kWh` : "seeds at 23:55 · matures ~14 days"}</span></div>
+        </div>
       </div>
     {/if}
 
@@ -199,8 +354,20 @@
         <div class="secstats">
           <div class="ss2"><span class="ssv">{typicalArm}</span><span class="ssk">usual arm time</span></div>
           <div class="ss2"><span class="ssv" style="color:{forgot ? 'var(--warning)' : 'var(--success)'}">{forgot}</span><span class="ssk">left home un-armed</span></div>
-          <div class="ss2"><span class="ssv" style="color:{unarmedNow ? 'var(--error)' : 'var(--success)'}">{unarmedNow ? "Yes" : "No"}</span><span class="ssk">unarmed while away now</span></div>
+          <div class="ss2"><span class="ssv" style="color:{unarmedNow ? 'var(--error)' : 'var(--success)'}">{unarmedNow ? "Yes" : "No"}</span><span class="ssk">unarmed away now</span></div>
+          {#if armVsTypical}
+            <div class="ss2"><span class="ssv" style="color:{armVsTypical.pct == null ? 'var(--text)' : armVsTypical.pct >= 0 ? 'var(--success)' : 'var(--warning)'}">{armVsTypical.week}{#if armVsTypical.pct != null}<span class="sspct"> {armVsTypical.pct > 0 ? "+" : ""}{armVsTypical.pct}%</span>{/if}</span><span class="ssk">arms this wk · vs usual</span></div>
+          {/if}
+          {#if loiter}
+            <div class="ss2"><span class="ssv" style="color:{loiter.week ? 'var(--warning)' : 'var(--success)'}">{loiter.total}</span><span class="ssk">gate dwells 3m+ · {loiter.week} this wk</span></div>
+          {/if}
         </div>
+        {#if loiter && loiter.recent.length}
+          <div class="loiterrow">
+            <span class="lrk">Recent dwells</span>
+            {#each loiter.recent as d}<span class="lrpill">{d.min}m · {whenAgo(d.t)}</span>{/each}
+          </div>
+        {/if}
       </div>
     </div>
 
@@ -216,6 +383,7 @@
   .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
   .head h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
+  .refreshing { color: var(--acc); font-weight: 600; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
@@ -226,6 +394,7 @@
   .hlrow { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--text); }
   .hli { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; }
 
+  .tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
   .vs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 640px) { .vs { grid-template-columns: 1fr; } }
   .vscard { padding: 16px 18px; }
@@ -265,10 +434,21 @@
   .armcol { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; position: relative; }
   .armbar { width: 100%; border-radius: 3px 3px 0 0; background: var(--acc); min-height: 3px; }
   .armtick { position: absolute; bottom: -16px; font-size: 9px; color: var(--muted-2); }
-  .secstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 26px; }
+  .secstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 10px 12px; margin-top: 26px; }
   .ss2 { display: flex; flex-direction: column; gap: 2px; }
   .ssv { font-size: 18px; font-weight: 800; }
+  .sspct { font-size: 11px; font-weight: 700; }
   .ssk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .loiterrow { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .lrk { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+  .lrpill { font-size: 11px; font-weight: 600; color: var(--text-2); background: color-mix(in srgb, var(--warning) 12%, transparent); padding: 3px 9px; border-radius: 999px; }
+
+  .blines { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .blines { grid-template-columns: 1fr; } }
+  .bl { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 13px; background: rgba(255, 255, 255, 0.035); }
+  .blk { font-size: 11.5px; color: var(--text-2); }
+  .blv { font-size: 22px; font-weight: 800; }
+  .blt { font-size: 11px; color: var(--muted-2); }
 
   .standby { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
   .stbv { font-size: 34px; font-weight: 800; letter-spacing: -1px; flex-shrink: 0; }

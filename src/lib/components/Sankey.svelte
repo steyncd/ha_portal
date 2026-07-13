@@ -1,53 +1,92 @@
 <script lang="ts">
-  // Minimal sources → home → sinks sankey. Values in W; band heights are proportional.
+  // Flowy sources → home → sinks sankey. Ribbons are FILLED, curved bands whose
+  // thickness is proportional to value; labels are de-collided so thin bands stay
+  // readable without distorting the ribbons.
   type Node = { label: string; value: number; color: string };
-  let { sources, sinks, height = 220 }: { sources: Node[]; sinks: Node[]; height?: number } = $props();
+  let { sources, sinks, height = 240 }: { sources: Node[]; sinks: Node[]; height?: number } = $props();
 
-  const W = 320;
-  const NW = 12; // node bar width
+  const W = 440;
+  const NW = 9; // node bar width
+  const PAD = 14;
   const cx = W / 2;
+  const LH = 15; // min vertical spacing between labels
 
-  const flow = $derived.by(() => {
+  // spread label y-positions so they never overlap, staying within [top, bottom]
+  function decollide(centers: number[], top: number, bottom: number): number[] {
+    const ys = centers.slice();
+    for (let i = 1; i < ys.length; i++) if (ys[i] < ys[i - 1] + LH) ys[i] = ys[i - 1] + LH;
+    if (ys.length && ys[ys.length - 1] > bottom) ys[ys.length - 1] = bottom;
+    for (let i = ys.length - 2; i >= 0; i--) if (ys[i] > ys[i + 1] - LH) ys[i] = ys[i + 1] - LH;
+    if (ys.length && ys[0] < top) ys[0] = top;
+    return ys;
+  }
+
+  const ribbon = (x0: number, t0: number, b0: number, x1: number, t1: number, b1: number) => {
+    const xc = (x0 + x1) / 2;
+    return `M${x0},${t0} C${xc},${t0} ${xc},${t1} ${x1},${t1} L${x1},${b1} C${xc},${b1} ${xc},${b0} ${x0},${b0} Z`;
+  };
+
+  const geo = $derived.by(() => {
     const src = sources.filter((s) => s.value > 0);
     const snk = sinks.filter((s) => s.value > 0);
-    const sumS = src.reduce((a, b) => a + b.value, 0);
-    const sumK = snk.reduce((a, b) => a + b.value, 0);
-    const total = Math.max(sumS, sumK, 1);
-    const pad = 6;
-    const usable = height - pad * 2;
-    const scale = usable / total;
+    const rows = Math.max(src.length, snk.length, 1);
+    const H = Math.max(height, rows * LH + PAD * 2);
+    const usable = H - PAD * 2;
+    const sumS = src.reduce((a, b) => a + b.value, 0) || 1;
+    const sumK = snk.reduce((a, b) => a + b.value, 0) || 1;
+    const scale = usable / Math.max(sumS, sumK);
+    const GAP = 3;
 
-    let yS = pad + (usable - sumS * scale) / 2;
-    const srcN = src.map((n) => { const h = n.value * scale; const o = { ...n, y: yS, h }; yS += h; return o; });
-    let yK = pad + (usable - sumK * scale) / 2;
-    const snkN = snk.map((n) => { const h = n.value * scale; const o = { ...n, y: yK, h }; yK += h; return o; });
+    const stack = (nodes: Node[], sum: number) => {
+      const totalH = sum * scale + GAP * Math.max(0, nodes.length - 1);
+      let y = PAD + (usable - totalH) / 2;
+      return nodes.map((n) => {
+        const h = Math.max(1.5, n.value * scale);
+        const o = { ...n, y, h, mid: y + h / 2 };
+        y += h + GAP;
+        return o;
+      });
+    };
+    const srcN = stack(src, sumS);
+    const snkN = stack(snk, sumK);
 
-    // links: source → home (left half), home → sink (right half)
     const homeH = Math.max(sumS, sumK) * scale;
-    const homeY = pad + (usable - homeH) / 2;
-    let hIn = homeY;
+    const homeY = PAD + (usable - homeH) / 2;
+
+    let inY = homeY + (homeH - sumS * scale) / 2;
     const linksIn = srcN.map((n) => {
-      const y0 = n.y + n.h / 2, y1 = hIn + n.h / 2; hIn += n.h;
-      return { d: `M${NW},${y0} C${cx * 0.6},${y0} ${cx * 0.4},${y1} ${cx - NW / 2},${y1}`, w: n.h, color: n.color };
+      const d = ribbon(NW, n.y, n.y + n.h, cx - NW / 2, inY, inY + n.h);
+      inY += n.h;
+      return { d, color: n.color };
     });
-    let hOut = homeY;
+    let outY = homeY + (homeH - sumK * scale) / 2;
     const linksOut = snkN.map((n) => {
-      const y0 = hOut + n.h / 2, y1 = n.y + n.h / 2; hOut += n.h;
-      return { d: `M${cx + NW / 2},${y0} C${cx * 1.4},${y0} ${cx * 1.6},${y1} ${W - NW},${y1}`, w: n.h, color: n.color };
+      const d = ribbon(cx + NW / 2, outY, outY + n.h, W - NW, n.y, n.y + n.h);
+      outY += n.h;
+      return { d, color: n.color };
     });
-    return { srcN, snkN, homeY, homeH, linksIn, linksOut };
+
+    return {
+      srcN, snkN, homeY, homeH, linksIn, linksOut, H,
+      srcLabels: decollide(srcN.map((n) => n.mid), PAD + 4, H - PAD - 4),
+      snkLabels: decollide(snkN.map((n) => n.mid), PAD + 4, H - PAD - 4),
+    };
   });
+
+  const fmt = (w: number) => (w >= 1000 ? `${(w / 1000).toFixed(1)}kW` : `${Math.round(w)}W`);
 </script>
 
-{#if flow && (flow.srcN.length || flow.snkN.length)}
+{#if geo.srcN.length || geo.snkN.length}
   <div class="sankey">
-    <svg viewBox="0 0 {W} {height}" style="width:100%;height:{height}px;display:block">
-      {#each flow.linksIn as l}<path d={l.d} fill="none" stroke={l.color} stroke-width={Math.max(1, l.w)} stroke-opacity="0.28" />{/each}
-      {#each flow.linksOut as l}<path d={l.d} fill="none" stroke={l.color} stroke-width={Math.max(1, l.w)} stroke-opacity="0.28" />{/each}
-      {#each flow.srcN as n}<rect x="0" y={n.y} width={NW} height={Math.max(2, n.h)} rx="3" fill={n.color} /><text x={NW + 6} y={n.y + n.h / 2} class="lbl" dominant-baseline="middle">{n.label}</text>{/each}
-      <rect x={cx - NW / 2} y={flow.homeY} width={NW} height={Math.max(2, flow.homeH)} rx="3" fill="var(--acc)" />
-      <text x={cx} y={flow.homeY - 5} class="lbl mid" text-anchor="middle">Home</text>
-      {#each flow.snkN as n}<rect x={W - NW} y={n.y} width={NW} height={Math.max(2, n.h)} rx="3" fill={n.color} /><text x={W - NW - 6} y={n.y + n.h / 2} class="lbl end" text-anchor="end" dominant-baseline="middle">{n.label}</text>{/each}
+    <svg viewBox="0 0 {W} {geo.H}" style="width:100%;height:{geo.H}px;display:block">
+      {#each geo.linksIn as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
+      {#each geo.linksOut as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
+      {#each geo.srcN as n}<rect x="0" y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color} />{/each}
+      <rect x={cx - NW / 2} y={geo.homeY} width={NW} height={geo.homeH} rx="2.5" fill="var(--acc)" />
+      <text x={cx} y={geo.homeY - 6} class="lbl mid" text-anchor="middle">Home</text>
+      {#each geo.snkN as n}<rect x={W - NW} y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color} />{/each}
+      {#each geo.srcN as n, i}<text x={NW + 7} y={geo.srcLabels[i]} class="lbl" dominant-baseline="middle">{n.label} · {fmt(n.value)}</text>{/each}
+      {#each geo.snkN as n, i}<text x={W - NW - 7} y={geo.snkLabels[i]} class="lbl end" text-anchor="end" dominant-baseline="middle">{n.label} · {fmt(n.value)}</text>{/each}
     </svg>
   </div>
 {:else}
@@ -55,8 +94,8 @@
 {/if}
 
 <style>
-  .sankey { width: 100%; }
-  :global(.sankey text.lbl) { font-size: 9px; fill: var(--dim); }
+  .sankey { width: 100%; overflow: hidden; }
+  :global(.sankey text.lbl) { font-size: 10px; fill: var(--text-2); }
   :global(.sankey text.mid) { font-size: 10px; font-weight: 700; fill: var(--text); }
   .empty { display: grid; place-items: center; color: var(--muted); font-size: 12px; }
 </style>

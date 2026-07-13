@@ -146,7 +146,19 @@ class HAStore {
       const cur = this.state(entityId);
       if (!cur || cur === "None" || cur === "unknown" || cur === "unavailable") return [];
       const now = Date.now();
-      if (entityId.includes("plate")) return [cur, "CA 214-882", "WK 09-JHB", "CA 118-540"].map((s, i) => ({ t: now - i * 5400_000, s }));
+      if (entityId.includes("plate")) {
+        // ~3 weeks of gate recognitions with repeats (some known, some not)
+        const seq = ["CA 214-882", "WK 09-JHB", "CA 214-882", "BX 12-CD", "CA 118-540", "CA 214-882", "WK 09-JHB", "DR 55-MN", "CA 214-882", "CA 118-540", "ZN 88-GP", "CA 214-882", "WK 09-JHB", "CA 118-540"];
+        return seq.map((s, i) => ({ t: now - i * 34 * 3600_000, s }));
+      }
+      if (entityId.includes("occupancy")) {
+        // gate presence intervals over ~30 days; a few dwell ≥3 min (loitering)
+        const durs = [1, 2, 5, 1, 4, 1, 1, 6, 2, 1, 3, 1, 8, 1, 2, 4];
+        const out: { t: number; s: string }[] = [];
+        let t = now - 30 * 24 * 3600_000;
+        for (const d of durs) { out.push({ t, s: "on" }); t += d * 60_000; out.push({ t, s: "off" }); t += 44 * 3600_000; }
+        return out.reverse();
+      }
       // generic: a few plausible transitions ending at the current state
       const alt = cur === "on" ? "off" : cur === "off" ? "on" : "disarmed";
       return [
@@ -183,6 +195,65 @@ class HAStore {
     } catch {
       return [];
     }
+  }
+
+  /**
+   * Long-Term Statistics for an entity (kept forever, never purged) via the
+   * recorder. Returns one point per `period` with the aggregates HA stores.
+   * `mean` for measurement sensors, `change`/`sum` for totals.
+   */
+  async statistics(
+    statisticId: string,
+    { period = "day", days = 90 }: { period?: "hour" | "day" | "week" | "month"; days?: number } = {},
+  ): Promise<{ t: number; mean: number | null; min: number | null; max: number | null; sum: number | null; change: number | null }[]> {
+    if (this.#mock) return this.#synthStats(statisticId, period, days);
+    if (!this.#conn) return [];
+    const end = new Date();
+    const start = new Date(end.getTime() - days * 86_400_000);
+    const num = (x: unknown) => {
+      const n = Number(x);
+      return Number.isFinite(n) ? n : null;
+    };
+    try {
+      const res = (await this.#conn.sendMessagePromise({
+        type: "recorder/statistics_during_period",
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        statistic_ids: [statisticId],
+        period,
+        types: ["mean", "min", "max", "sum", "change"],
+      })) as Record<string, Array<Record<string, unknown>>>;
+      const arr = res?.[statisticId] ?? [];
+      return arr
+        .map((p) => {
+          const s = p.start as number | string | undefined;
+          const t = typeof s === "number" ? s : s ? Date.parse(String(s)) : NaN;
+          return { t, mean: num(p.mean), min: num(p.min), max: num(p.max), sum: num(p.sum), change: num(p.change) };
+        })
+        .filter((p) => Number.isFinite(p.t));
+    } catch {
+      return [];
+    }
+  }
+
+  /** Synthetic LTS series with a mild, entity-deterministic trend, for ?mock=1 demos. */
+  #synthStats(entityId: string, period: string, days: number) {
+    const base = this.num(entityId) ?? 100;
+    const now = Date.now();
+    const step = period === "hour" ? 3_600_000 : period === "week" ? 7 * 86_400_000 : period === "month" ? 30 * 86_400_000 : 86_400_000;
+    const N = Math.max(6, Math.min(120, Math.round((days * 86_400_000) / step)));
+    // deterministic slope from the entity id so different metrics trend differently
+    let h = 0;
+    for (const c of entityId) h = (h * 31 + c.charCodeAt(0)) & 0xffff;
+    const slope = ((h % 17) - 8) / 2200; // ≈ -0.36%..+0.32% per step
+    const out: { t: number; mean: number; min: number; max: number; sum: number; change: number }[] = [];
+    for (let i = 0; i < N; i++) {
+      const t = now - (N - 1 - i) * step;
+      const wob = Math.sin(i / 2.5) * base * 0.06 + Math.cos(i / 1.3) * base * 0.03;
+      const v = Math.max(0, base * (1 + slope * i) + wob);
+      out.push({ t, mean: v, min: v * 0.9, max: v * 1.1, sum: v, change: base * slope + wob * 0.2 });
+    }
+    return out;
   }
 
   /** Synthetic wobble around the current value, for ?mock=1 demos. */

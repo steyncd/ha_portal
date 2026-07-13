@@ -16,11 +16,38 @@
   const outToday = $derived(ha.num(E.waterUsedToday) ?? 0);
   const net = $derived(inToday - outToday);
 
+  // borehole efficiency / wear: L pumped per kWh — drops as the pump wears or an intake clogs
+  const bhEff = $derived(ha.num(E.boreholeEfficiency));
+  const bhCostL = $derived(ha.num(E.boreholeCostPerL));
+  const bhAvgW = $derived(ha.num(E.boreholeAvgPower));
+  const bhCostMonth = $derived(ha.num(E.boreholeCostMonth));
+  // borehole_pump_energy is a LIFETIME total — derive today's kWh from cost ÷ tariff instead
+  const tariff = $derived(ha.num(E.tariff) ?? 4.05);
+  const bhEnergyToday = $derived.by(() => {
+    const c = ha.num(E.boreholeCostToday);
+    return c != null && tariff > 0 ? c / tariff : null;
+  });
+
   let tankHist = $state<{ t: number; v: number }[]>([]);
   let useBars = $state<{ label: string; value: number | null }[]>([]);
+  let effHist = $state<{ t: number; v: number }[]>([]);
   onMount(async () => {
     tankHist = await ha.history(E.tankLevel, 24 * 30);
     useBars = dailyMax(await ha.history(E.waterUsedToday, 24 * 7), 7);
+    effHist = await ha.history(E.boreholeEfficiency, 24 * 30);
+  });
+
+  // wear read: last 7 days' efficiency vs the prior ~3 weeks as a baseline
+  const wear = $derived.by(() => {
+    const pts = effHist.filter((p) => p.v > 0);
+    if (pts.length < 8) return null;
+    const cutoff = pts[pts.length - 1].t - 7 * 24 * 3600 * 1000;
+    const recent = pts.filter((p) => p.t >= cutoff).map((p) => p.v);
+    const base = pts.filter((p) => p.t < cutoff).map((p) => p.v);
+    if (recent.length < 2 || base.length < 3) return null;
+    const avg = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
+    const r = avg(recent), b = avg(base);
+    return { r, b, pct: ((r - b) / b) * 100 };
   });
 
   // pump state from live power: off → idling (on, low W) → pumping (on, high W)
@@ -87,11 +114,28 @@
       <div class="bhm"><div class="bhv" style="color:{bhPumping ? 'var(--water)' : 'var(--muted)'}">{bhPower != null ? `${power(bhPower).val} ${power(bhPower).unit}` : "—"}</div><div class="bhk">Power now</div></div>
       <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeFlow), 1)}<span class="uu"> L/min</span></div><div class="bhk">Flow rate</div></div>
       <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeToday))}<span class="uu"> L</span></div><div class="bhk">Pumped today</div></div>
-      <div class="bhm"><div class="bhv">{ha.state(E.boreholeRunToday) ?? "—"}</div><div class="bhk">Run time today</div></div>
-      <div class="bhm"><div class="bhv">{n(ha.num(E.boreholeEnergyToday), 2)}<span class="uu"> kWh</span></div><div class="bhk">Energy today</div></div>
+      <div class="bhm"><div class="bhv">{ha.num(E.boreholeRunToday) != null ? `${n(ha.num(E.boreholeRunToday), 1)} ${ha.unit(E.boreholeRunToday) || "h"}` : (ha.state(E.boreholeRunToday) ?? "—")}</div><div class="bhk">Run time today</div></div>
+      <div class="bhm"><div class="bhv">{n(bhEnergyToday, 2)}<span class="uu"> kWh</span></div><div class="bhk">Energy today</div></div>
       <div class="bhm"><div class="bhv">R{n(ha.num(E.boreholeCostToday), 2)}</div><div class="bhk">Cost today</div></div>
     </div>
-    <div class="note">Sitting at a few watts = idling on standby. A jump to hundreds of watts means it's actually drawing water.</div>
+    <div class="effrow">
+      <div class="bhm"><div class="bhv" style="color:var(--acc)">{n(bhEff, 0)}<span class="uu"> L/kWh</span></div><div class="bhk">Efficiency</div></div>
+      <div class="bhm"><div class="bhv">R{n(bhCostL, 3)}<span class="uu"> /L</span></div><div class="bhk">Cost per litre</div></div>
+      <div class="bhm"><div class="bhv">{bhAvgW != null ? `${power(bhAvgW).val} ${power(bhAvgW).unit}` : "—"}</div><div class="bhk">Avg power pumping</div></div>
+      <div class="bhm"><div class="bhv">R{n(bhCostMonth, 2)}</div><div class="bhk">Cost this month</div></div>
+    </div>
+    {#if wear}
+      <div class="wear" class:warn={wear.pct <= -8} class:good={wear.pct >= 8}>
+        {#if wear.pct <= -8}
+          ⚠ Efficiency down {n(Math.abs(wear.pct), 0)}% vs baseline ({n(wear.b, 0)} → {n(wear.r, 0)} L/kWh) — watch for impeller wear or a clogging intake.
+        {:else if wear.pct >= 8}
+          ↑ Efficiency up {n(wear.pct, 0)}% ({n(wear.b, 0)} → {n(wear.r, 0)} L/kWh) — drawing cleaner / shallower.
+        {:else}
+          ✓ Efficiency steady at ~{n(wear.r, 0)} L/kWh (within {n(Math.abs(wear.pct), 0)}% of the 30-day baseline).
+        {/if}
+      </div>
+    {/if}
+    <div class="note">Sitting at a few watts = idling on standby. A jump to hundreds of watts means it's actually drawing water. Litres-per-kWh is the wear signal — a steady decline means the pump is working harder for the same water.</div>
   </div>
 
   <div class="charts">
@@ -102,6 +146,10 @@
     <div class="card pad">
       <div class="rh"><span class="lb">Tank level · 30 days</span><span class="sub" style="color:var(--water)">Now {n(tank)}%</span></div>
       <AreaChart data={tankHist} color="var(--water)" unit="%" fixedMin={0} fixedMax={100} height={150} />
+    </div>
+    <div class="card pad">
+      <div class="rh"><span class="lb">Borehole efficiency · 30 days</span><span class="sub" style="color:var(--acc)">Now {n(bhEff, 0)} L/kWh</span></div>
+      <AreaChart data={effHist} color="var(--acc)" unit=" L/kWh" height={150} />
     </div>
   </div>
 </div>
@@ -152,12 +200,16 @@
   .bhv { font-size: 19px; font-weight: 800; }
   .uu { font-size: 11px; color: var(--dim); font-weight: 600; }
   .bhk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .effrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  @media (max-width: 420px) { .effrow { grid-template-columns: repeat(2, 1fr); } }
+  .wear { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; padding: 8px 11px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
+  .wear.warn { color: #fecaca; background: color-mix(in srgb, var(--error) 14%, transparent); }
+  .wear.good { color: #bbf7d0; background: color-mix(in srgb, var(--success) 12%, transparent); }
   .note { font-size: 11.5px; color: var(--muted-2); }
   .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .s { padding: 16px; }
   .sv { font-size: 24px; font-weight: 800; margin-top: 5px; }
   .u { font-size: 13px; color: var(--dim); }
-  .charts { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 760px) { .charts { grid-template-columns: 1fr; } }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
 </style>
