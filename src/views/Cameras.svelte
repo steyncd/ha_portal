@@ -8,7 +8,7 @@
   const events = $derived([
     { icon: "🚗", cam: "Main Gate", txt: `${n(ha.num(E.vehicleDetections))} vehicles detected`, t: "today" },
     { icon: "🚶", cam: "Sidewalk", txt: `${n(ha.num(E.pedestriansToday))} pedestrians`, t: "today" },
-    { icon: "🚙", cam: "Gate ANPR", txt: `Last plate: ${ha.state(E.lastPlate) ?? "None"}`, t: "" },
+    { icon: "🚙", cam: "Driveway ANPR", txt: `Last plate: ${ha.state(E.lastPlate) ?? "None"}`, t: "" },
     { icon: "👤", cam: "Frigate", txt: `${n(ha.num(E.personDetections))} person events`, t: "today" },
   ]);
   const online = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
@@ -29,7 +29,7 @@
 <div class="col">
   <div class="kpis">
     <div class="card k"><div class="lb">Gate detections</div><div class="big">{n(ha.num(E.gateDetections))}</div><div class="sub">{n(ha.num(E.vehicleDetections))} vehicles · {n(ha.num(E.personDetections))} person</div></div>
-    <div class="card k"><div class="lb">Last plate (ANPR)</div><div class="big pl">{ha.state(E.lastPlate) ?? "None"}</div><div class="sub">gate camera</div></div>
+    <div class="card k"><div class="lb">Last plate (ANPR)</div><div class="big pl">{ha.state(E.lastPlate) ?? "None"}</div><div class="sub">driveway camera</div></div>
     <div class="card k"><div class="lb">Cameras online</div><div class="big">{online}<span class="sub" style="font-size:14px"> / {CAMERAS.length}</span></div><div class="sub" style="color:var(--success)">live snapshots</div></div>
   </div>
 
