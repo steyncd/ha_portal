@@ -468,7 +468,10 @@ class HAStore {
   /** Fire a reminder right now (announce + push + WhatsApp) — used by "Send test". */
   dispatchReminder(data: { message?: string; template?: string; announce?: string; push?: boolean; wa?: string[] }) {
     if (this.#mock) return;
-    return this.#svc("script", "dispatch_reminder", data);
+    // `template` must be sent as `tmpl` — a script variable literally named
+    // `template` collides with HA's template-render kwarg and throws.
+    const { template, ...rest } = data;
+    return this.#svc("script", "dispatch_reminder", { ...rest, tmpl: template ?? "" });
   }
 
   setText(entity_id: string, value: string) {
