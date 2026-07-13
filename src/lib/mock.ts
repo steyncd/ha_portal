@@ -288,6 +288,11 @@ const ROWS: Row[] = [
   ["input_number.oura_readiness_low_threshold", "70", { min: 50, max: 90, step: 1 }],
   ["input_number.oura_temp_deviation_threshold", "0.5", { min: 0.1, max: 1.5, step: 0.1, unit_of_measurement: "°C" }],
   ["input_boolean.reminders_enabled", "on"],
+  ["sensor.message_templates", "3", { templates: {
+    goodnight: { label: "Goodnight", base: "Goodnight. Alarm is {alarm}. Sleep well.", announce: "", push_christo: "🌙 Night — alarm {alarm}.", wa_christo: "", wa_mandri: "", wa_liam_eben: "Night night! 🌙" },
+    morning_briefing: { label: "Morning Briefing", base: "{greeting}. Battery {battery}%, tank {tank}%.", announce: "", push_christo: "", wa_christo: "", wa_mandri: "", wa_liam_eben: "" },
+    coffee_ready: { label: "Coffee Ready", base: "Your coffee is ready. Enjoy!", announce: "", push_christo: "", wa_christo: "", wa_mandri: "", wa_liam_eben: "" },
+  } }],
   ["input_text.msg_goodnight", "Goodnight. Inside lights are off and the alarm is {alarm}. Sleep well.", { friendly_name: "Msg: Goodnight" }],
   ["input_text.msg_morning_briefing", "{greeting}. Battery {battery} percent, tank {tank} percent, {indoor} degrees inside.", { friendly_name: "Msg: Morning Briefing" }],
   ["input_boolean.frigate_person_detection_enabled", "on"],

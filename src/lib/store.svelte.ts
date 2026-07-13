@@ -322,6 +322,7 @@ class HAStore {
     try {
       const res = await fetch(`${HASS_URL}/api/calendars/calendar.reminders?start=${start}&end=${end}`, {
         headers: { Authorization: `Bearer ${await this.#token()}` },
+        signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) return [];
       return (await res.json()) as Reminder[];
@@ -352,8 +353,8 @@ class HAStore {
     return this.#conn.sendMessagePromise(msg);
   }
 
-  /** Fire a reminder right now (announce + WhatsApp) — used by "Send test". */
-  dispatchReminder(data: { message?: string; template?: string; announce?: string; wa?: string[] }) {
+  /** Fire a reminder right now (announce + push + WhatsApp) — used by "Send test". */
+  dispatchReminder(data: { message?: string; template?: string; announce?: string; push?: boolean; wa?: string[] }) {
     if (this.#mock) return;
     return this.#svc("script", "dispatch_reminder", data);
   }
@@ -363,20 +364,41 @@ class HAStore {
     return this.#svc("input_text", "set_value", { entity_id, value });
   }
 
-  /** Render a Jinja template server-side (one-shot) — for live message preview. */
+  /** Render a Jinja template server-side (one-shot, REST — supports custom
+   *  template imports like messages.jinja render()/render_to()). */
   async renderTemplate(template: string): Promise<string> {
-    if (this.#mock) return template.replace(/\{[^}]+\}/g, "…");
-    if (!this.#conn) return "";
-    return new Promise<string>((resolve) => {
-      let unsub: (() => void) | undefined;
-      let done = false;
-      const finish = (v: string) => { if (!done) { done = true; resolve(v); if (unsub) unsub(); } };
-      this.#conn!
-        .subscribeMessage((m: { result?: string }) => finish(m.result ?? ""), { type: "render_template", template })
-        .then((u) => { unsub = u; if (done) u(); })
-        .catch(() => finish(""));
-      setTimeout(() => finish(""), 2500);
-    });
+    if (this.#mock) return template.replace(/\{%[^%]*%\}/g, "").replace(/\{\{[^}]*\}\}/g, "…").trim() || "…";
+    try {
+      const res = await fetch(`${HASS_URL}/api/template`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await this.#token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ template }),
+        signal: AbortSignal.timeout(8000),
+      });
+      return res.ok ? (await res.text()) : "";
+    } catch {
+      return "";
+    }
+  }
+
+  // ---- per-destination message templates (message_templates.json store) ----
+  /** The full template library { key: { label, base, announce, push_christo, wa_* } }. */
+  messageTemplates(): Record<string, Record<string, string>> {
+    return (this.attr("sensor.message_templates", "templates") as Record<string, Record<string, string>>) ?? {};
+  }
+
+  /** Persist the whole template library (base64 → shell writer) and re-read. */
+  async saveMessageTemplates(templates: Record<string, Record<string, string>>) {
+    if (this.#mock) return;
+    const json = JSON.stringify({ templates });
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    await this.#svc("shell_command", "save_message_templates", { data_b64: b64 });
+    // bridge: keep any matching legacy input_text.msg_<key> base in sync
+    for (const [key, m] of Object.entries(templates)) {
+      const legacy = `input_text.msg_${key}`;
+      if (this.exists(legacy) && typeof m.base === "string") this.#svc("input_text", "set_value", { entity_id: legacy, value: m.base });
+    }
+    await this.#svc("homeassistant", "update_entity", { entity_id: "sensor.message_templates" });
   }
 }
 
