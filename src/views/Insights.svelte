@@ -11,11 +11,10 @@
 
   // Long-term trend metrics — pulled from LTS (months), with a 30-day history fallback.
   const METRICS: MetricDef[] = [
-    { key: "standby", label: "Overnight standby load", stat: "sensor.all_standby_power", unit: " W", goodUp: false, domain: "energy" },
+    { key: "standby", label: "Phantom (standby) load", stat: "sensor.all_standby_power", unit: " W", goodUp: false, domain: "energy" },
     { key: "baseline", label: "Baseline house load", stat: "sensor.estimated_baseline_load", unit: " W", goodUp: false, domain: "energy" },
-    { key: "eff", label: "Borehole efficiency", stat: E.boreholeEfficiency, unit: " L/kWh", goodUp: true, domain: "water" },
-    { key: "bhpow", label: "Borehole power draw", stat: E.boreholeAvgPower, unit: " W", goodUp: false, domain: "water" },
-    { key: "wateravg", label: "Daily water use", stat: E.waterAvg7d, unit: " L", goodUp: false, domain: "water" },
+    { key: "bhruntime", label: "Borehole run-time", stat: E.boreholeRunToday, unit: " h", goodUp: false, domain: "water" },
+    { key: "wateravg", label: "Daily water use", stat: "sensor.water_used_yesterday", unit: " L", goodUp: false, domain: "water" },
   ];
 
   // bucket raw {t,v} history into one point per day (fallback when LTS is thin)
@@ -35,9 +34,8 @@
   const INFLUX: Record<string, [string, string]> = {
     standby: ["sensor.standby_power_90d_baseline", "sensor.standby_power_7d_recent"],
     baseline: ["sensor.baseline_load_90d_baseline", "sensor.baseline_load_7d_recent"],
-    bhpow: ["sensor.borehole_power_90d_baseline", "sensor.borehole_power_7d_recent"],
+    bhruntime: ["sensor.borehole_runtime_90d_baseline", "sensor.borehole_runtime_7d_recent"],
     wateravg: ["sensor.water_use_90d_baseline", "sensor.water_use_7d_recent"],
-    eff: ["sensor.borehole_efficiency_90d_baseline", "sensor.borehole_efficiency_7d_recent"],
   };
 
   async function buildTrends(): Promise<Trend[]> {
@@ -244,7 +242,7 @@
     if (topBad) hl.push({ icon: topBad.def.domain === "water" ? "💧" : "🔌", text: `${topBad.headline} — ${topBad.detail.replace(/\.$/, "")}.` });
     if (busiest !== "—") hl.push({ icon: "🚶", text: `${busiest} is your most-used room this week.` });
     if (typicalArm !== "—") hl.push({ icon: "🛡️", text: `You usually arm around ${typicalArm}${forgot ? ` · left home un-armed ${forgot}× this week` : ""}.` });
-    if (standby != null) hl.push({ icon: "🔌", text: `Overnight standby load averages ${Math.round(standby)} W.` });
+    if (standby != null) hl.push({ icon: "🔌", text: `Overnight base load averages ${Math.round(standby)} W (01:00–04:00).` });
     const w = vsTypical[0];
     if (w?.pct != null && Math.abs(w.pct) >= 25) hl.push({ icon: "💧", text: `Water use is ${Math.abs(w.pct)}% ${w.pct > 0 ? "above" : "below"} your weekly norm.` });
 
