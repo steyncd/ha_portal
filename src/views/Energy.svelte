@@ -58,21 +58,27 @@
     { label: "Battery", value: Math.max(0, -(ha.num(E.batteryPower) ?? 0)), color: "var(--acc)" },
   ]);
   const SINK_PALETTE = ["#a78bfa", "#34d399", "#38bdf8", "#fbbf24", "#fb7185", "#22d3ee", "#c084fc", "#fb923c"];
+  // Where the incoming power actually GOES: house loads + battery charging + grid
+  // export. Without the last two the sources (esp. solar) dwarf the device sinks
+  // and the flow looks broken — those are usually the biggest live destinations.
   const sinks = $derived.by(() => {
-    // prefer the per-device reconciliation breakdown; fall back to monitored/other
+    const out: { label: string; value: number; color: string }[] = [];
     if (budget && budget.devices?.length) {
-      // show devices ≥5W individually; roll the rest into "Other devices"
       const shown = budget.devices.filter((d) => d.w >= 5).slice(0, 8);
       const restW = budget.devices.filter((d) => !shown.includes(d)).reduce((s, d) => s + d.w, 0);
-      const out = shown.map((d, i) => ({ label: d.name, value: d.w, color: SINK_PALETTE[i % SINK_PALETTE.length] }));
+      shown.forEach((d, i) => out.push({ label: d.name, value: d.w, color: SINK_PALETTE[i % SINK_PALETTE.length] }));
       if (restW > 0) out.push({ label: "Other devices", value: restW, color: "#64748b" });
       if (pbUnknown > 0) out.push({ label: "Unidentified", value: pbUnknown, color: "var(--muted)" });
-      return out;
+    } else {
+      out.push({ label: "Monitored", value: ha.num(E.monitoredLoads) ?? 0, color: "var(--success)" });
+      out.push({ label: "Other", value: ha.num(E.unmonitoredLoads) ?? 0, color: "var(--muted)" });
     }
-    return [
-      { label: "Monitored", value: ha.num(E.monitoredLoads) ?? 0, color: "var(--success)" },
-      { label: "Other", value: ha.num(E.unmonitoredLoads) ?? 0, color: "var(--muted)" },
-    ];
+    // battery charging (batteryPower > 0 = charging) + grid export (gridPower < 0)
+    const charge = Math.max(0, ha.num(E.batteryPower) ?? 0);
+    const exportW = Math.max(0, -(ha.num(E.gridPower) ?? 0));
+    if (charge > 5) out.push({ label: "Battery charging", value: charge, color: "var(--acc)" });
+    if (exportW > 5) out.push({ label: "Grid export", value: exportW, color: "var(--warning)" });
+    return out;
   });
 
   const victron = $derived([

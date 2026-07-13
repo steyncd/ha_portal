@@ -376,7 +376,7 @@
       <div class="card pad">
         <div class="lb" style="margin-bottom:14px">Time by room</div>
         {#if roomTime.length}
-          <div class="rtlist">
+          <div class="rtlist scrollbox">
             {#each roomTime as r}
               <div class="rtrow"><span class="rtl">{r.label}</span><div class="rttrack"><div class="rtfill" style="width:{r.w}%;background:{r.color}"></div></div><span class="rtd">{r.dur}</span></div>
             {/each}
@@ -398,9 +398,11 @@
           </div>
         </div>
         {#if appView.length}
-          {#each appView as e}
-            <div class="row2"><span class="ri">{e.icon}</span><div class="rt2"><div class="rn">{e.name}</div><div class="rd">{e.detail}</div></div><span class="rtm num">{e.t}</span></div>
-          {/each}
+          <div class="scrollbox">
+            {#each appView as e}
+              <div class="row2"><span class="ri">{e.icon}</span><div class="rt2"><div class="rn">{e.name}</div><div class="rd">{e.detail}</div></div><span class="rtm num">{e.t}</span></div>
+            {/each}
+          </div>
         {:else}<div class="note">{applog.length ? "No appliances match this filter." : `No appliance runs ${hero.label}.`}</div>{/if}
       </div>
     </div>
@@ -508,14 +510,18 @@
   .lg { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-2); }
   .lgd { width: 10px; height: 10px; border-radius: 3px; }
 
-  .rtlist { display: flex; flex-direction: column; gap: 12px; }
+  .rtlist { display: flex; flex-direction: column; gap: 9px; }
   .rtrow { display: flex; align-items: center; gap: 11px; }
+  /* keep the room + appliance lists compact; scroll past ~7 rows */
+  .scrollbox { max-height: 300px; overflow-y: auto; overflow-x: hidden; margin-right: -6px; padding-right: 6px; }
+  .scrollbox::-webkit-scrollbar { width: 7px; }
+  .scrollbox::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.14); border-radius: 4px; }
   .rtl { width: 90px; flex-shrink: 0; font-size: 12.5px; color: var(--text-2); }
   .rttrack { flex: 1; height: 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
   .rtfill { height: 100%; border-radius: 999px; }
   .rtd { width: 58px; flex-shrink: 0; text-align: right; font-size: 11.5px; font-weight: 700; }
 
-  .row2 { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  .row2 { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .row2:last-child { border-bottom: none; }
   .ri { width: 33px; height: 33px; flex-shrink: 0; border-radius: 9px; display: grid; place-items: center; font-size: 15px; background: rgba(255, 255, 255, 0.05); }
   .rt2 { flex: 1; min-width: 0; }

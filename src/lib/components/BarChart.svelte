@@ -19,7 +19,7 @@
 <div class="bc" style="height:{height}px">
   {#each bars as b}
     {@const v = b.value ?? 0}
-    <div class="col">
+    <div class="col" title="{b.label}: {b.value == null ? '—' : v.toFixed(digits) + unit}">
       <div class="track">
         <div
           class="fill"

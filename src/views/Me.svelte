@@ -363,7 +363,7 @@
   .sdur { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; line-height: 0.9; }
   .sib { font-size: 12px; color: var(--muted); padding-bottom: 6px; }
   .crown { margin-left: 5px; font-size: 13px; }
-  .hypno { width: 100%; height: auto; display: block; margin: 4px 0 14px; }
+  .hypno { width: 100%; height: 104px; display: block; margin: 4px 0 12px; }
   .hlbl { fill: var(--muted); font-size: 9px; font-weight: 700; letter-spacing: 0.04em; }
   .hguide { stroke: rgba(255, 255, 255, 0.06); stroke-width: 1; }
   .stagekey { display: grid; grid-template-columns: 1fr 1fr; gap: 9px 18px; }

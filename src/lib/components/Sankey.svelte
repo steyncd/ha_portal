@@ -81,10 +81,10 @@
     <svg viewBox="0 0 {W} {geo.H}" style="width:100%;height:auto;display:block">
       {#each geo.linksIn as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
       {#each geo.linksOut as l}<path d={l.d} fill={l.color} fill-opacity="0.3" />{/each}
-      {#each geo.srcN as n}<rect x="0" y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color} />{/each}
+      {#each geo.srcN as n}<rect x="0" y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color}><title>{n.label} · {fmt(n.value)} in</title></rect>{/each}
       <rect x={cx - NW / 2} y={geo.homeY} width={NW} height={geo.homeH} rx="2.5" fill="var(--acc)" />
       <text x={cx} y={geo.homeY - 6} class="lbl mid" text-anchor="middle">Home</text>
-      {#each geo.snkN as n}<rect x={W - NW} y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color} />{/each}
+      {#each geo.snkN as n}<rect x={W - NW} y={n.y} width={NW} height={n.h} rx="2.5" fill={n.color}><title>{n.label} · {fmt(n.value)}</title></rect>{/each}
       {#each geo.srcN as n, i}<text x={NW + 7} y={geo.srcLabels[i]} class="lbl" dominant-baseline="middle">{n.label} · {fmt(n.value)}</text>{/each}
       {#each geo.snkN as n, i}<text x={W - NW - 7} y={geo.snkLabels[i]} class="lbl end" text-anchor="end" dominant-baseline="middle">{n.label} · {fmt(n.value)}</text>{/each}
     </svg>

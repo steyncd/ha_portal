@@ -42,22 +42,22 @@
   {/if}
 
   <!-- House -->
-  <circle cx="300" cy="150" r="34" fill="rgba(20,30,40,.72)" stroke="var(--line)" stroke-width="2" />
+  <circle cx="300" cy="150" r="34" fill="rgba(20,30,40,.72)" stroke="var(--line)" stroke-width="2"><title>House load now: {f(load)} ({f(ess)} essential)</title></circle>
   <text x="300" y="146" font-size="20" text-anchor="middle">🏠</text>
   <text x="300" y="167" font-size="11" font-weight="800" fill="var(--text)" text-anchor="middle">{f(load)}</text>
 
   <!-- Solar -->
-  <circle cx="300" cy="58" r="22" fill="rgba(16,24,34,.85)" stroke="color-mix(in srgb,var(--solar) 50%,transparent)" stroke-width="2" />
+  <circle cx="300" cy="58" r="22" fill="rgba(16,24,34,.85)" stroke="color-mix(in srgb,var(--solar) 50%,transparent)" stroke-width="2"><title>Solar generating {f(pv)}{solarOn ? '' : ' (idle)'}</title></circle>
   <text x="300" y="55" font-size="15" text-anchor="middle">☀️</text>
   <text x="300" y="70" font-size="9.5" font-weight="700" fill="var(--text)" text-anchor="middle">{f(pv)}</text>
 
   <!-- Battery -->
-  <circle cx="92" cy="150" r="24" fill="rgba(16,24,34,.85)" stroke="var(--line)" stroke-width="2" />
+  <circle cx="92" cy="150" r="24" fill="rgba(16,24,34,.85)" stroke="var(--line)" stroke-width="2"><title>Battery {Math.round(ha.num(E.batterySoc) ?? 0)}% · {battCharging ? 'charging ' + f(battP) : battDischarging ? 'discharging ' + f(battP) : 'idle'}</title></circle>
   <text x="92" y="147" font-size="15" text-anchor="middle">🔋</text>
   <text x="92" y="163" font-size="9.5" font-weight="700" fill="var(--text)" text-anchor="middle">{Math.round(ha.num(E.batterySoc) ?? 0)}%</text>
 
   <!-- Grid -->
-  <circle cx="508" cy="150" r="24" fill="rgba(16,24,34,.85)" stroke="color-mix(in srgb,var(--water) 40%,transparent)" stroke-width="2" />
+  <circle cx="508" cy="150" r="24" fill="rgba(16,24,34,.85)" stroke="color-mix(in srgb,var(--water) 40%,transparent)" stroke-width="2"><title>Grid {gridImport ? 'importing ' + f(gridP) : gridExport ? 'exporting ' + f(gridP) : 'idle'}</title></circle>
   <text x="508" y="147" font-size="15" text-anchor="middle">🔌</text>
   <text x="508" y="163" font-size="9.5" font-weight="700" fill="var(--text)" text-anchor="middle">{f(gridP)}</text>
 </svg>

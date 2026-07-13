@@ -57,6 +57,19 @@
   const recentUnknown = $derived([...visitors].filter((v) => !v.owner).sort((a, b) => b.last - a.last).slice(0, 6));
   const configured = $derived(known.size > 0);
 
+  // latest LLM-Vision recognition (plate + make/model + which camera + owner)
+  const latest = $derived.by(() => {
+    const plate = ha.state(E.lastPlate);
+    if (!plate || ["None", "unknown", "unavailable"].includes(plate)) return null;
+    return {
+      plate,
+      vehicle: (ha.attr(E.lastPlate, "vehicle") as string) || "",
+      camera: (ha.attr(E.lastPlate, "camera") as string) || "",
+      owner: (ha.attr(E.lastPlate, "owner") as string) || "",
+      when: (ha.attr(E.lastPlate, "recognized_at") as string) || "",
+    };
+  });
+
   function ago(t: number) {
     const m = Math.round((Date.now() - t) / 60000);
     if (m < 60) return `${m}m ago`;
@@ -81,6 +94,19 @@
     <div class="card k"><div class="lb">🚗 Vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month</div></div>
     <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
   </div>
+
+  {#if latest}
+    <div class="card pad latest">
+      <div class="rh"><span class="lb">Latest recognition</span><span class="sub">LLM Vision · {latest.camera || "—"}</span></div>
+      <div class="latrow">
+        <div class="latplate">{latest.plate}</div>
+        <div class="latmeta">
+          <div class="latveh">{latest.vehicle || "Vehicle"}</div>
+          <div class="latsub">{latest.owner ? `👤 ${latest.owner}` : "Unknown vehicle"}{latest.when ? ` · ${latest.when.slice(11, 16)}` : ""}</div>
+        </div>
+      </div>
+    </div>
+  {/if}
 
   <div class="card pad">
     <div class="rh"><span class="lb">Sidewalk traffic by time of day</span><span class="int">{ha.state(E.trafficIntensity) ?? "—"}</span></div>
@@ -184,6 +210,11 @@
   .vrow { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }
   .vrow.kn { background: color-mix(in srgb, var(--success) 10%, transparent); }
   .plate { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.5px; }
+  .latrow { display: flex; align-items: center; gap: 16px; }
+  .latplate { font-family: ui-monospace, Menlo, monospace; font-size: 22px; font-weight: 800; letter-spacing: 1px; padding: 8px 14px; border-radius: 12px; background: color-mix(in srgb, var(--acc) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 40%, transparent); white-space: nowrap; }
+  .latmeta { min-width: 0; }
+  .latveh { font-size: 15px; font-weight: 700; text-transform: capitalize; }
+  .latsub { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .who { font-size: 12px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .cnt { font-size: 12px; font-weight: 800; color: var(--acc); }
   .pago { font-size: 10.5px; color: var(--muted-2); }

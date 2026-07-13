@@ -24,6 +24,18 @@
   const dateStr = dateMedium(now);
 
   const soc = $derived(ha.num(E.batterySoc));
+  // live one-line summary of where power is flowing right now
+  const flowLine = $derived.by(() => {
+    const pv = ha.num(E.pvPower) ?? 0, batt = ha.num(E.batteryPower) ?? 0, grid = ha.num(E.gridPower) ?? 0;
+    const parts: string[] = [];
+    if (pv > 40) parts.push("☀️ solar");
+    if (batt < -20) parts.push("🔋 battery → home");
+    else if (batt > 20) parts.push("🔋 charging");
+    if (grid > 20) parts.push("🔌 grid import");
+    else if (grid < -20) parts.push("🔌 exporting");
+    else parts.push("grid idle");
+    return parts.join(" · ");
+  });
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
 
   const quick = [
@@ -135,8 +147,8 @@
   <!-- power flow -->
   <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
     <div class="wh"><span class="lb">Power flow</span><span class="ok">{n(ha.num(E.gridIndepToday))}% independent →</span></div>
-    <PowerFlow />
-    <div class="center-sub">Battery → home · grid idle</div>
+    <PowerFlow big />
+    <div class="center-sub">{flowLine}</div>
   </div>
 
   <!-- battery -->

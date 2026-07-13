@@ -102,7 +102,7 @@
   let heatMax = $state(1);
   let heatDays = $state(DAYS);
   let busiest = $state("—");
-  let appUsage = $state<{ name: string; icon: string; hours: number; perDay: string; now: number | null; w: number }[]>([]);
+  let appUsage = $state<{ name: string; icon: string; hours: number; total: string; now: number | null; w: number }[]>([]);
   let standby = $state<number | null>(null);
   let armByHour = $state<number[]>(Array(24).fill(0));
   let armMax = $state(1);
@@ -200,13 +200,13 @@
     if (haveServerAppl && serverAppl) {
       appUsage = serverAppl.map((a) => {
         const p = powerOf(a.name);
-        return { name: a.name, icon: iconOf(a.name), hours: a.hours, perDay: fmtHrs((a.hours * 3_600_000) / DAYS), now: p ? ha.num(p) : null, w: (p ? ha.num(p) : 0) ?? 0 };
-      }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
+        return { name: a.name, icon: iconOf(a.name), hours: a.hours, total: fmtHrs(a.hours * 3_600_000), now: p ? ha.num(p) : null, w: (p ? ha.num(p) : 0) ?? 0 };
+      }).filter((x) => x.hours > 0.02).sort((a, b) => b.hours - a.hours).slice(0, 8);
     } else {
       appUsage = APPLIANCES.map((a, i) => {
         const ms = sumAbove(applHists[i], a.threshold ?? 10);
-        return { name: a.label, icon: a.icon, hours: ms / 3_600_000, perDay: fmtHrs(ms / DAYS), now: ha.num(a.power), w: ha.num(a.power) ?? 0 };
-      }).filter((x) => x.hours > 0.05).sort((a, b) => b.hours - a.hours).slice(0, 8);
+        return { name: a.label, icon: a.icon, hours: ms / 3_600_000, total: fmtHrs(ms), now: ha.num(a.power), w: ha.num(a.power) ?? 0 };
+      }).filter((x) => x.hours > 0.02).sort((a, b) => b.hours - a.hours).slice(0, 8);
     }
 
     // ---- standby load (avg house load 01:00–04:00) ----
@@ -381,12 +381,12 @@
     <div class="two">
       <!-- appliance usage -->
       <div class="card pad">
-        <div class="rh"><span class="lb" title="How long each appliance was actually DRAWING POWER (≥10 W), averaged per day over the last 7 days — measured from power, not how long its smart plug was switched on. So an always-on fridge shows only its compressor run-time.">Appliance run-time · {DAYS} days</span><span class="sub">hrs / day avg</span></div>
+        <div class="rh"><span class="lb" title="Total time each appliance was actually DRAWING POWER over the last 7 days — measured from power (per-appliance threshold), not how long its smart plug was switched on. So an always-on fridge shows only its compressor run-time.">Appliance run-time · {DAYS} days</span><span class="sub">total · 7 days</span></div>
         {#if appUsage.length}
           <div class="applist">
             {#each appUsage as a}
               {@const max = appUsage[0].hours}
-              <div class="approw" title="{a.name}: drew power about {a.perDay} per day on average over the last 7 days ({n(a.hours, 1)} h total). Bar length is relative to the busiest appliance.{a.now != null ? ` Currently ${n(a.now)} W.` : ''}"><span class="appic">{a.icon}</span><span class="appn">{a.name}</span><div class="apptrack"><div class="appfill" style="width:{(a.hours / max) * 100}%"></div></div><span class="appd">{a.perDay}</span></div>
+              <div class="approw" title="{a.name}: drew power for {a.total} total over the last 7 days. Bar length is relative to the busiest appliance.{a.now != null ? ` Currently ${n(a.now)} W.` : ''}"><span class="appic">{a.icon}</span><span class="appn">{a.name}</span><div class="apptrack"><div class="appfill" style="width:{(a.hours / max) * 100}%"></div></div><span class="appd">{a.total}</span></div>
             {/each}
           </div>
         {:else}<div class="note">No appliance activity in the window.</div>{/if}
