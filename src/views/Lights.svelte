@@ -95,7 +95,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
 
   .top { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 20px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 4px; }

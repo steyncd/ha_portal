@@ -155,7 +155,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .hero { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; overflow: hidden; }
   .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--water) 16%, transparent), transparent 70%); pointer-events: none; }
   .hero.low::after { background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--error) 18%, transparent), transparent 70%); }

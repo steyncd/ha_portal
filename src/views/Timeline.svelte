@@ -478,7 +478,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .tabs { display: flex; gap: 6px; padding: 5px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); align-self: flex-start; }
   .tabs.big { border-radius: 14px; }
   .tabs button { padding: 8px 16px; border-radius: 9px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }

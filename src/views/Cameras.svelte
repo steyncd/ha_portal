@@ -58,7 +58,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
   .k { padding: 15px; }

@@ -92,7 +92,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .phero { display: flex; align-items: center; gap: 15px; padding: 18px 22px; background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 12%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 28%, transparent); }
   .phero.ok { background: linear-gradient(180deg, color-mix(in srgb, var(--success) 10%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 24%, transparent); }
   .picon { font-size: 24px; }

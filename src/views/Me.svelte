@@ -314,7 +314,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .profile { padding: 22px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
   .av { width: 64px; height: 64px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #07131c; }
   .pn { font-size: 22px; font-weight: 800; }

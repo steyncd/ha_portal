@@ -107,7 +107,7 @@
 </div>
 
 <style>
-  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
   .pad { padding: 18px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }

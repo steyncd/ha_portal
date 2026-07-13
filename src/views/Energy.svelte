@@ -276,7 +276,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
 
   .hero { position: relative; overflow: hidden; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
   .heroglow { position: absolute; inset: 0; background: radial-gradient(420px 200px at 12% 120%, color-mix(in srgb, var(--solar) 20%, transparent), transparent 70%); pointer-events: none; }

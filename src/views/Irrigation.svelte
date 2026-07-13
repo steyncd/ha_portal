@@ -112,7 +112,7 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
   .header { padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   .ttl { font-size: 16px; font-weight: 700; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
