@@ -110,7 +110,7 @@
 
   <!-- ANPR: known vs unknown + repeat visitors -->
   <div class="card pad">
-    <div class="rh"><span class="lb">Driveway ANPR · known vs unknown · 30 days</span><span class="sub">{anpr.total} recognitions · {anpr.unique} plates</span></div>
+    <div class="rh"><span class="lb">ANPR · gate + driveway · known vs unknown · 30 days</span><span class="sub">{anpr.total} recognitions · {anpr.unique} plates</span></div>
     {#if plateHist.length}
       <div class="split">
         <div class="seg kn" style="flex:{Math.max(anpr.knownDet, 0.001)}"><span class="segn">{anpr.knownDet}</span><span class="segl">known · {anpr.knownPlates} plates</span></div>

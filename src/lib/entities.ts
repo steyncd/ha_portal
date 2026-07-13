@@ -69,7 +69,7 @@ export const E = {
   gateDetections: "counter.frigate_main_gate_detections_today",
   personDetections: "counter.frigate_person_detections_today",
   vehicleDetections: "counter.frigate_vehicle_detections_today",
-  lastPlate: "sensor.driveway_front_door_ai_last_recognized_plate",
+  lastPlate: "sensor.last_recognized_plate",
   knownPlates: "input_text.known_vehicle_plates",
   plateOwner: "sensor.main_gate_plate_owner",
   trafficIntensity: "sensor.sidewalk_traffic_intensity",
