@@ -1,5 +1,5 @@
 export type ViewId =
-  | "overview" | "energy" | "water" | "irrigation" | "climate" | "appliances"
+  | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
   | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "me" | "timeline" | "insights" | "settings";
 
 export type NavItem = { id: ViewId; name: string; icon: string; group: "" | "Systems" | "Safety" | "House" };
@@ -7,6 +7,7 @@ export type NavItem = { id: ViewId; name: string; icon: string; group: "" | "Sys
 export const NAV: NavItem[] = [
   { id: "overview", name: "Overview", icon: "🏠", group: "" },
   { id: "energy", name: "Energy", icon: "⚡", group: "Systems" },
+  { id: "powertrends", name: "Power Trends", icon: "📊", group: "Systems" },
   { id: "water", name: "Water", icon: "💧", group: "Systems" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", group: "Systems" },
   { id: "climate", name: "Climate", icon: "🌡️", group: "Systems" },

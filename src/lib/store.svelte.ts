@@ -246,12 +246,15 @@ class HAStore {
    */
   async statistics(
     statisticId: string,
-    { period = "day", days = 90 }: { period?: "hour" | "day" | "week" | "month"; days?: number } = {},
+    { period = "day", days = 90, start: startArg, end: endArg }: { period?: "hour" | "day" | "week" | "month"; days?: number; start?: Date | number; end?: Date | number } = {},
   ): Promise<{ t: number; mean: number | null; min: number | null; max: number | null; sum: number | null; change: number | null }[]> {
-    if (this.#mock) return this.#synthStats(statisticId, period, days);
+    if (this.#mock) {
+      const span = startArg != null && endArg != null ? Math.max(1, Math.round((+endArg - +startArg) / 86_400_000)) : days;
+      return this.#synthStats(statisticId, period, span);
+    }
     if (!this.#conn) return [];
-    const end = new Date();
-    const start = new Date(end.getTime() - days * 86_400_000);
+    const end = endArg != null ? new Date(+endArg) : new Date();
+    const start = startArg != null ? new Date(+startArg) : new Date(end.getTime() - days * 86_400_000);
     const num = (x: unknown) => {
       const n = Number(x);
       return Number.isFinite(n) ? n : null;

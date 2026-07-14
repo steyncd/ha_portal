@@ -359,6 +359,19 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
 // Flat list (derived) — used by the Energy view's live-draw grid.
 export const APPLIANCES: Appliance[] = APPLIANCE_AREAS.flatMap((a) => a.items);
 
+// Every power-monitored device, for the Power Trends page. Each entry points at
+// a W power sensor (state_class: measurement → HA keeps long-term mean/min/max
+// statistics forever), so history + trends work for any range. Derived from the
+// appliance areas + pumps so it stays in sync, with the whole-home/solar totals
+// prepended.
+export type PowerDevice = { power: string; label: string; icon: string; group: string; live?: string };
+export const POWER_DEVICES: PowerDevice[] = [
+  { power: "sensor.victron_ac_consumption_l1", label: "Whole home", icon: "🏠", group: "Totals" },
+  { power: "sensor.victron_total_pv_power", label: "Solar production", icon: "☀️", group: "Totals" },
+  ...APPLIANCE_AREAS.flatMap((a) => a.items.map((i) => ({ power: i.power, label: i.label, icon: i.icon, group: a.name, live: i.sw }))),
+  ...PUMPS.map((p) => ({ power: p.power, label: p.label, icon: p.icon, group: "Pumps", live: p.sw })),
+];
+
 // A security zone with its live state, current bypass status, and the
 // press-buttons that bypass / restore it (the proper per-zone bypass wiring).
 export type AlarmZone = {

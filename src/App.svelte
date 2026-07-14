@@ -6,6 +6,7 @@
   import { E } from "./lib/entities";
   import Overview from "./views/Overview.svelte";
   import Energy from "./views/Energy.svelte";
+  import PowerTrends from "./views/PowerTrends.svelte";
   import Water from "./views/Water.svelte";
   import Irrigation from "./views/Irrigation.svelte";
   import Climate from "./views/Climate.svelte";
@@ -121,6 +122,7 @@
       <div class="body">
         {#if view === "overview"}<Overview onnav={go} />
         {:else if view === "energy"}<Energy onnav={go} />
+        {:else if view === "powertrends"}<PowerTrends />
         {:else if view === "water"}<Water />
         {:else if view === "irrigation"}<Irrigation />
         {:else if view === "climate"}<Climate />
