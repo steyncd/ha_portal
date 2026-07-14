@@ -129,7 +129,7 @@
       sum[h] += d.mean; cnt[h] += 1;
     }
     return sum.map((s, h) => ({
-      label: h % 3 === 0 ? String(h) : "",
+      label: `${String(h).padStart(2, "0")}:00`,
       value: cnt[h] ? s / cnt[h] : 0,
       color: "var(--brand)",
     }));
@@ -252,8 +252,7 @@
     <!-- typical daily pattern -->
     <div class="card pad">
       <div class="rh"><span class="lb">🕒 Typical daily pattern</span><span class="sub">{peakHour != null ? `peaks ~${peakHour}:00` : "avg W by hour"}</span></div>
-      <BarChart bars={hourProfile} height={130} unit="" digits={0} />
-      <div class="axis"><span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:00</span></div>
+      <BarChart bars={hourProfile} height={140} unit=" W" digits={0} />
     </div>
   {/if}
 </div>
@@ -299,8 +298,6 @@
   .iv { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
   .is { font-size: 11.5px; color: var(--dim); }
   .sum { margin: 16px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }
-
-  .axis { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10.5px; color: var(--dim); }
 
   @media (max-width: 860px) { .kpis { grid-template-columns: repeat(2, 1fr); } .ig { grid-template-columns: repeat(2, 1fr); } }
   @media (max-width: 560px) { .kpis { grid-template-columns: 1fr; } .ig { grid-template-columns: 1fr; } select { min-width: 0; width: 100%; } }
