@@ -15,6 +15,9 @@
 
   // ---- date range ----
   const PRESETS = [
+    { id: "1h", label: "1h", days: 1 / 24 },
+    { id: "2h", label: "2h", days: 2 / 24 },
+    { id: "3h", label: "3h", days: 3 / 24 },
     { id: "6h", label: "6h", days: 0.25 },
     { id: "12h", label: "12h", days: 0.5 },
     { id: "24h", label: "24h", days: 1 },
@@ -45,7 +48,11 @@
   const tariff = $derived(ha.num(E.tariff) ?? 3.5);
 
   // "6 hours" / "3 days" for headings & prose (range.days can be fractional now)
-  const spanTxt = $derived(range.days < 1 ? `${Math.round(range.days * 24)} hours` : `${Math.round(range.days)} day${range.days >= 1.5 ? "s" : ""}`);
+  const spanTxt = $derived(
+    range.days < 1
+      ? `${Math.round(range.days * 24)} hour${Math.round(range.days * 24) === 1 ? "" : "s"}`
+      : `${Math.round(range.days)} day${range.days >= 1.5 ? "s" : ""}`,
+  );
 
   // Tooltip label formatters (daily buckets sit at midnight, so a time-only label
   // would read 00:00 for every point — show the date instead).
