@@ -49,10 +49,19 @@
   // ---- hover crosshair + value tooltip ----
   let hi = $state<number | null>(null);
   function onmove(e: MouseEvent) {
-    if (data.length < 2) return;
+    if (data.length < 2 || !view) return;
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const frac = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
-    hi = Math.round(frac * (data.length - 1));
+    // Points are placed by TIME, not index, so map the cursor to a target time and
+    // pick the nearest point — otherwise irregular/gappy series offset the marker.
+    const targetT = view.tMin + frac * (view.tMax - view.tMin);
+    let bi = 0;
+    let bd = Infinity;
+    for (let i = 0; i < data.length; i++) {
+      const dd = Math.abs(data[i].t - targetT);
+      if (dd < bd) { bd = dd; bi = i; }
+    }
+    hi = bi;
   }
   const hover = $derived.by(() => {
     if (hi == null || !view || !data[hi]) return null;
