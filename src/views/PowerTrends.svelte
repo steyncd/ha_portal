@@ -69,7 +69,9 @@
   const hasData = $derived(pts.length >= 2);
 
   const chartMean = $derived(pts.map((d) => ({ t: d.t, v: d.mean as number })));
-  const chartPeak = $derived(pts.map((d) => ({ t: d.t, v: (d.max ?? d.mean) as number })));
+  // High-resolution power-over-time line (hourly mean W across the whole range).
+  const chartHourly = $derived(hourly.filter((d) => d.mean != null).map((d) => ({ t: d.t, v: d.mean as number })));
+  const hasHourly = $derived(chartHourly.length >= 2);
 
   const avgW = $derived(means.length ? means.reduce((a, b) => a + b, 0) / means.length : 0);
   const peak = $derived.by(() => {
@@ -140,6 +142,10 @@
   });
 
   const dfmt = (t: number) => new Date(t).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
+  // Tooltip label formatters for the charts (daily buckets sit at midnight, so a
+  // time-only label would read 00:00 for every point — show the date instead).
+  const fmtDay = (t: number) => new Date(t).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  const fmtDayTime = (t: number) => new Date(t).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   // natural-language summary
   const summary = $derived.by(() => {
@@ -202,17 +208,25 @@
     <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u"> {power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
   </div>
 
-  <!-- main power history -->
+  <!-- power over time (hourly W line) — the fine-grained trace -->
   <div class="card pad">
-    <div class="rh"><span class="lb">{dev.icon} {dev.label} — {period === "hour" ? "power (hourly)" : "average power (daily)"}</span><span class="sub">peak {power(peak.w < 0 ? 0 : peak.w).val} {power(peak.w < 0 ? 0 : peak.w).unit}</span></div>
+    <div class="rh"><span class="lb">{dev.icon} {dev.label} — power over time</span><span class="sub">W · hourly · peak {power(peak.w < 0 ? 0 : peak.w).val} {power(peak.w < 0 ? 0 : peak.w).unit}</span></div>
     {#if loading}
       <div class="empty">Loading history…</div>
-    {:else if hasData}
-      <AreaChart data={chartMean} color="var(--brand)" height={190} unit=" W" digits={0} />
+    {:else if hasHourly}
+      <AreaChart data={chartHourly} color="var(--acc)" height={220} unit=" W" digits={0} labelFmt={fmtDayTime} />
     {:else}
       <div class="empty">No recorded history for this device in the selected range.</div>
     {/if}
   </div>
+
+  <!-- daily average power (only when it adds info beyond the hourly trace above) -->
+  {#if hasData && period === "day"}
+    <div class="card pad">
+      <div class="rh"><span class="lb">Average power (daily)</span><span class="sub">avg {power(avgW).val} {power(avgW).unit}</span></div>
+      <AreaChart data={chartMean} color="var(--brand)" height={170} unit=" W" digits={0} labelFmt={fmtDay} />
+    </div>
+  {/if}
 
   <!-- energy per day -->
   {#if hasData}

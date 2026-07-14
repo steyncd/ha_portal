@@ -8,6 +8,7 @@
     fixedMin,
     fixedMax,
     digits = 0,
+    labelFmt,
   }: {
     data: { t: number; v: number }[];
     color?: string;
@@ -17,6 +18,8 @@
     fixedMin?: number;
     fixedMax?: number;
     digits?: number;
+    /** Format the hover tooltip's time label. Defaults to HH:MM (intraday). */
+    labelFmt?: (t: number) => string;
   } = $props();
 
   const W = 320;
@@ -58,6 +61,7 @@
     return { d, sx: view.x(d.t), sy: view.y(d.v), frac: fx };
   });
   const hhmm = (t: number) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  const fmtLabel = $derived(labelFmt ?? hhmm);
 
   const uid = Math.random().toString(36).slice(2, 8);
 </script>
@@ -89,7 +93,7 @@
     {/if}
     {#if hover && !mini}
       <div class="tip" style="left:{hover.frac * 100}%">
-        <b>{hover.d.v.toFixed(digits)}{unit}</b><span>{hhmm(hover.d.t)}</span>
+        <b>{hover.d.v.toFixed(digits)}{unit}</b><span>{fmtLabel(hover.d.t)}</span>
       </div>
     {/if}
   </div>
