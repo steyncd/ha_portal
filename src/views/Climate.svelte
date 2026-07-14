@@ -10,7 +10,7 @@
   const PLAN: Room[] = [
     { id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3, lights: [] },
     { id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27, temp: "sensor.patio_sensor_temperature", hum: "sensor.patio_sensor_humidity", lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }] },
-    { id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27, temp: "sensor.study_temperature", lights: [{ id: "light.study_lamp", label: "Study Lamp", icon: "📖" }] },
+    { id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27, temp: "sensor.study_bt_device_scanner_desk_temperature", hum: "sensor.study_bt_device_scanner_desk_humidity", lights: [{ id: "light.study_lamp", label: "Study Lamp", icon: "📖" }] },
     { id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23, temp: "sensor.liam_s_room_temperature", hum: "sensor.liam_s_room_humidity", lights: [] },
     { id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23, temp: "sensor.adjusted_temperature", lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡" }] },
     { id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23, temp: "sensor.main_room_temperature", hum: "sensor.main_bedroom_lamp_si7021_humidity", lights: [{ id: "switch.main_bedroom_lamp", label: "Bedside", icon: "🛏️" }] },

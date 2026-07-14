@@ -248,6 +248,7 @@ export const ROOMS: Room[] = [
   { id: "sensor.kitchen_sensor_temperature", label: "Kitchen", humidity: "sensor.kitchen_sensor_humidity" },
   { id: "sensor.living_room_sensor_temperature", label: "Living Room", humidity: "sensor.living_room_sensor_humidity" },
   { id: "sensor.study_temperature", label: "Study" },
+  { id: "sensor.study_bt_device_scanner_desk_temperature", label: "Study Desk", humidity: "sensor.study_bt_device_scanner_desk_humidity" },
   { id: "sensor.patio_sensor_temperature", label: "Patio", humidity: "sensor.patio_sensor_humidity" },
   { id: "sensor.back_yard_temperature", label: "Back Yard" },
 ];
