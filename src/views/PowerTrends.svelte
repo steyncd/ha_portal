@@ -15,11 +15,15 @@
 
   // ---- date range ----
   const PRESETS = [
-    { id: "7", label: "7 days", days: 7 },
-    { id: "30", label: "30 days", days: 30 },
-    { id: "90", label: "90 days", days: 90 },
+    { id: "6h", label: "6h", days: 0.25 },
+    { id: "12h", label: "12h", days: 0.5 },
+    { id: "24h", label: "24h", days: 1 },
+    { id: "3d", label: "3d", days: 3 },
+    { id: "7d", label: "7d", days: 7 },
+    { id: "30d", label: "30d", days: 30 },
+    { id: "90d", label: "90d", days: 90 },
   ];
-  let rangeId = $state("30");
+  let rangeId = $state("30d");
   let customStart = $state("");
   let customEnd = $state("");
   const isCustom = $derived(rangeId === "custom");
@@ -40,9 +44,18 @@
 
   const tariff = $derived(ha.num(E.tariff) ?? 3.5);
 
+  // "6 hours" / "3 days" for headings & prose (range.days can be fractional now)
+  const spanTxt = $derived(range.days < 1 ? `${Math.round(range.days * 24)} hours` : `${Math.round(range.days)} day${range.days >= 1.5 ? "s" : ""}`);
+
+  // Tooltip label formatters (daily buckets sit at midnight, so a time-only label
+  // would read 00:00 for every point — show the date instead).
+  const fmtDay = (t: number) => new Date(t).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
+  const fmtDayTime = (t: number) => new Date(t).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+
   // ---- data load ----
   let primary = $state<Stat[]>([]);
   let hourly = $state<Stat[]>([]);
+  let fine = $state<{ t: number; v: number }[]>([]); // raw high-res trace, short ranges only
   let loading = $state(true);
   let reqId = 0;
 
@@ -50,15 +63,21 @@
     const p = dev.power;
     const r = range;
     const per = period;
+    // For short preset ranges (≤2 days, ending now) hourly buckets are too coarse
+    // for the timeline line — pull raw state history instead. ha.history() works in
+    // hours-back-from-now, so only use it for presets (not a past custom window).
+    const useRaw = r.days <= 2 && !isCustom;
     const my = ++reqId;
     loading = true;
     Promise.all([
       ha.statistics(p, { period: per, start: r.start, end: r.end }),
       ha.statistics(p, { period: "hour", start: r.start, end: r.end }),
-    ]).then(([d, h]) => {
+      useRaw ? ha.history(p, Math.ceil(r.days * 24)) : Promise.resolve([]),
+    ]).then(([d, h, raw]) => {
       if (my !== reqId) return;
       primary = d as Stat[];
       hourly = h as Stat[];
+      fine = raw as { t: number; v: number }[];
       loading = false;
     });
   });
@@ -69,9 +88,13 @@
   const hasData = $derived(pts.length >= 2);
 
   const chartMean = $derived(pts.map((d) => ({ t: d.t, v: d.mean as number })));
-  // High-resolution power-over-time line (hourly mean W across the whole range).
-  const chartHourly = $derived(hourly.filter((d) => d.mean != null).map((d) => ({ t: d.t, v: d.mean as number })));
+  // Power-over-time line: raw state history for short ranges, else hourly mean W.
+  const chartHourly = $derived(
+    fine.length >= 2 ? fine : hourly.filter((d) => d.mean != null).map((d) => ({ t: d.t, v: d.mean as number })),
+  );
   const hasHourly = $derived(chartHourly.length >= 2);
+  // Intraday ranges read better with a time-only tooltip; longer ranges show the date.
+  const lineFmt = $derived(range.days <= 1 ? (t: number) => new Date(t).toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit" }) : fmtDayTime);
 
   const avgW = $derived(means.length ? means.reduce((a, b) => a + b, 0) / means.length : 0);
   const peak = $derived.by(() => {
@@ -142,16 +165,12 @@
   });
 
   const dfmt = (t: number) => new Date(t).toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" });
-  // Tooltip label formatters for the charts (daily buckets sit at midnight, so a
-  // time-only label would read 00:00 for every point — show the date instead).
-  const fmtDay = (t: number) => new Date(t).toLocaleDateString("en-ZA", { day: "numeric", month: "short" });
-  const fmtDayTime = (t: number) => new Date(t).toLocaleString("en-ZA", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
   // natural-language summary
   const summary = $derived.by(() => {
     if (!hasData) return "";
     const parts: string[] = [];
-    parts.push(`${dev.label} used about ${n(totalKwh, 1)} kWh over the last ${range.days} days (~${rand(cost)}).`);
+    parts.push(`${dev.label} used about ${n(totalKwh, 1)} kWh over the last ${spanTxt} (~${rand(cost)}).`);
     if (trendPct != null && Math.abs(trendPct) >= 8)
       parts.push(`Usage is ${trendPct > 0 ? "rising" : "falling"} — ${n(Math.abs(trendPct))}% ${trendPct > 0 ? "higher" : "lower"} than the start of the period.`);
     else parts.push("Usage has been broadly steady across the period.");
@@ -202,7 +221,7 @@
 
   <!-- headline KPIs -->
   <div class="kpis">
-    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u"> kWh</span></div><div class="sub">over {range.days} days</div></div>
+    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u"> kWh</span></div><div class="sub">over {spanTxt}</div></div>
     <div class="card k"><div class="lb">Est. cost</div><div class="big">{rand(cost)}</div><div class="sub">@ {rand(tariff)}/kWh</div></div>
     <div class="card k"><div class="lb">Average draw</div><div class="big">{power(avgW).val}<span class="u"> {power(avgW).unit}</span></div><div class="sub">live {liveW != null ? `${power(liveW).val} ${power(liveW).unit}` : "—"}</div></div>
     <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u"> {power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
@@ -210,11 +229,11 @@
 
   <!-- power over time (hourly W line) — the fine-grained trace -->
   <div class="card pad">
-    <div class="rh"><span class="lb">{dev.icon} {dev.label} — power over time</span><span class="sub">W · hourly · peak {power(peak.w < 0 ? 0 : peak.w).val} {power(peak.w < 0 ? 0 : peak.w).unit}</span></div>
+    <div class="rh"><span class="lb">{dev.icon} {dev.label} — power over time</span><span class="sub">W · {fine.length >= 2 ? "live" : "hourly"} · peak {power(peak.w < 0 ? 0 : peak.w).val} {power(peak.w < 0 ? 0 : peak.w).unit}</span></div>
     {#if loading}
       <div class="empty">Loading history…</div>
     {:else if hasHourly}
-      <AreaChart data={chartHourly} color="var(--acc)" height={220} unit=" W" digits={0} labelFmt={fmtDayTime} />
+      <AreaChart data={chartHourly} color="var(--acc)" height={220} unit=" W" digits={0} labelFmt={lineFmt} />
     {:else}
       <div class="empty">No recorded history for this device in the selected range.</div>
     {/if}
@@ -277,7 +296,7 @@
   select optgroup { background-color: #0e1522; color: var(--muted); font-weight: 700; }
   .hint { font-size: 12px; color: var(--warning); align-self: center; }
 
-  .seg { display: inline-flex; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+  .seg { display: inline-flex; flex-wrap: wrap; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
   .seg button { padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .seg button.on { background: color-mix(in srgb, var(--brand) 26%, transparent); color: var(--text); }
 
