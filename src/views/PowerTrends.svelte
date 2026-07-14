@@ -255,8 +255,13 @@
   select, input[type="date"] {
     background: var(--soft); color: var(--text); border: 1px solid var(--line);
     border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; min-width: 220px;
+    color-scheme: dark;   /* render the native popup / date picker on a dark palette */
   }
   input[type="date"] { min-width: 150px; }
+  /* Native dropdown list renders on the OS background — force solid dark + light
+     text so the options are readable (was light-on-light). */
+  select option { background-color: #0e1522; color: var(--text); }
+  select optgroup { background-color: #0e1522; color: var(--muted); font-weight: 700; }
   .hint { font-size: 12px; color: var(--warning); align-self: center; }
 
   .seg { display: inline-flex; background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
