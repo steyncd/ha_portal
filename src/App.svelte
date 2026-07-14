@@ -9,7 +9,7 @@
   import PowerTrends from "./views/PowerTrends.svelte";
   import Water from "./views/Water.svelte";
   import Irrigation from "./views/Irrigation.svelte";
-  import Climate from "./views/Climate.svelte";
+  import Rooms from "./views/Rooms.svelte";
   import Appliances from "./views/Appliances.svelte";
   import Security from "./views/Security.svelte";
   import Cameras from "./views/Cameras.svelte";
@@ -125,7 +125,7 @@
         {:else if view === "powertrends"}<PowerTrends />
         {:else if view === "water"}<Water />
         {:else if view === "irrigation"}<Irrigation />
-        {:else if view === "climate"}<Climate />
+        {:else if view === "climate"}<Rooms />
         {:else if view === "appliances"}<Appliances />
         {:else if view === "security"}<Security />
         {:else if view === "cameras"}<Cameras />

@@ -10,7 +10,7 @@ export const NAV: NavItem[] = [
   { id: "powertrends", name: "Power Trends", icon: "📊", group: "Systems" },
   { id: "water", name: "Water", icon: "💧", group: "Systems" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", group: "Systems" },
-  { id: "climate", name: "Climate", icon: "🌡️", group: "Systems" },
+  { id: "climate", name: "Rooms", icon: "🚪", group: "Systems" },
   { id: "appliances", name: "Appliances", icon: "🔌", group: "Systems" },
   { id: "security", name: "Security", icon: "🛡️", group: "Safety" },
   { id: "cameras", name: "Cameras", icon: "📷", group: "Safety" },
