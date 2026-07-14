@@ -240,7 +240,7 @@
     {#if loading}
       <div class="empty">Loading history…</div>
     {:else if hasHourly}
-      <AreaChart data={chartHourly} color="var(--acc)" height={220} unit=" W" digits={0} labelFmt={lineFmt} />
+      <AreaChart data={chartHourly} color="var(--acc)" height={220} unit=" W" digits={0} labelFmt={lineFmt} step />
     {:else}
       <div class="empty">No recorded history for this device in the selected range.</div>
     {/if}

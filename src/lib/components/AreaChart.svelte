@@ -9,6 +9,7 @@
     fixedMax,
     digits = 0,
     labelFmt,
+    step = false,
   }: {
     data: { t: number; v: number }[];
     color?: string;
@@ -20,6 +21,10 @@
     digits?: number;
     /** Format the hover tooltip's time label. Defaults to HH:MM (intraday). */
     labelFmt?: (t: number) => string;
+    /** Step (hold-last-value) interpolation — correct for state/power sensors that
+     *  hold a value until the next reading, so 0 reads as 0 and nothing is invented
+     *  between points. Default false = smooth linear. */
+    step?: boolean;
   } = $props();
 
   const W = 320;
@@ -40,8 +45,14 @@
     const H = height;
     const x = (t: number) => ((t - tMin) / (tMax - tMin)) * W;
     const y = (v: number) => H - padY - ((v - vMin) / (vMax - vMin)) * (H - padY * 2);
-    const pts = data.map((d) => `${x(d.t).toFixed(1)},${y(d.v).toFixed(1)}`);
-    const line = "M" + pts.join(" L");
+    const xs = data.map((d) => x(d.t));
+    const ys = data.map((d) => y(d.v));
+    let line = `M${xs[0].toFixed(1)},${ys[0].toFixed(1)}`;
+    for (let i = 1; i < data.length; i++) {
+      // step-after: hold the previous value across to the next point, then step to it
+      if (step) line += ` H${xs[i].toFixed(1)} V${ys[i].toFixed(1)}`;
+      else line += ` L${xs[i].toFixed(1)},${ys[i].toFixed(1)}`;
+    }
     const area = `${line} L${W},${height} L0,${height} Z`;
     return { line, area, tMin, tMax, vMin, vMax, x, y, lastXY: { x: x(data[data.length - 1].t), y: y(data[data.length - 1].v) } };
   });
