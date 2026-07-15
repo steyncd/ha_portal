@@ -386,6 +386,11 @@ export const POWER_DEVICES: PowerDevice[] = [
   { power: "sensor.victron_total_pv_power", label: "Solar production", icon: "☀️", group: "Totals" },
   ...APPLIANCE_AREAS.flatMap((a) => a.items.map((i) => ({ power: i.power, label: i.label, icon: i.icon, group: a.name, live: i.sw }))),
   ...PUMPS.map((p) => ({ power: p.power, label: p.label, icon: p.icon, group: "Pumps", live: p.sw })),
+  // Powercalc-estimated power for lights with no in-line meter (packages/powercalc.yaml)
+  { power: "sensor.dining_room_lamp_power", label: "Dining Lamp", icon: "🍽️", group: "Lights (est.)", live: "light.dining_room_lamp" },
+  { power: "sensor.eben_room_lamp_power", label: "Eben Lamp", icon: "💡", group: "Lights (est.)", live: "light.eben_room_lamp" },
+  { power: "sensor.study_yard_light_power", label: "Study Yard Light", icon: "🌳", group: "Lights (est.)", live: "light.study_yard_light" },
+  { power: "sensor.pool_light_power", label: "Pool Light", icon: "🏊", group: "Lights (est.)", live: "light.back_yard_pool_light" },
 ];
 
 // A security zone with its live state, current bypass status, and the

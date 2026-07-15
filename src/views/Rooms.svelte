@@ -6,13 +6,13 @@
 
   type Dev = { id: string; label: string; icon: string; power?: string };
   type TempSrc = { id: string; label: string };
-  type Room = { id: string; label: string; left: number; top: number; w: number; h: number; temps?: TempSrc[]; hum?: string; lights?: Dev[]; appliances?: Dev[] };
+  type Room = { id: string; label: string; left: number; top: number; w: number; h: number; temps?: TempSrc[]; hum?: string; occ?: string; lights?: Dev[]; appliances?: Dev[] };
 
   const PLAN: Room[] = [
     { id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3 },
     { id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27, temps: [{ id: "sensor.patio_sensor_temperature", label: "Braai" }], hum: "sensor.patio_sensor_humidity", lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }] },
     {
-      id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27,
+      id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27, occ: "binary_sensor.study_occupancy",
       temps: [
         { id: "sensor.study_bt_device_scanner_desk_temperature", label: "Desk" },
         { id: "sensor.study_temperature", label: "Study" },
@@ -26,7 +26,7 @@
       appliances: [{ id: "switch.study_heater", label: "Study Heater", icon: "🔥", power: "sensor.study_heater_current_consumption" }],
     },
     { id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23, temps: [{ id: "sensor.liam_s_room_temperature", label: "Liam" }], hum: "sensor.liam_s_room_humidity" },
-    { id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23, temps: [{ id: "sensor.adjusted_temperature", label: "Eben" }], lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡" }] },
+    { id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23, temps: [{ id: "sensor.adjusted_temperature", label: "Eben" }], lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡", power: "sensor.eben_room_lamp_power" }] },
     {
       id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23,
       temps: [{ id: "sensor.main_room_temperature", label: "Main" }], hum: "sensor.main_bedroom_lamp_si7021_humidity",
@@ -37,14 +37,14 @@
       ],
     },
     {
-      id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8,
+      id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8, occ: "binary_sensor.lounge_area_occupancy",
       temps: [{ id: "sensor.living_room_sensor_temperature", label: "TV Room" }], hum: "sensor.living_room_sensor_humidity",
       lights: [
         { id: "switch.living_room_lamp", label: "Living", icon: "🛋️", power: "sensor.living_room_lamp_power" },
         { id: "switch.tv_room_lamp", label: "TV Lamp", icon: "📺", power: "sensor.tv_room_lamp_power" },
       ],
     },
-    { id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8, temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity", lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️" }] },
+    { id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8, temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity", lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️", power: "sensor.dining_room_lamp_power" }] },
     {
       id: "kitchen", label: "Kitchen", left: 40.9, top: 57.4, w: 15.6, h: 27.7,
       temps: [{ id: "sensor.kitchen_sensor_temperature", label: "Kitchen" }], hum: "sensor.kitchen_sensor_humidity",
@@ -86,6 +86,7 @@
   const hum = $derived(active.hum ? ha.num(active.hum) : null);
   const devices = $derived([...(active.lights ?? []), ...(active.appliances ?? [])]);
   const roomPower = $derived(devices.reduce((s, d) => s + (d.power && ha.isOn(d.id) ? (ha.num(d.power) ?? 0) : 0), 0));
+  const occupied = $derived(active.occ ? ha.isOn(active.occ) : null);
 
   let hist = $state<{ t: number; v: number }[]>([]);
   $effect(() => {
@@ -128,10 +129,12 @@
       {#each PLAN as r}
         {@const t = r.temps?.[0] ? ha.num(r.temps[0].id) : null}
         {@const lit = (r.lights ?? []).some((l) => ha.isOn(l.id)) || (r.appliances ?? []).some((a) => ha.isOn(a.id))}
+        {@const occ = r.occ ? ha.isOn(r.occ) : false}
         <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : heat(t)}" onclick={() => (activeId = r.id)}>
           <span class="rn">{r.label}</span>
           {#if t != null}<span class="rt">{n(t, 1)}°</span>{/if}
           {#if lit}<span class="dot"></span>{/if}
+          {#if occ}<span class="odot"></span>{/if}
         </button>
       {/each}
     </div>
@@ -144,7 +147,7 @@
 
   <div class="card pad">
     <div class="ah">
-      <span class="an">{active.label}</span>
+      <span class="an">{active.label}{#if occupied != null}<span class="occ" class:oon={occupied}>{occupied ? "occupied" : "empty"}</span>{/if}</span>
       <span class="sub">{roomPower > 0 ? `⚡ ${power(roomPower).val} ${power(roomPower).unit}` : ""}{roomPower > 0 && hum != null ? " · " : ""}{hum != null ? `${n(hum)}% RH` : ""}</span>
     </div>
 
@@ -197,6 +200,9 @@
   .room.active { box-shadow: inset 0 0 0 1.5px var(--line); }
   .room:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
   .dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+  .odot { position: absolute; top: 4px; left: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .occ { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
+  .occ.oon { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
   .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
   .legend .lc { width: 26px; height: 9px; border-radius: 2px; }
   .legend .ll2 { font-size: 10.5px; color: var(--muted); margin: 0 5px; }

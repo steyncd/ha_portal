@@ -36,7 +36,19 @@
     Object.entries(ha.entities).filter(([id, e]) => PROBLEM_DOMAINS.includes(id.split(".")[0]) && (e.state === "unavailable" || e.state === "unknown")).length,
   );
   const lowBatt = $derived(ha.num(E.lowBatteryDevices) ?? 0);
-  const healthy = $derived(offline === 0 && lowBatt === 0);
+  // energy/analysis health count + Frigate detection watchdog (energy_insights_plus / frigate_watchdog)
+  const healthIssues = $derived(ha.num(E.systemHealthIssues) ?? 0);
+  const frigateStalled = $derived(ha.isOn(E.frigateStalled));
+  const problems = $derived(
+    [
+      offline > 0 ? `${offline} device${offline === 1 ? "" : "s"} offline` : null,
+      lowBatt > 0 ? `${n(lowBatt)} low battery` : null,
+      frigateStalled ? "Frigate detection stalled" : null,
+      healthIssues > 0 ? `${healthIssues} health issue${healthIssues === 1 ? "" : "s"}` : null,
+    ].filter(Boolean),
+  );
+  const problemCount = $derived(offline + lowBatt + healthIssues + (frigateStalled ? 1 : 0));
+  const healthy = $derived(problemCount === 0);
 </script>
 
 <div class="col">
@@ -44,17 +56,17 @@
   <div class="card phero" class:ok={healthy}>
     <span class="picon">{healthy ? "✅" : "⚠️"}</span>
     <div class="pinfo">
-      <div class="pt">{healthy ? "All systems healthy" : `${offline} device${offline === 1 ? "" : "s"} offline · ${n(lowBatt)} low battery`}</div>
+      <div class="pt">{healthy ? "All systems healthy" : problems.join(" · ")}</div>
       <div class="psub">{n(ha.num(E.routerDevices))} devices online · internet up {uptime(ha.num(E.routerUptime))}</div>
     </div>
-    {#if !healthy}<span class="pcount">{offline + lowBatt}</span>{/if}
+    {#if !healthy}<span class="pcount">{problemCount}</span>{/if}
   </div>
 
   <div class="kpis">
     <div class="card k"><div class="lb">↓ Download</div><div class="big">{n(ha.num(E.routerDown), 1)}<span class="u"> Mbps</span></div></div>
     <div class="card k"><div class="lb">↑ Upload</div><div class="big">{n(ha.num(E.routerUp), 1)}<span class="u"> Mbps</span></div></div>
     <div class="card k"><div class="lb">Devices</div><div class="big">{n(ha.num(E.routerDevices))}</div><div class="sub" style="color:var(--success)">online</div></div>
-    <div class="card k"><div class="lb">Battery health</div><div class="big">{n(ha.num(E.batteryHealth))}<span class="u">%</span></div><div class="sub">grade {ha.state(E.energyGrade) ?? "—"}</div></div>
+    <div class="card k"><div class="lb">Battery health</div><div class="big">{n(ha.num(E.batteryHealth))}<span class="u">%</span></div><div class="sub">grade {ha.state(E.energyGrade) ?? "—"}{ha.num(E.batteryCellSpread) != null ? ` · Δ${n(ha.num(E.batteryCellSpread), 1)}°C cells` : ""}</div></div>
   </div>
 
   <div class="two">

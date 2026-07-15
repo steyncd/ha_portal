@@ -58,6 +58,18 @@
     { id: "input_boolean.printer_ink_notifications", icon: "🖨️", name: "Printer ink low" },
     { id: "input_boolean.irrigation_intelligence_enabled", icon: "🌿", name: "Smart irrigation" },
   ];
+  const automations = [
+    { id: "input_boolean.borehole_night_guard_enabled", icon: "🕳️", name: "Borehole night guard" },
+    { id: "input_boolean.frigate_watchdog_enabled", icon: "📷", name: "Frigate self-heal" },
+    { id: "input_boolean.light_watchdog_enabled", icon: "💡", name: "Light watchdog" },
+    { id: "input_boolean.appliance_finish_alerts_enabled", icon: "🔔", name: "Appliance-done alerts" },
+    { id: "input_boolean.window_advisor_enabled", icon: "🪟", name: "Window advisor" },
+    { id: "input_boolean.fridge_open_alert_enabled", icon: "🧊", name: "Fridge-open alert" },
+    { id: "input_boolean.desk_comfort_enabled", icon: "🪑", name: "Desk comfort" },
+    { id: "input_boolean.evening_lights_enabled", icon: "🌆", name: "Evening lights" },
+    { id: "input_boolean.night_kitchen_light_enabled", icon: "🌙", name: "Night kitchen light" },
+    { id: "input_boolean.holiday_mode", icon: "🏖️", name: "Holiday mode" },
+  ];
   const bypassOpts = $derived((ha.attr("input_select.zone_bypass_selector", "options") as string[]) ?? []);
   const bypassVal = $derived(ha.state("input_select.zone_bypass_selector") ?? "");
 
@@ -155,6 +167,15 @@
     </div>
   </div>
 
+  <h2 class="section">Automations</h2>
+  <div class="card pad">
+    <div class="agrid">
+      {#each automations as r}
+        <div class="arow"><span class="ni">{r.icon}</span><span class="nn">{r.name}</span><Toggle on={ha.isOn(r.id)} onchange={() => ha.toggleBoolean(r.id)} /></div>
+      {/each}
+    </div>
+  </div>
+
   <!-- health goals -->
   {#if healthGoals.length}
     <h2 class="section">Health &amp; goals</h2>
@@ -204,6 +225,8 @@
   .col { display: flex; flex-direction: column; gap: 14px; }
   .section { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted-2); margin: 8px 2px -4px; }
   .section:first-child { margin-top: 0; }
+  .agrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
+  @media (max-width: 640px) { .agrid { grid-template-columns: 1fr; } }
   .pad { padding: 22px; }
   .acct { display: flex; align-items: center; gap: 15px; }
   .aav { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 18px; font-weight: 800; color: #0b1017; }
