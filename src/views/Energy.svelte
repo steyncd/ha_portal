@@ -32,6 +32,16 @@
 
   const indep = $derived(ha.num(E.gridIndepToday));
 
+  // Energy insights (packages/energy_insights*.yaml)
+  const banner = $derived(ha.state(E.energyBanner));
+  const bannerLevel = $derived((ha.attr(E.energyBanner, "level") as string) ?? "neutral");
+  const bannerColor = $derived(
+    (({ good: "var(--success)", info: "var(--water)", neutral: "var(--muted)", warn: "var(--warning)", high: "var(--warning)", critical: "var(--error)" }) as Record<string, string>)[bannerLevel] ?? "var(--muted)",
+  );
+  const surplusOpen = $derived(ha.isOn(E.solarSurplusWindow));
+  const vsExpected = $derived(ha.num(E.consumptionVsExpected));
+  const mppt = $derived(ha.state(E.mpptHealth));
+
   // Power reconciliation — computed HA-side (sensor.power_reconciliation), portal just reads it
   type Budget = { total_w: number; accounted_w: number; unknown_w: number; pct: number; devices: { name: string; w: number }[]; warnings: string[] };
   const budget = $derived(ha.attr(E.powerReconciliation, "data") as Budget | null | undefined);
@@ -119,11 +129,25 @@
     </div>
   </div>
 
+  {#if banner}
+    <div class="card pad" style="border-left:3px solid {bannerColor}">
+      <div class="rh"><span class="lb">📣 Energy advisor</span>{#if surplusOpen}<span class="sub" style="color:var(--success)">☀️ surplus window open — good for heavy loads</span>{/if}</div>
+      <div style="font-size:15px;font-weight:650;color:{bannerColor}">{banner}</div>
+    </div>
+  {/if}
+
   <div class="kpis">
     <div class="card k"><div class="lb">Battery</div><div class="big">{n(ha.num(E.batterySoc))}<span class="u">%</span></div><div class="sub" style="color:var(--water)">{n(ha.num(E.batteryPower))} W → home</div></div>
     <div class="card k"><div class="lb">Solar today</div><div class="big">{n(ha.num(E.solarYieldToday), 1)}<span class="u"> kWh</span></div><div class="sub" style="color:var(--solar)">live {power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
     <div class="card k"><div class="lb">Grid import</div><div class="big">{n(ha.num(E.gridImportToday), 1)}<span class="u"> kWh</span></div><div class="sub">{rand(ha.num(E.energyCostToday))} today</div></div>
     <div class="card k"><div class="lb">Grade</div><div class="big" style="color:var(--success)">{ha.state(E.energyGrade) ?? "—"}</div><div class="sub">{n(indep)}% independent</div></div>
+  </div>
+
+  <div class="kpis">
+    <div class="card k"><div class="lb">Self-sufficient</div><div class="big">{n(ha.num(E.selfSufficiency))}<span class="u">%</span></div><div class="sub">today</div></div>
+    <div class="card k"><div class="lb">Solar saved</div><div class="big" style="color:var(--solar)">{rand(ha.num(E.solarSaved))}</div><div class="sub">today vs grid</div></div>
+    <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u"> kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
+    <div class="card k"><div class="lb">Solar strings</div><div class="big" style="color:{mppt === 'ok' ? 'var(--success)' : 'var(--warning)'};font-size:22px;text-transform:capitalize">{mppt ?? '—'}</div><div class="sub">battery {rand(ha.num(E.batteryValueNow))}/h · {ha.state(E.batteryTou) ?? '—'}</div></div>
   </div>
 
   <div class="card pad">
