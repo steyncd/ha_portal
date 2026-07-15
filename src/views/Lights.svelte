@@ -2,7 +2,7 @@
   import { ha } from "../lib/store.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
   import { toast } from "../lib/toast.svelte";
-  import { LIGHT_AREAS, ALL_LIGHTS, type LightDef } from "../lib/entities";
+  import { LIGHT_AREAS, ALL_LIGHTS, SCENES, type LightDef } from "../lib/entities";
 
   const onCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
   const total = ALL_LIGHTS.length;
@@ -43,6 +43,15 @@
     <button class="alloff" onclick={() => { ha.turnOff(ALL_LIGHTS); toast.show("All lights off"); }}>
       🌑 All off
     </button>
+  </div>
+
+  <div class="card scenes">
+    <div class="lb" style="margin-bottom:11px">Scenes</div>
+    <div class="srow">
+      {#each SCENES as s}
+        <button class="scene" onclick={() => { ha.script(s.id); toast.show(`${s.label} scene`); }}><span class="sic">{s.icon}</span>{s.label}</button>
+      {/each}
+    </div>
   </div>
 
   {#each LIGHT_AREAS as area}
@@ -102,6 +111,11 @@
   .u { font-size: 15px; color: var(--dim); font-weight: 700; }
   .alloff { flex-shrink: 0; padding: 11px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: var(--text-2); font-size: 12.5px; font-weight: 600; }
   .alloff:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+  .scenes { padding: 16px 18px; }
+  .srow { display: flex; flex-wrap: wrap; gap: 10px; }
+  .scene { display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); font-size: 13px; font-weight: 600; }
+  .scene:hover { background: color-mix(in srgb, var(--brand) 20%, transparent); }
+  .sic { font-size: 16px; }
 
   .area { padding: 18px 20px; }
   .ah { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }

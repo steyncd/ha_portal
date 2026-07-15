@@ -86,6 +86,13 @@
   });
   const acOk = $derived(ha.state(E.alarmAcPower) === "on");
 
+  function testSiren() {
+    if (confirm("Sound the alarm siren for 5 seconds?")) {
+      ha.script("script.test_siren");
+      toast.show("Testing siren…");
+    }
+  }
+
   // ---- 24h event timeline (from real state-change history) ----
   type Ev = { t: number; label: string; color: string; icon: string };
   let events = $state<Ev[]>([]);
@@ -122,7 +129,10 @@
         <div class="ss">{activeZones.length} active · {bypassedZones.length} bypassed · AC {acOk ? "OK" : "lost"}</div>
       </div>
     </div>
-    <div class="beamschip" class:on={beamsMode(beamsState) === "arm"}>📡 Beams {beamsMode(beamsState) === "arm" ? "armed" : "off"}</div>
+    <div class="rgt">
+      <div class="beamschip" class:on={beamsMode(beamsState) === "arm"}>📡 Beams {beamsMode(beamsState) === "arm" ? "armed" : "off"}</div>
+      <button class="testsiren" onclick={testSiren}>🚨 Test siren</button>
+    </div>
   </div>
 
   <!-- active-zones indicator -->
@@ -241,6 +251,9 @@
   .sl { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; }
   .ss { font-size: 13px; color: var(--dim); }
   .beamschip { padding: 9px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+  .rgt { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; }
+  .testsiren { padding: 8px 13px; border-radius: 999px; font-size: 12px; font-weight: 700; color: var(--error); background: color-mix(in srgb, var(--error) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 30%, transparent); }
+  .testsiren:hover { background: color-mix(in srgb, var(--error) 20%, transparent); }
   .beamschip.on { background: color-mix(in srgb, var(--success) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 40%, transparent); color: var(--text); }
 
   .ind { display: flex; align-items: center; gap: 12px; padding: 14px 18px; font-size: 13px; color: var(--text-2); }

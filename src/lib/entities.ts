@@ -215,6 +215,7 @@ export const PUMPS: Pump[] = [
 export const SCENES: SceneDef[] = [
   { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
   { id: "script.movie_mode", label: "Movie", icon: "🎬" },
+  { id: "script.braai_mode", label: "Braai", icon: "🔥" },
   { id: "script.quick_away_mode", label: "Away", icon: "🚪" },
   { id: "script.quick_good_morning_scene", label: "Morning", icon: "☀️" },
 ];
