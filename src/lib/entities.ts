@@ -342,10 +342,10 @@ export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
 export const APPLIANCE_AREAS: ApplianceArea[] = [
   { name: "Kitchen", icon: "🍳", items: [
     { sw: "switch.main_fridge", power: "sensor.main_fridge_current_consumption", label: "Main Fridge", icon: "🧊" },
-    { sw: "switch.dishwasher", power: "sensor.dishwasher_power", label: "Dishwasher", icon: "🍽️" },
-    { sw: "switch.kettle", power: "sensor.kettle_power", label: "Kettle", icon: "☕" },
+    { sw: "switch.dishwasher", power: "sensor.dishwasher_current_consumption", label: "Dishwasher", icon: "🍽️" },
+    { sw: "switch.kettle", power: "sensor.kettle_current_consumption", label: "Kettle", icon: "☕" },
     { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲" },
-    { sw: "switch.kitchen_air_fryer", power: "sensor.kitchen_air_fryer_power", label: "Air Fryer", icon: "🍟" },
+    { sw: "switch.air_fryer", power: "sensor.air_fryer_current_consumption", label: "Air Fryer", icon: "🍟" },
     { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕" },
   ] },
   { name: "Laundry", icon: "🧺", items: [
@@ -356,12 +356,13 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
   { name: "Study & Office", icon: "💻", items: [
     { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻" },
     { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥" },
+    { sw: "switch.study_router_and_ha", power: "sensor.study_router_and_ha_power", label: "Router & HA", icon: "📶" },
   ] },
   { name: "Security & Systems", icon: "🛡️", items: [
     { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️" },
   ] },
   { name: "Living & Media", icon: "📺", items: [
-    { sw: "switch.main_tv_plug", power: "sensor.main_tv_plug_current_consumption", label: "Main TV Plug", icon: "📺" },
+    { sw: "switch.living_room_main_tv_plug", power: "sensor.living_room_main_tv_plug_power", label: "Main TV Plug", icon: "📺" },
   ] },
   { name: "Bedrooms", icon: "🛏️", items: [
     { sw: "switch.main_bedroom_plugs", power: "sensor.main_bedroom_plugs_current_consumption", label: "Main Bedroom Plugs", icon: "🔌" },

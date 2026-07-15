@@ -54,10 +54,10 @@
       ],
       appliances: [
         { id: "switch.main_fridge", label: "Fridge", icon: "🧊", power: "sensor.main_fridge_current_consumption" },
-        { id: "switch.dishwasher", label: "Dishwasher", icon: "🍽️", power: "sensor.dishwasher_power" },
-        { id: "switch.kettle", label: "Kettle", icon: "🫖", power: "sensor.kettle_power" },
+        { id: "switch.dishwasher", label: "Dishwasher", icon: "🍽️", power: "sensor.dishwasher_current_consumption" },
+        { id: "switch.kettle", label: "Kettle", icon: "🫖", power: "sensor.kettle_current_consumption" },
         { id: "switch.microwave", label: "Microwave", icon: "🍲", power: "sensor.microwave_current_consumption" },
-        { id: "switch.kitchen_air_fryer", label: "Air Fryer", icon: "🍟", power: "sensor.kitchen_air_fryer_power" },
+        { id: "switch.air_fryer", label: "Air Fryer", icon: "🍟", power: "sensor.air_fryer_current_consumption" },
         { id: "switch.nespresso", label: "Nespresso", icon: "☕", power: "sensor.nespresso_current_consumption" },
       ],
     },
