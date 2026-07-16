@@ -10,7 +10,7 @@
   let kidRange = $state<Range>("today");
 
   const PERSON = "person.christo_steyn";
-  const MY_GEO = "sensor.christos_iphone_geocoded_location";
+  const MY_GEO = "sensor.hello_geocoded_location";
   const KID = "person.hello_liam_en_eben";
   const KID_GEO = "sensor.kid_s_phone_geocoded_location";
   const KID_BATT = "sensor.kid_s_phone_battery_level";
@@ -268,11 +268,11 @@
 
   // ---------- phone / device details ----------
   const MEP = {
-    batt: "sensor.christos_iphone_battery_level", state: "sensor.christos_iphone_battery_state",
-    ssid: "sensor.christos_iphone_ssid", conn: "sensor.christos_iphone_connection_type",
-    steps: "sensor.christos_iphone_steps", dist: "sensor.christos_iphone_distance",
-    floors: "sensor.christos_iphone_floors_ascended", activity: "sensor.christos_iphone_activity",
-    storage: "sensor.christos_iphone_storage",
+    batt: "sensor.hello_battery_level", state: "sensor.hello_battery_state",
+    ssid: "sensor.hello_ssid", conn: "sensor.hello_connection_type",
+    steps: "sensor.hello_steps", dist: "sensor.hello_distance",
+    floors: "sensor.hello_floors_ascended", activity: "sensor.hello_activity",
+    storage: "sensor.hello_storage",
   };
   const KDP = {
     batt: "sensor.kid_s_phone_battery_level", state: "sensor.kid_s_phone_battery_state",

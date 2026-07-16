@@ -448,7 +448,7 @@ const ROWS: Row[] = [
   ["binary_sensor.garage_pir", "off"],
   ["binary_sensor.passage_pir", "off"],
   ["binary_sensor.guest_room_pir", "off"],
-  ["sensor.christos_iphone_geocoded_location", "14 Wyoming Ave, Sandton"],
+  ["sensor.hello_geocoded_location", "14 Wyoming Ave, Sandton"],
   ["sensor.kid_s_phone_geocoded_location", "Redhill School, Morningside"],
   ["sensor.kid_s_phone_battery_level", "72", { unit_of_measurement: "%" }],
 
@@ -467,15 +467,15 @@ const ROWS: Row[] = [
   ["sensor.pool_pump_power_now", "0", { unit_of_measurement: "W" }],
 
   // Christo's iPhone
-  ["sensor.christos_iphone_battery_level", "68", { unit_of_measurement: "%" }],
-  ["sensor.christos_iphone_battery_state", "Not Charging"],
-  ["sensor.christos_iphone_ssid", "Steyn-Home-5G"],
-  ["sensor.christos_iphone_connection_type", "Wi-Fi"],
-  ["sensor.christos_iphone_steps", "4820"],
-  ["sensor.christos_iphone_distance", "3.4", { unit_of_measurement: "km" }],
-  ["sensor.christos_iphone_floors_ascended", "6"],
-  ["sensor.christos_iphone_activity", "Walking"],
-  ["sensor.christos_iphone_storage", "42.1", { unit_of_measurement: "GB" }],
+  ["sensor.hello_battery_level", "68", { unit_of_measurement: "%" }],
+  ["sensor.hello_battery_state", "Not Charging"],
+  ["sensor.hello_ssid", "Steyn-Home-5G"],
+  ["sensor.hello_connection_type", "Wi-Fi"],
+  ["sensor.hello_steps", "4820"],
+  ["sensor.hello_distance", "3.4", { unit_of_measurement: "km" }],
+  ["sensor.hello_floors_ascended", "6"],
+  ["sensor.hello_activity", "Walking"],
+  ["sensor.hello_storage", "42.1", { unit_of_measurement: "GB" }],
 
   // Kids' phone extras (Android)
   ["sensor.kid_s_phone_battery_state", "Charging"],
