@@ -274,14 +274,16 @@
     floors: "sensor.hello_floors_ascended", activity: "sensor.hello_activity",
     storage: "sensor.hello_storage",
   };
+  // Kids' phone is an Android device — sensor names differ from iOS, and it has no
+  // heart-rate / daily-distance / daily-floors / battery-temperature sensors.
   const KDP = {
     batt: "sensor.kid_s_phone_battery_level", state: "sensor.kid_s_phone_battery_state",
-    health: "sensor.kid_s_phone_battery_health", temp: "sensor.kid_s_phone_battery_temperature",
+    health: "sensor.kid_s_phone_battery_health",
     charge: "sensor.kid_s_phone_remaining_charge_time", charger: "sensor.kid_s_phone_charger_type",
-    ssid: "sensor.kid_s_phone_wi_fi_connection", signal: "sensor.kid_s_phone_wi_fi_signal_strength", net: "sensor.kid_s_phone_network_type",
-    steps: "sensor.kid_s_phone_daily_steps", dist: "sensor.kid_s_phone_daily_distance", floors: "sensor.kid_s_phone_daily_floors",
-    activity: "sensor.kid_s_phone_detected_activity", ringer: "sensor.kid_s_phone_ringer_mode", dnd: "sensor.kid_s_phone_do_not_disturb_sensor",
-    lastApp: "sensor.kid_s_phone_last_used_app", alarm: "sensor.kid_s_phone_next_alarm", hr: "sensor.kid_s_phone_heart_rate",
+    ssid: "sensor.kid_s_phone_wi_fi_connection", net: "sensor.kid_s_phone_data_network_type_sim_1",
+    steps: "sensor.kid_s_phone_steps_sensor",
+    activity: "sensor.kid_s_phone_detected_activity", ringer: "sensor.kid_s_phone_ringer_mode",
+    lastApp: "sensor.kid_s_phone_last_used_app", alarm: "sensor.kid_s_phone_next_alarm",
   };
   const bad = (v: string | undefined) => !v || /^(unknown|unavailable|<not connected>|not connected)$/i.test(v);
   function stat(id: string, label: string, digits = 0) {
@@ -290,7 +292,7 @@
     const s = ha.state(id);
     return { k: label, v: bad(s) ? "—" : (s as string) };
   }
-  function netLabel(m: { ssid: string; signal: string; net: string }) {
+  function netLabel(m: { ssid: string; net: string }) {
     const ssid = ha.state(m.ssid);
     if (!bad(ssid)) return { k: "Wi-Fi", v: ssid as string };
     return { k: "Network", v: bad(ha.state(m.net)) ? "—" : (ha.state(m.net) as string) };
@@ -307,13 +309,11 @@
   const meBattState = $derived(ha.state(MEP.state));
 
   const kidStats = $derived([
-    stat(KDP.steps, "Steps"), stat(KDP.dist, "Distance", 1), stat(KDP.floors, "Floors"),
+    stat(KDP.steps, "Steps"),
     { k: "Activity", v: bad(ha.state(KDP.activity)) ? "—" : (ha.state(KDP.activity) as string) },
     netLabel(KDP),
-    stat(KDP.hr, "Heart rate"),
     { k: "Ringer", v: bad(ha.state(KDP.ringer)) ? "—" : (ha.state(KDP.ringer) as string) },
     { k: "Last app", v: bad(ha.state(KDP.lastApp)) ? "—" : (ha.state(KDP.lastApp) as string) },
-    stat(KDP.temp, "Battery temp"),
     stat(KDP.health, "Battery health"),
   ].filter((c) => c.v !== "—"));
   const kidCharging = $derived(/charg/i.test(ha.state(KDP.state) ?? ""));

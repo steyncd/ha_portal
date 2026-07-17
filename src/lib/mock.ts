@@ -255,12 +255,8 @@ const ROWS: Row[] = [
   ["sensor.standby_power_7d_recent", "86", { unit_of_measurement: "W" }],
   ["sensor.baseline_load_90d_baseline", "96", { unit_of_measurement: "W" }],
   ["sensor.baseline_load_7d_recent", "97", { unit_of_measurement: "W" }],
-  ["sensor.borehole_power_90d_baseline", "1042", { unit_of_measurement: "W" }],
-  ["sensor.borehole_power_7d_recent", "846", { unit_of_measurement: "W" }],
   ["sensor.water_use_90d_baseline", "125", { unit_of_measurement: "L" }],
   ["sensor.water_use_7d_recent", "116", { unit_of_measurement: "L" }],
-  ["sensor.borehole_efficiency_90d_baseline", "1780"],
-  ["sensor.borehole_efficiency_7d_recent", "1820"],
   ["input_number.water_use_baseline", "118"],
   ["input_number.grid_import_baseline", "3.4"],
   ["input_number.trend_watch_days", "22"],
@@ -393,7 +389,6 @@ const ROWS: Row[] = [
 
   // Cameras
   ["camera.main_gate", "recording"],
-  ["camera.driveway", "idle"],
   ["camera.gate_outside", "idle"],
   ["camera.sidewalk_ai", "recording"],
   ["camera.store_room", "idle"],
@@ -480,17 +475,13 @@ const ROWS: Row[] = [
   // Kids' phone extras (Android)
   ["sensor.kid_s_phone_battery_state", "Charging"],
   ["sensor.kid_s_phone_battery_health", "Good"],
-  ["sensor.kid_s_phone_battery_temperature", "29", { unit_of_measurement: "°C" }],
   ["sensor.kid_s_phone_remaining_charge_time", "38 min"],
   ["sensor.kid_s_phone_wi_fi_connection", "Redhill-Guest"],
-  ["sensor.kid_s_phone_network_type", "wifi"],
-  ["sensor.kid_s_phone_daily_steps", "6120"],
-  ["sensor.kid_s_phone_daily_distance", "4.1", { unit_of_measurement: "km" }],
-  ["sensor.kid_s_phone_daily_floors", "9"],
+  ["sensor.kid_s_phone_data_network_type_sim_1", "LTE"],
+  ["sensor.kid_s_phone_steps_sensor", "6120"],
   ["sensor.kid_s_phone_detected_activity", "Still"],
   ["sensor.kid_s_phone_ringer_mode", "Vibrate"],
   ["sensor.kid_s_phone_last_used_app", "YouTube Kids"],
-  ["sensor.kid_s_phone_heart_rate", "88", { unit_of_measurement: "bpm" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
