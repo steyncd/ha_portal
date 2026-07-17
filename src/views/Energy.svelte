@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E, APPLIANCES, PUMPS } from "../lib/entities";
+  import { E, APPLIANCES, PUMPS, type Appliance } from "../lib/entities";
   import { n, power, rand, dailyMax } from "../lib/format";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
   import AreaChart from "../lib/components/AreaChart.svelte";
@@ -41,6 +41,8 @@
   const surplusOpen = $derived(ha.isOn(E.solarSurplusWindow));
   const vsExpected = $derived(ha.num(E.consumptionVsExpected));
   const mppt = $derived(ha.state(E.mpptHealth));
+  // Metering plugs (meter:true) have unreliable switch state — derive on/off from power.
+  const appOn = (a: Appliance) => (a.meter ? (ha.num(a.power) ?? 0) > (a.threshold ?? 5) : ha.isOn(a.sw));
 
   // Power reconciliation — computed HA-side (sensor.power_reconciliation), portal just reads it
   type Budget = { total_w: number; accounted_w: number; unknown_w: number; pct: number; devices: { name: string; w: number }[]; warnings: string[] };
@@ -281,9 +283,10 @@
     <div class="appgrid">
       {#each APPLIANCES as a}
         {@const p = ha.num(a.power)}
-        <button class="app" class:on={ha.isOn(a.sw)} onclick={() => ha.toggle(a.sw)} disabled={!ha.exists(a.sw)}>
+        {@const on = appOn(a)}
+        <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!ha.exists(a.sw)}>
           <span class="al"><span class="an">{a.label}</span><span class="aw">{p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span></span>
-          <span class="apill" class:apon={ha.isOn(a.sw)}>{ha.isOn(a.sw) ? "ON" : "OFF"}</span>
+          <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
         </button>
       {/each}
     </div>

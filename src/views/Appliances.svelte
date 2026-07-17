@@ -3,11 +3,14 @@
   import { APPLIANCE_AREAS, APPLIANCES, type Appliance } from "../lib/entities";
   import { power } from "../lib/format";
 
+  // Metering plugs (meter:true) have unreliable switch state — derive on/off from power.
+  const appOn = (a: Appliance) => (a.meter ? (ha.num(a.power) ?? 0) > (a.threshold ?? 5) : ha.isOn(a.sw));
+
   const draw = (items: Appliance[]) =>
-    items.reduce((s, a) => s + (ha.isOn(a.sw) ? (ha.num(a.power) ?? 0) : 0), 0);
+    items.reduce((s, a) => s + (appOn(a) ? (ha.num(a.power) ?? 0) : 0), 0);
 
   const totalDraw = $derived(draw(APPLIANCES));
-  const onCount = $derived(APPLIANCES.filter((a) => ha.isOn(a.sw)).length);
+  const onCount = $derived(APPLIANCES.filter(appOn).length);
 </script>
 
 <div class="col">
@@ -37,7 +40,7 @@
       <div class="appgrid">
         {#each area.items as a}
           {@const p = ha.num(a.power)}
-          {@const on = ha.isOn(a.sw)}
+          {@const on = appOn(a)}
           {@const avail = ha.available(a.sw)}
           <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!avail}>
             <span class="aicn">{a.icon}</span>

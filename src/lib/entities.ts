@@ -335,7 +335,9 @@ export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) =>
   a.lights.filter((l) => !l.id.startsWith("group.")).map((l) => l.id),
 );
 
-export type Appliance = { sw: string; power: string; label: string; icon: string; threshold?: number };
+// `meter: true` = a metering plug whose relay/switch state is unreliable (or it's
+// measure-only), so on/off + draw are derived from the POWER sensor, not the switch.
+export type Appliance = { sw: string; power: string; label: string; icon: string; threshold?: number; meter?: boolean };
 export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
 
 // Appliances grouped into logical areas — source of truth for the Appliances page.
@@ -362,7 +364,7 @@ export const APPLIANCE_AREAS: ApplianceArea[] = [
     { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️" },
   ] },
   { name: "Living & Media", icon: "📺", items: [
-    { sw: "switch.living_room_main_tv_plug", power: "sensor.living_room_main_tv_plug_power", label: "Main TV Plug", icon: "📺" },
+    { sw: "switch.living_room_main_tv_plug", power: "sensor.living_room_main_tv_plug_power", label: "Main TV Plug", icon: "📺", meter: true, threshold: 5 },
   ] },
   { name: "Bedrooms", icon: "🛏️", items: [
     { sw: "switch.main_bedroom_plugs", power: "sensor.main_bedroom_plugs_current_consumption", label: "Main Bedroom Plugs", icon: "🔌" },
