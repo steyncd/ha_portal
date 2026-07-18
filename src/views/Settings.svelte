@@ -48,6 +48,24 @@
     catch { toast.show("Couldn't change role"); }
   }
 
+  // ---- WhatsApp inbound (allow-list + enable), stored in HA ----
+  const waConfigured = $derived(ha.exists("input_text.wa_allowed_senders"));
+  const waEnabled = $derived(ha.isOn("input_boolean.wa_inbound_enabled"));
+  const waSenders = $derived(
+    (ha.state("input_text.wa_allowed_senders") ?? "").split(",").map((s) => s.trim()).filter(Boolean),
+  );
+  let newSender = $state("");
+  function addSender() {
+    const n = newSender.replace(/\D/g, "");
+    if (!n) { toast.show("Enter a number (digits only)"); return; }
+    ha.setText("input_text.wa_allowed_senders", [...new Set([...waSenders, n])].join(","));
+    toast.show(`${n} added`); newSender = "";
+  }
+  function removeSender(n: string) {
+    ha.setText("input_text.wa_allowed_senders", waSenders.filter((s) => s !== n).join(","));
+    toast.show("Removed");
+  }
+
   // Health goals (input_number helpers). min/max/step read from the entity, with fallbacks.
   const healthGoals = [
     { id: "input_number.oura_steps_goal", icon: "👟", name: "Daily steps goal", min: 1000, max: 20000, step: 500, unit: "" },
@@ -165,6 +183,29 @@
         <button class="send" onclick={addUser}>Add</button>
       </div>
       <div class="note">Owners can manage access and branding. Members get full use of the portal. Built-in owners are set in code and can't be removed here.</div>
+    </div>
+  {/if}
+
+  <!-- WhatsApp inbound (owners only) -->
+  {#if authStore.isOwner && waConfigured}
+    <h2 class="section">WhatsApp · HQ chat</h2>
+    <div class="card pad">
+      <div class="arow"><span class="ni">💬</span><div class="al"><div class="an">Inbound commands &amp; chat</div><div class="as">Text your HQ number to log data, ask questions, or control the house</div></div><Toggle on={waEnabled} onchange={() => ha.toggleBoolean("input_boolean.wa_inbound_enabled")} /></div>
+      <div class="lb" style="margin:16px 0 10px">Allowed senders</div>
+      {#if waSenders.length === 0}
+        <div class="wawarn">⚠️ Empty — anyone with the webhook link can message HQ. Add your number to lock it to you.</div>
+      {:else}
+        <div class="wachips">
+          {#each waSenders as n}
+            <span class="wachip">{n}<button class="wax" onclick={() => removeSender(n)} aria-label="Remove {n}">✕</button></span>
+          {/each}
+        </div>
+      {/if}
+      <div class="composer" style="margin-top:12px">
+        <input bind:value={newSender} placeholder="Your WhatsApp number, e.g. 27820001234" inputmode="numeric" onkeydown={(e) => e.key === "Enter" && addSender()} />
+        <button class="send" onclick={addSender}>Add</button>
+      </div>
+      <div class="note">Numbers are matched on digits only. Send <b>help</b> from WhatsApp to see every command.</div>
     </div>
   {/if}
 
@@ -329,6 +370,11 @@
   .rolebtn { padding: 7px 11px; border-radius: 9px; background: rgba(255,255,255,0.07); color: var(--text); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
   .rolebtn:disabled, .rmbtn:disabled { opacity: 0.35; cursor: not-allowed; }
   .rmbtn { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: color-mix(in srgb, var(--error) 14%, transparent); color: #fecdd6; font-size: 13px; }
+  .wachips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .wachip { display: inline-flex; align-items: center; gap: 8px; padding: 8px 10px 8px 13px; border-radius: 999px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .wax { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); color: var(--muted); font-size: 11px; }
+  .wax:hover { background: color-mix(in srgb, var(--error) 22%, transparent); color: #fecdd6; }
+  .wawarn { font-size: 12.5px; color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 30%, transparent); padding: 10px 12px; border-radius: 11px; line-height: 1.5; }
   .goal { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .goal:last-of-type { border-bottom: none; }
   .grow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
