@@ -201,7 +201,7 @@
   {#if ha.available("sensor.outdoor_temperature")}
     <div class="card pad wide">
       <div class="rh"><span class="lb">Outdoor · actual vs forecast · 48h</span><span class="sub">Now {n(ha.num("sensor.outdoor_temperature"), 1)}° · forecast {n(ha.num("sensor.outdoor_forecast_temperature"), 1)}°{#if fcDelta != null} · <span style="color:{Math.abs(fcDelta) >= 2 ? 'var(--warning)' : 'var(--muted)'}">{fcDelta > 0 ? "+" : ""}{n(fcDelta, 1)}° vs forecast</span>{/if}</span></div>
-      <Overlay height={150} series={[
+      <Overlay height={150} unit="°" series={[
         { data: outHist, color: "var(--acc)", label: "Actual", fill: true },
         { data: fcHist, color: "var(--muted)", label: "Forecast", dash: "4 3" },
       ]} />

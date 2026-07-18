@@ -1,7 +1,9 @@
 <script lang="ts">
   // Multi-series overlay: filled areas and/or lines sharing one time/value scale.
   type Series = { data: { t: number; v: number }[]; color: string; label: string; fill?: boolean; dash?: string };
-  let { series, height = 150 }: { series: Series[]; height?: number } = $props();
+  // `unit` overrides the tooltip formatting (e.g. "°" for temperature). When
+  // omitted, values auto-format as power (W / kW) — the default for energy charts.
+  let { series, height = 150, unit }: { series: Series[]; height?: number; unit?: string } = $props();
 
   const W = 320;
   const padY = 10;
@@ -51,7 +53,10 @@
       });
     return { sx: hx * W, frac: hx, t, pts };
   });
-  const fmt = (v: number) => (Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(2)} kW` : `${Math.round(v)} W`);
+  const fmt = (v: number) =>
+    unit != null
+      ? `${Math.round(v * 10) / 10}${unit}`
+      : Math.abs(v) >= 1000 ? `${(v / 1000).toFixed(2)} kW` : `${Math.round(v)} W`;
   const hhmm = (t: number) => { const d = new Date(t); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 
   const uid = Math.random().toString(36).slice(2, 8);
