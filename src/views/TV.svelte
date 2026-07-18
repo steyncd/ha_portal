@@ -1,56 +1,84 @@
 <script lang="ts">
   import { onMount, onDestroy } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E, ROOMS, ALARM_ZONES, CAMERAS } from "../lib/entities";
-  import { n, power, greeting, clock as fmtClock, sastHour } from "../lib/format";
-  import Overlay from "../lib/components/Overlay.svelte";
+  import { E, ROOMS, CAMERAS } from "../lib/entities";
+  import { n, greeting, clock as fmtClock, sastHour } from "../lib/format";
+  import PowerFlow from "../lib/components/PowerFlow.svelte";
 
   let { onexit }: { onexit: () => void } = $props();
 
   let now = $state(new Date());
-  let timer: ReturnType<typeof setInterval>;
-  onMount(() => { timer = setInterval(() => (now = new Date()), 20000); });
-  onDestroy(() => clearInterval(timer));
-
-  let pvHist = $state<{ t: number; v: number }[]>([]);
-  let loadHist = $state<{ t: number; v: number }[]>([]);
+  let strip = $state(0); // rotating secondary strip index
+  let clockTimer: ReturnType<typeof setInterval>;
+  let stripTimer: ReturnType<typeof setInterval>;
   let forecast = $state<{ datetime: string; temperature: number; condition: string }[]>([]);
-  onMount(async () => {
-    pvHist = await ha.history(E.pvPower, 24);
-    loadHist = await ha.history(E.loads, 24);
-    forecast = (await ha.getForecast(E.weather, "hourly")).slice(0, 7);
-  });
 
+  onMount(() => {
+    clockTimer = setInterval(() => (now = new Date()), 20000);
+    stripTimer = setInterval(() => (strip = (strip + 1) % 3), 12000);
+  });
+  onDestroy(() => { clearInterval(clockTimer); clearInterval(stripTimer); });
+  onMount(async () => { forecast = (await ha.getForecast(E.weather, "hourly")).slice(0, 7); });
+
+  // ---- header ----
   const clock = $derived(fmtClock(now));
   const dateLabel = $derived(now.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" }));
-  const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
   const outdoor = $derived(ha.num("sensor.outdoor_temperature"));
   const wxCond = $derived((ha.state(E.weather) ?? "").replace(/-/g, " "));
-  const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)).length);
-  const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
+
+  // ---- night mode: dim + calm after sundown (burn-in + comfort) ----
+  const night = $derived(ha.state("sun.sun") === "below_horizon");
+
+  // ---- consolidated home-health (worst-case, Carbon severity palette) ----
   const armed = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
-  const occupancy = $derived(ha.state(E.occupancy) ?? "Home");
-  const solarFcToday = $derived(ha.num("sensor.solar_forecast_today"));
-  // Markets & fuel
+  const alarmState = $derived(ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "");
+  const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
+
+  type Alert = { sev: "critical" | "warning"; icon: string; text: string };
+  const alerts = $derived.by<Alert[]>(() => {
+    const a: Alert[] = [];
+    const soc = ha.num(E.batterySoc);
+    const water = ha.num(E.tankLevel);
+    const days = ha.num(E.tankDays);
+    const nobody = ha.isOn("binary_sensor.nobody_home");
+    if (alarmState === "triggered") a.push({ sev: "critical", icon: "🚨", text: "Alarm triggered" });
+    if (soc != null && soc < 15) a.push({ sev: "critical", icon: "🔋", text: `Battery critical — ${Math.round(soc)}%` });
+    else if (soc != null && soc < 30) a.push({ sev: "warning", icon: "🔋", text: `Battery low — ${Math.round(soc)}%` });
+    if ((water != null && water < 15) || (days != null && days < 3))
+      a.push({ sev: "warning", icon: "💧", text: `Water low${water != null ? " — " + Math.round(water) + "%" : ""}${days != null ? " · " + Math.round(days) + "d left" : ""}` });
+    if (camsOnline < CAMERAS.length) a.push({ sev: "warning", icon: "📷", text: `${CAMERAS.length - camsOnline} camera${CAMERAS.length - camsOnline > 1 ? "s" : ""} offline` });
+    if (nobody && !armed) a.push({ sev: "warning", icon: "🛡️", text: "Nobody home · alarm off" });
+    return a.sort((x, y) => (x.sev === "critical" ? 0 : 1) - (y.sev === "critical" ? 0 : 1));
+  });
+  const topAlert = $derived(alerts[0] ?? null);
+  const health = $derived.by(() => {
+    if (topAlert?.sev === "critical") return { c: "var(--error)", icon: topAlert.icon, label: topAlert.text };
+    if (topAlert?.sev === "warning") return { c: "var(--warning)", icon: topAlert.icon, label: topAlert.text };
+    return { c: "var(--success)", icon: "✓", label: armed ? "All good · armed" : "All good" };
+  });
+
+  // ---- tiles ----
+  const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
+  const battDir = $derived((ha.num(E.batteryPower) ?? 0) < 0 ? "Discharging" : (ha.num(E.batteryPower) ?? 0) > 0 ? "Charging" : "Idle");
+
+  // ---- rotating secondary strip data ----
+  const ICON: Record<string, string> = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", snowy: "❄️", fog: "🌫️", windy: "💨", hail: "🌨️", exceptional: "🌡️" };
+  const fc = $derived(forecast.map((f, i) => ({ h: i === 0 ? "Now" : (() => { try { return new Date(f.datetime).getHours() + "h"; } catch { return ""; } })(), ic: ICON[f.condition] ?? "🌡️", t: Math.round(f.temperature) })));
   const brent = $derived(ha.num("sensor.brent_crude_oil"));
   const usdzar = $derived(ha.num("sensor.usd_zar_rate"));
   const petrolCur = $derived(ha.num("input_number.petrol_95_current"));
   const petrolFc = $derived(ha.num("input_number.petrol_95_forecast"));
   const petrolWhen = $derived(ha.state("input_text.petrol_forecast_when") ?? "");
   const petrolChange = $derived(petrolFc != null && petrolCur != null ? petrolFc - petrolCur : null);
-
-  const ICON: Record<string, string> = {
-    "sunny": "☀️", "clear-night": "🌙", "clear": "🌙", "partlycloudy": "⛅", "cloudy": "☁️",
-    "rainy": "🌧️", "pouring": "⛈️", "lightning": "⚡", "lightning-rainy": "⛈️",
-    "snowy": "❄️", "snowy-rainy": "🌨️", "fog": "🌫️", "windy": "💨", "hail": "🌨️", "exceptional": "🌡️",
-  };
-  const icon = (c: string) => ICON[c] ?? "🌡️";
-  const fcHour = (iso: string) => { try { return new Date(iso).getHours() + "h"; } catch { return ""; } };
-  const fc = $derived(forecast.map((f, i) => ({ h: i === 0 ? "Now" : fcHour(f.datetime), ic: icon(f.condition), t: Math.round(f.temperature), now: i === 0 })));
+  const solarFcToday = $derived(ha.num("sensor.solar_forecast_today"));
 </script>
 
-<div class="tv">
+<div class="tv" class:night>
   <button class="exit" onclick={onexit} title="Exit" aria-label="Exit">✕</button>
+
+  {#if topAlert?.sev === "critical"}
+    <div class="alert"><span class="ai">{topAlert.icon}</span><span class="at">{topAlert.text}</span></div>
+  {/if}
 
   <header class="head">
     <div>
@@ -61,159 +89,134 @@
     <div class="wx">
       <div class="wtemp">{outdoor != null ? Math.round(outdoor) : "—"}°</div>
       <div class="wcond">{wxCond || "—"}</div>
-      <div class="pill" style="--c:{armed ? 'var(--warning)' : 'var(--success)'}">
-        <span class="dot"></span>{occupancy} · {armed ? "Armed" : "Disarmed"} · {camsOnline}/{CAMERAS.length} cams
-      </div>
+      <div class="pill" style="--c:{health.c}"><span class="dot"></span>{health.icon} {health.label}</div>
     </div>
   </header>
 
-  <div class="bento">
-    <!-- Power hero -->
-    <section class="panel hero" style="--pc:var(--solar)">
-      <div class="cap" style="color:var(--solar)"><span class="live"></span>Power now</div>
-      <div class="heroval">
-        <div class="big">{power(ha.num(E.loads)).val}<span class="unit"> {power(ha.num(E.loads)).unit}</span></div>
-        <div class="note">on <b>{(ha.num(E.batteryPower) ?? 0) < 0 ? "battery" : "grid"}</b><br>{n(ha.num(E.gridIndepToday))}% self-powered today</div>
-      </div>
-      <div class="trip">
-        <div><div class="l">☀️ Solar</div><div class="v" style="color:var(--solar)">{power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
-        <div><div class="l">🔋 Battery</div><div class="v" style="color:var(--success)">{n(ha.num(E.batteryPower))} W</div></div>
-        <div><div class="l">🔌 Grid</div><div class="v">{power(ha.num(E.gridPower)).val} {power(ha.num(E.gridPower)).unit}</div></div>
-      </div>
-      <div class="flow"><Overlay height={120} series={[
-        { data: pvHist, color: "var(--solar)", label: "Solar", fill: true },
-        { data: loadHist, color: "var(--success)", label: "Home use" },
-      ]} /></div>
-    </section>
-
-    <!-- Battery -->
-    <section class="panel" style="--pc:var(--acc)">
-      <div class="cap" style="color:var(--acc)">🔋 Battery</div>
-      <div class="tileval">{n(ha.num(E.batterySoc))}<span class="tu">%</span></div>
-      <div class="tsub">{(ha.num(E.batteryPower) ?? 0) < 0 ? "Discharging" : "Charging"} · {n(ha.num(E.batteryPower))} W</div>
-    </section>
-
-    <!-- Water -->
-    <section class="panel" style="--pc:var(--water)">
-      <div class="cap" style="color:var(--water)">💧 Water tank</div>
-      <div class="tileval">{n(ha.num(E.tankLevel))}<span class="tu">%</span></div>
-      <div class="tsub">{n(ha.num(E.tankVolume))} L · {n(ha.num(E.tankDays))} days left</div>
-    </section>
-
-    <!-- Climate -->
-    <section class="panel" style="--pc:var(--orange)">
-      <div class="cap" style="color:var(--orange)">🌡️ Climate</div>
-      <div class="tileval">{n(ha.num(E.indoorAvg), 1)}<span class="tu">°</span></div>
-      <div class="rows">
-        <div><span>{warm[0]?.label} · warmest</span><b>{n(ha.num(warm[0]?.id ?? ""), 1)}°</b></div>
-        <div><span>{warm[warm.length - 1]?.label} · coolest</span><b>{n(ha.num(warm[warm.length - 1]?.id ?? ""), 1)}°</b></div>
-      </div>
-    </section>
-
-    <!-- Security -->
-    <section class="panel" style="--pc:{activeZones ? 'var(--warning)' : 'var(--success)'}">
-      <div class="cap" style="color:{activeZones ? 'var(--warning)' : 'var(--success)'}">🛡️ Security</div>
-      <div class="secbig">{activeZones ? `${activeZones} active` : armed ? "Armed" : "All clear"}</div>
-      <div class="rows">
-        <div><span>Home {armed ? "armed" : "disarmed"} · {activeZones} zones</span></div>
-        <div><span>{camsOnline} / {CAMERAS.length} cameras online</span></div>
-      </div>
-    </section>
-  </div>
-
-  {#if fc.length}
-    <div class="fcstrip">
-      {#each fc as c}
-        <div class="fcc" class:now={c.now}><span class="h">{c.h}</span><span class="i">{c.ic}</span><b>{c.t}°</b></div>
-      {/each}
+  <!-- ENERGY FLOW HERO -->
+  <section class="hero">
+    <div class="cap"><span class="live"></span>Power now · {n(ha.num(E.gridIndepToday))}% self-powered today</div>
+    <div class="flow"><PowerFlow big /></div>
+    <div class="herostats">
+      <div><div class="hl">Solar today</div><div class="hv" style="color:var(--solar)">{n(ha.num(E.solarYieldToday), 1)} kWh</div></div>
+      <div><div class="hl">Grid cost today</div><div class="hv">R{n(ha.num(E.energyCostToday))}</div></div>
+      <div><div class="hl">Grid-free nights</div><div class="hv" style="color:var(--success)">{ha.state(E.gridFreeStreak) ?? "—"}</div></div>
     </div>
-  {/if}
+  </section>
 
-  <div class="markets">
-    <span class="mk"><span class="mkl">Brent crude</span><b>{brent != null ? "$" + brent.toFixed(1) : "—"}</b></span>
-    <span class="mk"><span class="mkl">USD / ZAR</span><b>{usdzar != null ? "R" + usdzar.toFixed(2) : "—"}</b></span>
-    <span class="mk"><span class="mkl">Petrol 95 · inland</span><b>{petrolCur != null ? "R" + petrolCur.toFixed(2) : "—"}</b></span>
-    {#if petrolChange != null}
-      <span class="mk"><span class="mkl">Next {petrolWhen}</span><b class:down={petrolChange < 0} class:up={petrolChange > 0}>{petrolChange < 0 ? "▼" : petrolChange > 0 ? "▲" : "■"} R{Math.abs(petrolChange).toFixed(2)}</b></span>
-    {/if}
+  <!-- STATUS TILES -->
+  <div class="tiles">
+    <div class="tile" style="--pc:var(--acc)">
+      <div class="tl">🔋 Battery</div>
+      <div class="tv2">{n(ha.num(E.batterySoc))}<span class="tu">%</span></div>
+      <div class="ts">{battDir} · {n(ha.num(E.batteryPower))} W</div>
+    </div>
+    <div class="tile" style="--pc:var(--water)">
+      <div class="tl">💧 Water</div>
+      <div class="tv2">{n(ha.num(E.tankLevel))}<span class="tu">%</span></div>
+      <div class="ts">{n(ha.num(E.tankDays))} days left</div>
+    </div>
+    <div class="tile" style="--pc:var(--orange)">
+      <div class="tl">🌡️ Indoor</div>
+      <div class="tv2">{n(ha.num(E.indoorAvg), 1)}<span class="tu">°</span></div>
+      <div class="ts">{warm[0]?.label} {n(ha.num(warm[0]?.id ?? ""), 1)}° · {warm[warm.length - 1]?.label} {n(ha.num(warm[warm.length - 1]?.id ?? ""), 1)}°</div>
+    </div>
+    <div class="tile" style="--pc:{armed ? 'var(--success)' : 'var(--warning)'}">
+      <div class="tl">🛡️ Security</div>
+      <div class="tv2 sm">{alarmState === "triggered" ? "ALARM" : armed ? "Armed" : "Disarmed"}</div>
+      <div class="ts">{camsOnline}/{CAMERAS.length} cameras online</div>
+    </div>
   </div>
 
-  <footer class="foot">
-    <span class="fdot"></span><span>Today</span>
-    <b>{n(ha.num(E.solarYieldToday), 1)} kWh</b><span>solar</span>
-    {#if solarFcToday != null}<span class="sep">·</span><span>of ~{n(solarFcToday, 0)} forecast</span>{/if}
-    <span class="sep">·</span><b>{n(ha.num(E.gridIndepToday))}%</b><span>independent</span>
-    <span class="sep">·</span><b>R{n(ha.num(E.energyCostToday))}</b><span>grid</span>
-    <span class="sep">·</span><b>{n(ha.num(E.waterUsedToday))} L</b><span>water</span>
-    <span class="sep">·</span><b class="streak">{ha.state(E.gridFreeStreak) ?? "—"}</b><span>night grid-free streak</span>
-  </footer>
+  <!-- ROTATING SECONDARY STRIP (one at a time — cuts clutter) -->
+  <div class="rot">
+    {#if strip === 0 && fc.length}
+      <div class="rband">
+        {#each fc as c, i}<div class="fcc" class:now={i === 0}><span class="h">{c.h}</span><span class="i">{c.ic}</span><b>{c.t}°</b></div>{/each}
+      </div>
+    {:else if strip === 1}
+      <div class="rband mk">
+        <span class="mkc"><span class="mkl">Brent</span><b>{brent != null ? "$" + brent.toFixed(1) : "—"}</b></span>
+        <span class="mkc"><span class="mkl">USD/ZAR</span><b>{usdzar != null ? "R" + usdzar.toFixed(2) : "—"}</b></span>
+        <span class="mkc"><span class="mkl">Petrol 95</span><b>{petrolCur != null ? "R" + petrolCur.toFixed(2) : "—"}</b></span>
+        {#if petrolChange != null}<span class="mkc"><span class="mkl">Next {petrolWhen}</span><b class:down={petrolChange < 0} class:up={petrolChange > 0}>{petrolChange < 0 ? "▼" : "▲"} R{Math.abs(petrolChange).toFixed(2)}</b></span>{/if}
+      </div>
+    {:else}
+      <div class="rband mk">
+        <span class="mkc"><span class="mkl">Solar today</span><b>{n(ha.num(E.solarYieldToday), 1)} kWh{#if solarFcToday != null} / {n(solarFcToday, 0)}{/if}</b></span>
+        <span class="mkc"><span class="mkl">Independent</span><b>{n(ha.num(E.gridIndepToday))}%</b></span>
+        <span class="mkc"><span class="mkl">Grid cost</span><b>R{n(ha.num(E.energyCostToday))}</b></span>
+        <span class="mkc"><span class="mkl">Water used</span><b>{n(ha.num(E.waterUsedToday))} L</b></span>
+      </div>
+    {/if}
+    <div class="dots">{#each [0, 1, 2] as d}<span class:on={strip === d}></span>{/each}</div>
+  </div>
 </div>
 
 <style>
+  /* Burn-in: very slow whole-frame pixel shift. Night: dim for comfort/longevity. */
   .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; padding: clamp(20px, 2.6vw, 50px);
-    display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 24px);
-    background:
-      radial-gradient(70vw 60vh at 10% -18%, rgba(129, 140, 248, 0.20), transparent 60%),
-      radial-gradient(60vw 62vh at 118% 122%, rgba(168, 85, 247, 0.15), transparent 55%),
-      #07060f; }
-  .exit { position: absolute; top: 16px; right: 18px; z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); font-size: 16px; color: var(--muted); }
-  .exit:hover { background: rgba(255, 255, 255, 0.16); }
+    display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 22px);
+    background: radial-gradient(70vw 60vh at 12% -18%, rgba(129, 140, 248, 0.16), transparent 60%), radial-gradient(60vw 62vh at 116% 122%, rgba(84, 120, 255, 0.12), transparent 55%), #06060d;
+    animation: burnshift 320s ease-in-out infinite; transition: filter 3s ease; }
+  .tv.night { filter: brightness(0.52) saturate(0.92); }
+  @keyframes burnshift { 0%,100% { transform: translate(0,0); } 25% { transform: translate(4px,3px); } 50% { transform: translate(-3px,5px); } 75% { transform: translate(5px,-4px); } }
+  @media (prefers-reduced-motion: reduce) { .tv { animation: none; } }
+
+  .exit { position: absolute; top: 16px; right: 18px; z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 16px; color: var(--text-2); }
+
+  /* critical alert banner — only appears when it warrants focus */
+  .alert { display: flex; align-items: center; gap: 14px; padding: clamp(12px,1.3vw,20px) clamp(20px,2vw,32px); border-radius: 16px;
+    background: color-mix(in srgb, var(--error) 22%, #06060d); box-shadow: inset 0 0 0 2px var(--error); animation: pulseb 1.6s ease-in-out infinite; }
+  .alert .ai { font-size: clamp(26px,3vw,44px); } .alert .at { font-size: clamp(22px,2.6vw,44px); font-weight: 800; color: #fff; }
+  @keyframes pulseb { 0%,100% { box-shadow: inset 0 0 0 2px var(--error); } 50% { box-shadow: inset 0 0 0 2px var(--error), 0 0 40px -6px var(--error); } }
 
   .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 2vw; }
-  .hi { font-size: clamp(14px, 1.5vw, 24px); font-weight: 500; color: #b6acec; }
-  .clock { font-size: clamp(54px, 7.8vw, 138px); font-weight: 800; letter-spacing: -0.035em; line-height: 0.86; font-variant-numeric: tabular-nums;
-    background: linear-gradient(120deg, #fff 38%, #b3a6f5 96%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .date { font-size: clamp(13px, 1.2vw, 21px); color: var(--text-2); margin-top: 0.5vh; }
+  .hi { font-size: clamp(14px,1.5vw,24px); font-weight: 600; color: #c3b9f5; }
+  .clock { font-size: clamp(52px,7.4vw,132px); font-weight: 800; letter-spacing: -0.035em; line-height: 0.86; font-variant-numeric: tabular-nums;
+    background: linear-gradient(120deg, #fff 42%, #c3b6f8 96%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .date { font-size: clamp(13px,1.2vw,21px); color: var(--text-2); margin-top: 0.5vh; }
   .wx { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.6vh; }
-  .wtemp { font-size: clamp(30px, 3.6vw, 60px); font-weight: 700; letter-spacing: -0.02em; }
-  .wcond { font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); text-transform: capitalize; }
-  .pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 0.6vh; padding: 8px 15px; border-radius: 999px;
-    background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 36%, transparent);
-    font-size: clamp(12px, 1.1vw, 19px); font-weight: 700; }
-  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  .wtemp { font-size: clamp(30px,3.6vw,58px); font-weight: 700; letter-spacing: -0.02em; }
+  .wcond { font-size: clamp(13px,1.2vw,22px); color: var(--text-2); text-transform: capitalize; }
+  .pill { display: inline-flex; align-items: center; gap: 9px; margin-top: 0.6vh; padding: 9px 16px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c) 20%, #06060d); box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--c) 55%, transparent);
+    font-size: clamp(13px,1.2vw,20px); font-weight: 700; color: #fff; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
 
-  .bento { display: grid; flex: 1; min-height: 0; gap: clamp(10px, 1.15vw, 20px); grid-template-columns: 1.6fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-  .panel { min-height: 0; display: flex; flex-direction: column; border-radius: clamp(16px, 1.5vw, 28px); padding: clamp(15px, 1.7vw, 30px);
-    background: radial-gradient(135% 125% at 0% 0%, color-mix(in srgb, var(--pc, var(--acc)) 17%, transparent), transparent 58%), rgba(255, 255, 255, 0.045);
-    border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 26px 60px -40px rgba(0, 0, 0, 0.9); }
-  .hero { grid-column: 1; grid-row: 1 / span 2; }
-  .cap { display: flex; align-items: center; gap: 8px; font-size: clamp(11px, 1vw, 18px); font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--pc, #b6acec); }
-  .live { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.7s infinite; }
-  .heroval { display: flex; align-items: flex-end; gap: 1.4vw; margin-top: 1.1vh; flex-wrap: wrap; }
-  .big { font-size: clamp(52px, 8vw, 146px); font-weight: 800; letter-spacing: -0.04em; line-height: 0.8; }
-  .unit { font-size: 0.3em; color: var(--dim); font-weight: 700; }
-  .note { padding-bottom: 1vh; font-size: clamp(14px, 1.45vw, 26px); color: var(--text-2); line-height: 1.35; }
-  .note b { color: var(--solar); }
-  .trip { display: flex; gap: 2.2vw; margin-top: 1.7vh; flex-wrap: wrap; }
-  .trip .l { font-size: clamp(11px, 1vw, 17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
-  .trip .v { font-size: clamp(20px, 2.3vw, 40px); font-weight: 800; margin-top: 0.4vh; }
-  .flow { flex: 1; min-height: 0; display: flex; align-items: flex-end; margin-top: 1.4vh; }
+  /* hero energy flow — dominant, high contrast */
+  .hero { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: clamp(14px,1.6vw,26px) clamp(16px,1.8vw,30px); border-radius: clamp(18px,1.6vw,28px);
+    background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
+  .cap { display: flex; align-items: center; gap: 9px; font-size: clamp(12px,1.15vw,20px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #cbd5e1; }
+  .cap .live { width: 9px; height: 9px; border-radius: 50%; background: var(--solar); animation: pulse 1.7s infinite; }
+  .flow { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0.6vh 0; }
+  .herostats { display: flex; justify-content: center; gap: clamp(28px,5vw,90px); }
+  .hl { font-size: clamp(11px,1vw,17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; text-align: center; }
+  .hv { font-size: clamp(22px,2.6vw,44px); font-weight: 800; letter-spacing: -0.02em; text-align: center; margin-top: 0.3vh; }
 
-  .tileval { font-size: clamp(38px, 4.8vw, 90px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.9; margin-top: 0.6vh; }
+  /* status tiles — solid, distinct, large (glanceable) */
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: clamp(10px,1.15vw,20px); }
+  .tile { padding: clamp(13px,1.5vw,26px); border-radius: clamp(16px,1.5vw,26px);
+    background: radial-gradient(130% 120% at 0 0, color-mix(in srgb, var(--pc) 20%, transparent), transparent 60%), rgba(255,255,255,0.06);
+    border: 1px solid color-mix(in srgb, var(--pc) 30%, rgba(255,255,255,0.1)); }
+  .tl { font-size: clamp(12px,1.1vw,20px); font-weight: 700; color: var(--text-2); }
+  .tv2 { font-size: clamp(34px,4.4vw,80px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.95; margin-top: 0.4vh; }
+  .tv2.sm { font-size: clamp(26px,3.2vw,58px); }
   .tu { font-size: 0.42em; color: var(--dim); }
-  .tsub { font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); margin-top: 0.5vh; }
-  .secbig { font-size: clamp(30px, 4vw, 68px); font-weight: 800; line-height: 0.92; margin-top: 0.6vh; }
-  .rows { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.5vh; margin-top: 0.6vh; font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); }
-  .rows div { display: flex; justify-content: space-between; gap: 10px; }
-  .rows b { color: var(--text); }
+  .ts { font-size: clamp(12px,1.1vw,20px); color: var(--text-2); margin-top: 0.5vh; }
 
-  .fcstrip { display: flex; gap: clamp(7px, 0.8vw, 15px); }
-  .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; padding: clamp(9px, 1vw, 17px); border-radius: clamp(12px, 1.1vw, 20px);
-    background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); font-size: clamp(13px, 1.35vw, 24px); }
-  .fcc.now { background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: color-mix(in srgb, var(--acc) 34%, transparent); }
-  .fcc .h { color: var(--dim); } .fcc .i { font-size: 1.25em; } .fcc b { color: var(--text); }
-
-  .foot { display: flex; align-items: center; gap: 1.1vw; flex-wrap: wrap; padding: clamp(13px, 1.3vw, 22px) clamp(18px, 1.8vw, 30px);
-    border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08);
-    font-size: clamp(13px, 1.25vw, 22px); color: var(--text-2); }
-  .markets { display: flex; gap: clamp(16px, 2.4vw, 48px); flex-wrap: wrap; padding: clamp(12px, 1.2vw, 20px) clamp(18px, 1.8vw, 30px); border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); }
-  .mk { display: flex; flex-direction: column; gap: 2px; }
-  .mkl { font-size: clamp(11px, 1vw, 17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
-  .mk b { font-size: clamp(20px, 2.3vw, 40px); font-weight: 800; letter-spacing: -0.02em; }
-  .mk b.down { color: var(--success); }
-  .mk b.up { color: var(--warning); }
-  .foot .fdot { width: 8px; height: 8px; border-radius: 50%; background: var(--solar); box-shadow: 0 0 8px var(--solar); }
-  .foot b { color: var(--text); } .foot .sep { color: var(--dim); } .streak { color: var(--success) !important; }
-
-  @media (max-width: 820px) { .bento { grid-template-columns: 1fr 1fr; grid-template-rows: auto; } .hero { grid-column: 1 / span 2; grid-row: auto; } }
+  /* rotating secondary strip */
+  .rot { position: relative; }
+  .rband { display: flex; gap: clamp(8px,1vw,18px); padding: clamp(12px,1.2vw,20px) clamp(18px,1.8vw,30px); border-radius: clamp(14px,1.3vw,22px); background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); animation: fade 0.5s ease; }
+  .rband.mk { gap: clamp(18px,3vw,60px); }
+  .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; font-size: clamp(14px,1.4vw,26px); color: var(--text); }
+  .fcc.now b { color: var(--acc); } .fcc .h { color: var(--dim); } .fcc .i { font-size: 1.25em; }
+  .mkc { display: flex; flex-direction: column; gap: 2px; }
+  .mkl { font-size: clamp(11px,1vw,17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+  .mkc b { font-size: clamp(20px,2.3vw,40px); font-weight: 800; }
+  .mkc b.down { color: var(--success); } .mkc b.up { color: var(--warning); }
+  .dots { position: absolute; right: 16px; bottom: -18px; display: flex; gap: 6px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.2); }
+  .dots span.on { background: var(--acc); }
+  @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 </style>
