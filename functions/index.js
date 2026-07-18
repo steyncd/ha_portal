@@ -18,7 +18,11 @@ const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 
 exports.waInbound = onRequest(
-  { secrets: [HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET], region: "us-central1" },
+  {
+    secrets: [HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET],
+    region: "us-central1",
+    maxInstances: 3, // bound cost/blast-radius if the endpoint is ever flooded
+  },
   async (req, res) => {
     // Shared-secret gate so only TextMeBot (with the key) can reach HA.
     const expected = WA_WEBHOOK_SECRET.value();
