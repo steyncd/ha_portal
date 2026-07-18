@@ -326,6 +326,39 @@ class HAStore {
     return out;
   }
 
+  /**
+   * Fetch a real weather forecast via the `weather.get_forecasts` service
+   * (returns [] on any failure). `type` is "hourly" or "daily".
+   */
+  async getForecast(
+    entityId: string,
+    type: "hourly" | "daily" = "hourly",
+  ): Promise<Array<{ datetime: string; temperature: number; condition: string }>> {
+    if (this.#mock) {
+      const now = Date.now();
+      const conds = ["clear-night", "partlycloudy", "cloudy", "partlycloudy", "sunny", "sunny", "partlycloudy"];
+      return conds.map((c, i) => ({ datetime: new Date(now + i * 3 * 3600_000).toISOString(), temperature: 16 - i + (i > 3 ? i : 0), condition: c }));
+    }
+    if (!this.#conn) return [];
+    try {
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "call_service",
+          domain: "weather",
+          service: "get_forecasts",
+          service_data: { type },
+          target: { entity_id: entityId },
+          return_response: true,
+        }),
+        10_000,
+        { response: {} },
+      )) as { response?: Record<string, { forecast?: Array<{ datetime: string; temperature: number; condition: string }> }> };
+      return res?.response?.[entityId]?.forecast ?? [];
+    } catch {
+      return [];
+    }
+  }
+
   // ---- writers ----
   #svc(domain: string, service: string, data: object) {
     if (this.#conn) return callService(this.#conn, domain, service, data);

@@ -14,124 +14,184 @@
 
   let pvHist = $state<{ t: number; v: number }[]>([]);
   let loadHist = $state<{ t: number; v: number }[]>([]);
+  let forecast = $state<{ datetime: string; temperature: number; condition: string }[]>([]);
   onMount(async () => {
     pvHist = await ha.history(E.pvPower, 24);
     loadHist = await ha.history(E.loads, 24);
+    forecast = (await ha.getForecast(E.weather, "hourly")).slice(0, 7);
   });
 
   const clock = $derived(fmtClock(now));
+  const dateLabel = $derived(now.toLocaleDateString("en-ZA", { weekday: "long", day: "numeric", month: "long" }));
   const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
-  const wxTemp = $derived(ha.attr(E.weather, "temperature") as number | undefined);
+  const outdoor = $derived(ha.num("sensor.outdoor_temperature"));
+  const wxCond = $derived((ha.state(E.weather) ?? "").replace(/-/g, " "));
   const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)).length);
   const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
   const armed = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
-  const FC = [["Now", "🌙", 16], ["21h", "🌫️", 12], ["23h", "🌫️", 11], ["01h", "🌫️", 10], ["03h", "❄️", 8], ["06h", "❄️", 7], ["09h", "☀️", 15]];
+  const occupancy = $derived(ha.state(E.occupancy) ?? "Home");
+  const solarFcToday = $derived(ha.num("sensor.solar_forecast_today"));
+
+  const ICON: Record<string, string> = {
+    "sunny": "☀️", "clear-night": "🌙", "clear": "🌙", "partlycloudy": "⛅", "cloudy": "☁️",
+    "rainy": "🌧️", "pouring": "⛈️", "lightning": "⚡", "lightning-rainy": "⛈️",
+    "snowy": "❄️", "snowy-rainy": "🌨️", "fog": "🌫️", "windy": "💨", "hail": "🌨️", "exceptional": "🌡️",
+  };
+  const icon = (c: string) => ICON[c] ?? "🌡️";
+  const fcHour = (iso: string) => { try { return new Date(iso).getHours() + "h"; } catch { return ""; } };
+  const fc = $derived(forecast.map((f, i) => ({ h: i === 0 ? "Now" : fcHour(f.datetime), ic: icon(f.condition), t: Math.round(f.temperature), now: i === 0 })));
 </script>
 
 <div class="tv">
-  <button class="exit" onclick={onexit} title="Exit">✕</button>
-  <div class="head">
+  <button class="exit" onclick={onexit} title="Exit" aria-label="Exit">✕</button>
+
+  <header class="head">
     <div>
       <div class="hi">{greeting(sastHour(now))} · 302 Wyoming</div>
       <div class="clock">{clock}</div>
+      <div class="date">{dateLabel}</div>
     </div>
     <div class="wx">
-      <div class="wt">🌙 {wxTemp != null ? Math.round(wxTemp) : 16}°</div>
-      <div class="wd">{(ha.state(E.weather) ?? "clear-night").replace(/-/g, " ")}</div>
-      <div class="occ"><span class="od"></span>{ha.state(E.occupancy) ?? "Home"} · {armed ? "Armed" : "Disarmed"}</div>
+      <div class="wtemp">{outdoor != null ? Math.round(outdoor) : "—"}°</div>
+      <div class="wcond">{wxCond || "—"}</div>
+      <div class="pill" style="--c:{armed ? 'var(--warning)' : 'var(--success)'}">
+        <span class="dot"></span>{occupancy} · {armed ? "Armed" : "Disarmed"} · {camsOnline}/{CAMERAS.length} cams
+      </div>
     </div>
-  </div>
+  </header>
 
   <div class="bento">
-    <div class="panel energy">
-      <div class="pl" style="color:var(--solar)"><span class="live"></span>Power now</div>
-      <div class="prow"><div class="pbig">{power(ha.num(E.loads)).val}<span class="pu"> {power(ha.num(E.loads)).unit}</span></div><div class="pnote">on <b style="color:var(--solar)">battery</b><br>{n(ha.num(E.gridIndepToday))}% self-powered</div></div>
-      <div class="stats3">
-        <div><div class="sl">☀️ Solar</div><div class="sv">{power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
-        <div><div class="sl">🔋 Battery</div><div class="sv">{n(ha.num(E.batteryPower))} W</div></div>
-        <div><div class="sl">🔌 Grid</div><div class="sv">{power(ha.num(E.gridPower)).val} {power(ha.num(E.gridPower)).unit}</div></div>
+    <!-- Power hero -->
+    <section class="panel hero" style="--pc:var(--solar)">
+      <div class="cap" style="color:var(--solar)"><span class="live"></span>Power now</div>
+      <div class="heroval">
+        <div class="big">{power(ha.num(E.loads)).val}<span class="unit"> {power(ha.num(E.loads)).unit}</span></div>
+        <div class="note">on <b>{(ha.num(E.batteryPower) ?? 0) < 0 ? "battery" : "grid"}</b><br>{n(ha.num(E.gridIndepToday))}% self-powered today</div>
       </div>
-      <div class="espark"><Overlay height={110} series={[
+      <div class="trip">
+        <div><div class="l">☀️ Solar</div><div class="v" style="color:var(--solar)">{power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
+        <div><div class="l">🔋 Battery</div><div class="v" style="color:var(--success)">{n(ha.num(E.batteryPower))} W</div></div>
+        <div><div class="l">🔌 Grid</div><div class="v">{power(ha.num(E.gridPower)).val} {power(ha.num(E.gridPower)).unit}</div></div>
+      </div>
+      <div class="flow"><Overlay height={120} series={[
         { data: pvHist, color: "var(--solar)", label: "Solar", fill: true },
         { data: loadHist, color: "var(--success)", label: "Home use" },
       ]} /></div>
-    </div>
+    </section>
 
-    <div class="panel" style="--pc:var(--acc)">
-      <div class="pl" style="color:var(--acc)">🔋 Battery</div>
-      <div class="mbig">{n(ha.num(E.batterySoc))}<span class="mu">%</span></div>
-      <div class="msub">{n(ha.num(E.batteryPower))} W</div>
-    </div>
-    <div class="panel" style="--pc:var(--water)">
-      <div class="pl" style="color:var(--water)">💧 Water tank</div>
-      <div class="mbig">{n(ha.num(E.tankLevel))}<span class="mu">%</span></div>
-      <div class="msub">{n(ha.num(E.tankVolume))} L · {n(ha.num(E.tankDays))} days</div>
-    </div>
-    <div class="panel" style="--pc:var(--orange)">
-      <div class="pl" style="color:var(--orange)">🌡️ Climate</div>
-      <div class="mbig">{n(ha.num(E.indoorAvg), 1)}<span class="mu">°</span></div>
-      <div class="crows">
+    <!-- Battery -->
+    <section class="panel" style="--pc:var(--acc)">
+      <div class="cap" style="color:var(--acc)">🔋 Battery</div>
+      <div class="tileval">{n(ha.num(E.batterySoc))}<span class="tu">%</span></div>
+      <div class="tsub">{(ha.num(E.batteryPower) ?? 0) < 0 ? "Discharging" : "Charging"} · {n(ha.num(E.batteryPower))} W</div>
+    </section>
+
+    <!-- Water -->
+    <section class="panel" style="--pc:var(--water)">
+      <div class="cap" style="color:var(--water)">💧 Water tank</div>
+      <div class="tileval">{n(ha.num(E.tankLevel))}<span class="tu">%</span></div>
+      <div class="tsub">{n(ha.num(E.tankVolume))} L · {n(ha.num(E.tankDays))} days left</div>
+    </section>
+
+    <!-- Climate -->
+    <section class="panel" style="--pc:var(--orange)">
+      <div class="cap" style="color:var(--orange)">🌡️ Climate</div>
+      <div class="tileval">{n(ha.num(E.indoorAvg), 1)}<span class="tu">°</span></div>
+      <div class="rows">
         <div><span>{warm[0]?.label} · warmest</span><b>{n(ha.num(warm[0]?.id ?? ""), 1)}°</b></div>
         <div><span>{warm[warm.length - 1]?.label} · coolest</span><b>{n(ha.num(warm[warm.length - 1]?.id ?? ""), 1)}°</b></div>
       </div>
-    </div>
-    <div class="panel" style="--pc:{activeZones ? 'var(--warning)' : 'var(--success)'}">
-      <div class="pl" style="color:{activeZones ? 'var(--warning)' : 'var(--success)'}">🛡️ Security</div>
+    </section>
+
+    <!-- Security -->
+    <section class="panel" style="--pc:{activeZones ? 'var(--warning)' : 'var(--success)'}">
+      <div class="cap" style="color:{activeZones ? 'var(--warning)' : 'var(--success)'}">🛡️ Security</div>
       <div class="secbig">{activeZones ? `${activeZones} active` : armed ? "Armed" : "All clear"}</div>
-      <div class="crows"><div><span>Home {armed ? "armed" : "disarmed"} · {activeZones} zones active</span></div><div><span>{camsOnline} / {CAMERAS.length} cameras online</span></div></div>
+      <div class="rows">
+        <div><span>Home {armed ? "armed" : "disarmed"} · {activeZones} zones</span></div>
+        <div><span>{camsOnline} / {CAMERAS.length} cameras online</span></div>
+      </div>
+    </section>
+  </div>
+
+  {#if fc.length}
+    <div class="fcstrip">
+      {#each fc as c}
+        <div class="fcc" class:now={c.now}><span class="h">{c.h}</span><span class="i">{c.ic}</span><b>{c.t}°</b></div>
+      {/each}
     </div>
-  </div>
+  {/if}
 
-  <div class="fc">
-    {#each FC as [h, ic, tp], i}
-      <div class="fcc" style="background:{i === 0 ? 'var(--soft)' : 'rgba(255,255,255,.03)'}"><span>{h}</span><span class="fi">{ic}</span><b>{tp}°</b></div>
-    {/each}
-  </div>
-
-  <div class="foot">
-    <div class="fl"><span class="fdot"></span>Today · <b>{n(ha.num(E.solarYieldToday), 1)} kWh</b> solar · <b>{n(ha.num(E.gridIndepToday))}%</b> independent · <b>R{n(ha.num(E.energyCostToday))}</b> · <b>{n(ha.num(E.waterUsedToday))} L</b> · <b style="color:var(--success)">{ha.state(E.gridFreeStreak) ?? "—"}</b>-night streak</div>
-  </div>
+  <footer class="foot">
+    <span class="fdot"></span><span>Today</span>
+    <b>{n(ha.num(E.solarYieldToday), 1)} kWh</b><span>solar</span>
+    {#if solarFcToday != null}<span class="sep">·</span><span>of ~{n(solarFcToday, 0)} forecast</span>{/if}
+    <span class="sep">·</span><b>{n(ha.num(E.gridIndepToday))}%</b><span>independent</span>
+    <span class="sep">·</span><b>R{n(ha.num(E.energyCostToday))}</b><span>grid</span>
+    <span class="sep">·</span><b>{n(ha.num(E.waterUsedToday))} L</b><span>water</span>
+    <span class="sep">·</span><b class="streak">{ha.state(E.gridFreeStreak) ?? "—"}</b><span>night grid-free streak</span>
+  </footer>
 </div>
 
 <style>
-  .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; background: radial-gradient(72vw 62vh at 12% -16%, rgba(129, 140, 248, 0.18), transparent 60%), radial-gradient(58vw 60vh at 116% 120%, rgba(168, 85, 247, 0.15), transparent 55%), #08070f; padding: clamp(20px, 3vw, 54px); display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 26px); }
+  .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; padding: clamp(20px, 2.6vw, 50px);
+    display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 24px);
+    background:
+      radial-gradient(70vw 60vh at 10% -18%, rgba(129, 140, 248, 0.20), transparent 60%),
+      radial-gradient(60vw 62vh at 118% 122%, rgba(168, 85, 247, 0.15), transparent 55%),
+      #07060f; }
   .exit { position: absolute; top: 16px; right: 18px; z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); font-size: 16px; color: var(--muted); }
   .exit:hover { background: rgba(255, 255, 255, 0.16); }
+
   .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 2vw; }
-  .hi { font-size: clamp(14px, 1.5vw, 25px); font-weight: 600; color: #b6acec; }
-  .clock { font-size: clamp(52px, 7.6vw, 132px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.88; background: linear-gradient(120deg, #fff 34%, #b3a6f5 96%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .wx { text-align: right; }
-  .wt { font-size: clamp(30px, 3.6vw, 60px); font-weight: 700; }
-  .wd { font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); text-transform: capitalize; }
-  .occ { display: inline-flex; align-items: center; gap: 8px; margin-top: 1vh; padding: 7px 14px; border-radius: 999px; background: color-mix(in srgb, var(--success) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 34%, transparent); font-size: clamp(12px, 1.15vw, 20px); font-weight: 700; }
-  .od { width: 9px; height: 9px; border-radius: 50%; background: var(--success); box-shadow: 0 0 10px var(--success); }
-  .bento { display: grid; flex: 1; min-height: 0; gap: clamp(10px, 1.15vw, 22px); grid-template-columns: 1.55fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
-  .panel { min-height: 0; display: flex; flex-direction: column; border-radius: clamp(16px, 1.6vw, 30px); padding: clamp(15px, 1.7vw, 30px); background: radial-gradient(135% 125% at 0% 0%, color-mix(in srgb, var(--pc, var(--acc)) 20%, transparent), transparent 60%), linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09), 0 26px 60px -34px rgba(0, 0, 0, 0.92); }
-  .energy { grid-column: 1; grid-row: 1 / span 2; --pc: var(--solar); }
-  .pl { display: flex; align-items: center; gap: 8px; font-size: clamp(11px, 1.05vw, 19px); font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
-  .live { width: 8px; height: 8px; border-radius: 50%; background: var(--solar); animation: pulse 1.7s infinite; }
-  .prow { display: flex; align-items: flex-end; gap: 1.6vw; flex-wrap: wrap; margin-top: 1vh; }
-  .pbig { font-size: clamp(52px, 8vw, 140px); font-weight: 800; letter-spacing: -0.04em; line-height: 0.82; }
-  .pu { font-size: 0.32em; color: var(--dim); }
-  .pnote { padding-bottom: 1vh; font-size: clamp(14px, 1.5vw, 26px); color: var(--text-2); line-height: 1.35; }
-  .stats3 { display: flex; gap: 2.4vw; flex-wrap: wrap; margin-top: 1.6vh; }
-  .sl { font-size: clamp(11px, 1.05vw, 18px); font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--dim); }
-  .sv { font-size: clamp(20px, 2.4vw, 40px); font-weight: 800; margin-top: 0.4vh; }
-  .espark { flex: 1; min-height: 0; display: flex; align-items: flex-end; margin-top: 1.4vh; }
-  .mbig { font-size: clamp(38px, 5vw, 92px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.9; margin-top: 0.6vh; }
-  .mu { font-size: 0.42em; color: var(--dim); }
-  .msub { font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); margin-top: 0.4vh; }
-  .secbig { font-size: clamp(30px, 4vw, 72px); font-weight: 800; line-height: 0.92; margin-top: 0.6vh; }
-  .crows { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.5vh; margin-top: 0.6vh; font-size: clamp(13px, 1.25vw, 23px); color: var(--text-2); }
-  .crows div { display: flex; justify-content: space-between; gap: 10px; }
-  .fc { display: flex; gap: clamp(6px, 0.8vw, 16px); }
-  .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; padding: clamp(9px, 1vw, 18px) clamp(6px, 0.6vw, 14px); border-radius: clamp(12px, 1.2vw, 22px); font-size: clamp(13px, 1.4vw, 25px); }
-  .fcc span { color: var(--text-2); }
-  .fcc .fi { font-size: 1.3em; }
-  .fcc b { color: var(--text); }
-  .foot { display: flex; align-items: center; gap: 2vw; font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); }
-  .fl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-  .fl b { color: var(--text); }
-  .fdot { width: 7px; height: 7px; border-radius: 50%; background: var(--solar); animation: pulse 1.7s infinite; }
-  @media (max-width: 820px) { .bento { grid-template-columns: 1fr 1fr; grid-template-rows: auto; } .energy { grid-column: 1 / span 2; grid-row: auto; } }
+  .hi { font-size: clamp(14px, 1.5vw, 24px); font-weight: 500; color: #b6acec; }
+  .clock { font-size: clamp(54px, 7.8vw, 138px); font-weight: 800; letter-spacing: -0.035em; line-height: 0.86; font-variant-numeric: tabular-nums;
+    background: linear-gradient(120deg, #fff 38%, #b3a6f5 96%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .date { font-size: clamp(13px, 1.2vw, 21px); color: var(--text-2); margin-top: 0.5vh; }
+  .wx { text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 0.6vh; }
+  .wtemp { font-size: clamp(30px, 3.6vw, 60px); font-weight: 700; letter-spacing: -0.02em; }
+  .wcond { font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); text-transform: capitalize; }
+  .pill { display: inline-flex; align-items: center; gap: 8px; margin-top: 0.6vh; padding: 8px 15px; border-radius: 999px;
+    background: color-mix(in srgb, var(--c) 13%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 36%, transparent);
+    font-size: clamp(12px, 1.1vw, 19px); font-weight: 700; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+
+  .bento { display: grid; flex: 1; min-height: 0; gap: clamp(10px, 1.15vw, 20px); grid-template-columns: 1.6fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+  .panel { min-height: 0; display: flex; flex-direction: column; border-radius: clamp(16px, 1.5vw, 28px); padding: clamp(15px, 1.7vw, 30px);
+    background: radial-gradient(135% 125% at 0% 0%, color-mix(in srgb, var(--pc, var(--acc)) 17%, transparent), transparent 58%), rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.08); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 26px 60px -40px rgba(0, 0, 0, 0.9); }
+  .hero { grid-column: 1; grid-row: 1 / span 2; }
+  .cap { display: flex; align-items: center; gap: 8px; font-size: clamp(11px, 1vw, 18px); font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase; color: var(--pc, #b6acec); }
+  .live { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.7s infinite; }
+  .heroval { display: flex; align-items: flex-end; gap: 1.4vw; margin-top: 1.1vh; flex-wrap: wrap; }
+  .big { font-size: clamp(52px, 8vw, 146px); font-weight: 800; letter-spacing: -0.04em; line-height: 0.8; }
+  .unit { font-size: 0.3em; color: var(--dim); font-weight: 700; }
+  .note { padding-bottom: 1vh; font-size: clamp(14px, 1.45vw, 26px); color: var(--text-2); line-height: 1.35; }
+  .note b { color: var(--solar); }
+  .trip { display: flex; gap: 2.2vw; margin-top: 1.7vh; flex-wrap: wrap; }
+  .trip .l { font-size: clamp(11px, 1vw, 17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+  .trip .v { font-size: clamp(20px, 2.3vw, 40px); font-weight: 800; margin-top: 0.4vh; }
+  .flow { flex: 1; min-height: 0; display: flex; align-items: flex-end; margin-top: 1.4vh; }
+
+  .tileval { font-size: clamp(38px, 4.8vw, 90px); font-weight: 800; letter-spacing: -0.03em; line-height: 0.9; margin-top: 0.6vh; }
+  .tu { font-size: 0.42em; color: var(--dim); }
+  .tsub { font-size: clamp(12px, 1.15vw, 21px); color: var(--text-2); margin-top: 0.5vh; }
+  .secbig { font-size: clamp(30px, 4vw, 68px); font-weight: 800; line-height: 0.92; margin-top: 0.6vh; }
+  .rows { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 0.5vh; margin-top: 0.6vh; font-size: clamp(13px, 1.2vw, 22px); color: var(--text-2); }
+  .rows div { display: flex; justify-content: space-between; gap: 10px; }
+  .rows b { color: var(--text); }
+
+  .fcstrip { display: flex; gap: clamp(7px, 0.8vw, 15px); }
+  .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; padding: clamp(9px, 1vw, 17px); border-radius: clamp(12px, 1.1vw, 20px);
+    background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.07); font-size: clamp(13px, 1.35vw, 24px); }
+  .fcc.now { background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: color-mix(in srgb, var(--acc) 34%, transparent); }
+  .fcc .h { color: var(--dim); } .fcc .i { font-size: 1.25em; } .fcc b { color: var(--text); }
+
+  .foot { display: flex; align-items: center; gap: 1.1vw; flex-wrap: wrap; padding: clamp(13px, 1.3vw, 22px) clamp(18px, 1.8vw, 30px);
+    border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: clamp(13px, 1.25vw, 22px); color: var(--text-2); }
+  .foot .fdot { width: 8px; height: 8px; border-radius: 50%; background: var(--solar); box-shadow: 0 0 8px var(--solar); }
+  .foot b { color: var(--text); } .foot .sep { color: var(--dim); } .streak { color: var(--success) !important; }
+
+  @media (max-width: 820px) { .bento { grid-template-columns: 1fr 1fr; grid-template-rows: auto; } .hero { grid-column: 1 / span 2; grid-row: auto; } }
 </style>
