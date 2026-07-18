@@ -124,7 +124,7 @@
 
 <div class="grid">
   <div class="card pad">
-    <div class="rh"><span class="lb">302 Wyoming · tap a room</span><span class="sub">{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg</span></div>
+    <div class="rh"><span class="lb">302 Wyoming · tap a room</span><span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span></div>
     <div class="plan">
       {#each PLAN as r}
         {@const t = r.temps?.[0] ? ha.num(r.temps[0].id) : null}

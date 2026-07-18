@@ -80,6 +80,8 @@ const ROWS: Row[] = [
 
   // Climate
   ["sensor.indoor_average_temperature", "16.0", { unit_of_measurement: "°C" }],
+  ["sensor.outdoor_temperature", "20.4", { unit_of_measurement: "°C" }],
+  ["sensor.outdoor_humidity", "21", { unit_of_measurement: "%" }],
   ["weather.home", "clear-night", { temperature: 14 }],
   ["sensor.main_room_temperature", "16.7", { unit_of_measurement: "°C" }],
   ["sensor.liam_s_room_temperature", "16.68", { unit_of_measurement: "°C" }],
