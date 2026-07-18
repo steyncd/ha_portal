@@ -1,0 +1,10 @@
+{
+  "name": "ha-portal-functions",
+  "description": "Public webhook proxy (TextMeBot -> Home Assistant)",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^5.1.0"
+  },
+  "private": true
+}

@@ -1,40 +1,70 @@
-// Google sign-in gate for the HA Portal.
+// Google sign-in + household access control for the HA Portal.
 //
-// The app is gated behind Firebase Auth (Google). Only the emails in
-// ALLOWED_EMAILS get in — anyone else who signs in with a valid Google
-// account lands on a "not authorised" screen. Add family members here.
-import { auth, googleProvider } from "./firebase";
+// Access is data-driven from Firestore `settings/access` = { members[], owners[] }.
+//   - members : may use the portal
+//   - owners  : may use it AND manage the member/owner list (Admin section)
+// BOOTSTRAP_OWNERS are always allowed as owners even before that doc exists, so
+// the very first sign-in works and can seed the list. Keep these in sync with
+// the same list in firestore.rules.
+import { auth, googleProvider, db } from "./firebase";
 import {
   signInWithPopup,
   signOut as fbSignOut,
   onAuthStateChanged,
+  updateProfile,
   type User,
 } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
 
-export const ALLOWED_EMAILS = [
+export const BOOTSTRAP_OWNERS = [
   "christosteyn@cloudbadger.com",
   "steyncd@gmail.com",
-  // add family members' Google emails here
 ];
 
-const allowed = (email: string | null) =>
-  !!email && ALLOWED_EMAILS.map((e) => e.toLowerCase()).includes(email.toLowerCase());
-
+const lc = (s: string | null | undefined) => (s ?? "").toLowerCase();
 type AuthStatus = "loading" | "signedout" | "denied" | "ready";
 
 class AuthStore {
   user = $state<User | null>(null);
   status = $state<AuthStatus>("loading");
+  role = $state<"owner" | "member" | null>(null);
+  members = $state<string[]>([]);
+  owners = $state<string[]>([]);
   error = $state("");
+  #unsub: (() => void) | null = null;
 
-  /** Wire the auth listener once, at app start. */
   init() {
     onAuthStateChanged(auth, (u) => {
       this.user = u;
-      if (!u) this.status = "signedout";
-      else this.status = allowed(u.email) ? "ready" : "denied";
+      if (this.#unsub) { this.#unsub(); this.#unsub = null; }
+      if (!u) { this.status = "signedout"; this.role = null; return; }
+
+      const email = lc(u.email);
+      const boot = BOOTSTRAP_OWNERS.map(lc);
+
+      // Live-subscribe to the access doc so Admin changes reflect immediately.
+      this.#unsub = onSnapshot(
+        doc(db, "settings", "access"),
+        (snap) => {
+          const d = (snap.data() as { members?: string[]; owners?: string[] } | undefined) ?? {};
+          this.owners = d.owners ?? [];
+          this.members = d.members ?? [];
+          const isOwner = boot.includes(email) || this.owners.map(lc).includes(email);
+          const isMember = isOwner || this.members.map(lc).includes(email);
+          this.role = isOwner ? "owner" : isMember ? "member" : null;
+          this.status = isMember ? "ready" : "denied";
+        },
+        () => {
+          // Can't read the doc yet (missing / rules) — fall back to bootstrap.
+          const isOwner = boot.includes(email);
+          this.role = isOwner ? "owner" : null;
+          this.status = isOwner ? "ready" : "denied";
+        },
+      );
     });
   }
+
+  get isOwner() { return this.role === "owner"; }
 
   async signIn() {
     this.error = "";
@@ -47,6 +77,13 @@ class AuthStore {
 
   async signOut() {
     await fbSignOut(auth);
+  }
+
+  /** Update the signed-in user's display name (Firebase Auth profile). */
+  async setDisplayName(name: string) {
+    if (!auth.currentUser) return;
+    await updateProfile(auth.currentUser, { displayName: name.trim() });
+    this.user = auth.currentUser; // nudge reactivity
   }
 }
 

@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Bootstrap owners: always allowed as owners, even before settings/access
+    // exists, so the first sign-in works and can seed the list. Keep in sync
+    // with BOOTSTRAP_OWNERS in src/lib/auth.svelte.ts.
+    function bootstrap() {
+      return request.auth != null
+        && request.auth.token.email in [
+          'christosteyn@cloudbadger.com',
+          'steyncd@gmail.com'
+        ];
+    }
+    function accessExists() {
+      return exists(/databases/$(database)/documents/settings/access);
+    }
+    function accessData() {
+      return get(/databases/$(database)/documents/settings/access).data;
+    }
+    function isOwner() {
+      return request.auth != null && (
+        bootstrap() ||
+        (accessExists() && request.auth.token.email in accessData().owners)
+      );
+    }
+    function isMember() {
+      return isOwner() ||
+        (request.auth != null && accessExists()
+         && request.auth.token.email in accessData().members);
+    }
+
+    // Access list: members read, owners manage.
+    match /settings/access {
+      allow read: if isMember();
+      allow write: if isOwner();
+    }
+
+    // Per-user profile: any member can read; only the owner of the doc writes.
+    match /profiles/{uid} {
+      allow read: if isMember();
+      allow write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Everything else (settings/haConnection, logged data): household members.
+    match /{document=**} {
+      allow read, write: if isMember();
+    }
+  }
+}

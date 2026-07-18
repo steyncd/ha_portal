@@ -4,15 +4,48 @@
   import { NAV } from "../lib/nav";
   import { toast } from "../lib/toast.svelte";
   import { HASS_URL } from "../lib/config";
+  import { authStore, BOOTSTRAP_OWNERS } from "../lib/auth.svelte";
+  import { addMember, removeMember, promote, demote } from "../lib/access";
   import Toggle from "../lib/components/Toggle.svelte";
 
   let { ontv }: { ontv: () => void } = $props();
 
   const haHost = (() => { try { return new URL(HASS_URL).host; } catch { return HASS_URL; } })();
-  function signOut() {
-    localStorage.removeItem("ha_portal_tokens");
-    toast.show("Signing out…");
-    setTimeout(() => location.reload(), 400);
+  function signOut() { authStore.signOut(); }
+
+  // ---- profile ----
+  const me = $derived(authStore.user);
+  const myName = $derived(me?.displayName ?? me?.email?.split("@")[0] ?? "Signed in");
+  const myInitial = $derived((me?.displayName ?? me?.email ?? "?").charAt(0).toUpperCase());
+  let editingName = $state(false);
+  let nameDraft = $state("");
+  function startEditName() { nameDraft = me?.displayName ?? ""; editingName = true; }
+  async function saveName() {
+    if (nameDraft.trim()) { await authStore.setDisplayName(nameDraft); toast.show("Name updated"); }
+    editingName = false;
+  }
+
+  // ---- admin: user access management (owners only) ----
+  const lc = (s: string) => s.trim().toLowerCase();
+  const roster = $derived.by(() => {
+    const owners = new Set(authStore.owners.map(lc));
+    const all = [...new Set([...authStore.members.map(lc), ...authStore.owners.map(lc)])].filter(Boolean);
+    return all.sort().map((email) => ({ email, isOwner: owners.has(email), isBootstrap: BOOTSTRAP_OWNERS.map(lc).includes(email) }));
+  });
+  let newEmail = $state("");
+  async function addUser() {
+    const e = newEmail.trim();
+    if (!e || !e.includes("@")) { toast.show("Enter a valid email"); return; }
+    try { await addMember(e); toast.show(`${e} added`); newEmail = ""; }
+    catch { toast.show("Couldn't add — owners only"); }
+  }
+  async function removeUser(email: string) {
+    if (lc(email) === lc(me?.email ?? "")) { toast.show("You can't remove yourself"); return; }
+    try { await removeMember(email); toast.show(`${email} removed`); } catch { toast.show("Couldn't remove"); }
+  }
+  async function toggleOwner(email: string, isOwner: boolean) {
+    try { isOwner ? await demote(email) : await promote(email); toast.show("Role updated"); }
+    catch { toast.show("Couldn't change role"); }
   }
 
   // Health goals (input_number helpers). min/max/step read from the entity, with fallbacks.
@@ -82,16 +115,58 @@
 </script>
 
 <div class="col">
-  <!-- account -->
-  <h2 class="section">Account</h2>
+  <!-- profile -->
+  <h2 class="section">Profile</h2>
   <div class="card pad acct">
-    <span class="aav">C</span>
+    {#if me?.photoURL}
+      <img class="aav img" src={me.photoURL} alt="" referrerpolicy="no-referrer" />
+    {:else}
+      <span class="aav">{myInitial}</span>
+    {/if}
     <div class="ainfo">
-      <div class="anm2">Christo Steyn</div>
-      <div class="asub2">Home Assistant · {haHost}</div>
+      {#if editingName}
+        <div class="editrow">
+          <input bind:value={nameDraft} placeholder="Display name" onkeydown={(e) => e.key === "Enter" && saveName()} />
+          <button class="minibtn" onclick={saveName}>Save</button>
+          <button class="minibtn ghost" onclick={() => (editingName = false)}>✕</button>
+        </div>
+      {:else}
+        <div class="anm2">
+          {myName}
+          <span class="rolechip" class:owner={authStore.isOwner}>{authStore.isOwner ? "Owner" : "Member"}</span>
+          <button class="editname" onclick={startEditName} title="Edit name">✎</button>
+        </div>
+      {/if}
+      <div class="asub2">{me?.email ?? ""} · HA {haHost}</div>
     </div>
     <button class="signout" onclick={signOut}>Sign out</button>
   </div>
+
+  <!-- admin: user access (owners only) -->
+  {#if authStore.isOwner}
+    <h2 class="section">Admin · Portal access</h2>
+    <div class="card pad">
+      <div class="lb" style="margin-bottom:12px">Who can sign in ({roster.length})</div>
+      {#each roster as u}
+        <div class="urow">
+          <span class="uav2">{u.email.charAt(0).toUpperCase()}</span>
+          <div class="uinfo">
+            <div class="uem">{u.email}{#if lc(u.email) === lc(me?.email ?? "")}<span class="you"> · you</span>{/if}</div>
+            <div class="urole">{u.isOwner ? "Owner" : "Member"}{#if u.isBootstrap} · built-in{/if}</div>
+          </div>
+          <button class="rolebtn" onclick={() => toggleOwner(u.email, u.isOwner)} disabled={u.isBootstrap} title={u.isBootstrap ? "Built-in owner" : ""}>
+            {u.isOwner ? "Make member" : "Make owner"}
+          </button>
+          <button class="rmbtn" onclick={() => removeUser(u.email)} disabled={u.isBootstrap || lc(u.email) === lc(me?.email ?? "")} title="Remove">✕</button>
+        </div>
+      {/each}
+      <div class="composer" style="margin-top:14px">
+        <input bind:value={newEmail} placeholder="Add person by Google email…" onkeydown={(e) => e.key === "Enter" && addUser()} />
+        <button class="send" onclick={addUser}>Add</button>
+      </div>
+      <div class="note">Owners can manage access and branding. Members get full use of the portal. Built-in owners are set in code and can't be removed here.</div>
+    </div>
+  {/if}
 
   <!-- appearance -->
   <h2 class="section">Appearance</h2>
@@ -234,6 +309,26 @@
   .anm2 { font-size: 15px; font-weight: 700; }
   .asub2 { font-size: 11.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .signout { padding: 10px 16px; border-radius: 11px; background: color-mix(in srgb, var(--error) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 34%, transparent); color: #fecdd6; font-size: 12.5px; font-weight: 700; }
+  .aav.img { object-fit: cover; }
+  .anm2 { display: flex; align-items: center; gap: 8px; }
+  .rolechip { font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--muted); }
+  .rolechip.owner { background: var(--soft); color: var(--acc); box-shadow: inset 0 0 0 1px var(--line); }
+  .editname { font-size: 12px; color: var(--muted); padding: 2px 6px; border-radius: 6px; }
+  .editname:hover { background: rgba(255,255,255,0.08); }
+  .editrow { display: flex; gap: 8px; align-items: center; }
+  .editrow input { flex: 1; background: rgba(255,255,255,0.06); border: none; border-radius: 10px; color: var(--text); font-size: 14px; padding: 8px 10px; outline: none; }
+  .minibtn { padding: 8px 12px; border-radius: 9px; background: var(--grad); color: #0b1017; font-size: 12px; font-weight: 700; }
+  .minibtn.ghost { background: rgba(255,255,255,0.08); color: var(--text); }
+  .urow { display: flex; align-items: center; gap: 11px; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+  .urow:last-of-type { border-bottom: none; }
+  .uav2 { width: 34px; height: 34px; flex-shrink: 0; border-radius: 50%; background: rgba(255,255,255,0.1); display: grid; place-items: center; font-size: 13px; font-weight: 800; }
+  .uinfo { flex: 1; min-width: 0; }
+  .uem { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .you { color: var(--acc); font-weight: 700; }
+  .urole { font-size: 11px; color: var(--muted); }
+  .rolebtn { padding: 7px 11px; border-radius: 9px; background: rgba(255,255,255,0.07); color: var(--text); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+  .rolebtn:disabled, .rmbtn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .rmbtn { width: 30px; height: 30px; flex-shrink: 0; border-radius: 8px; background: color-mix(in srgb, var(--error) 14%, transparent); color: #fecdd6; font-size: 13px; }
   .goal { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .goal:last-of-type { border-bottom: none; }
   .grow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
