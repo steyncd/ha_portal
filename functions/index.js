@@ -92,44 +92,62 @@ exports.waInbound = onRequest(
   },
 );
 
-// ---- Life-OS glue: push HQ money figures into Home Assistant hourly ----
+// ---- Life-OS glue: push HQ money figures into Home Assistant ----
+async function pushMoneyToHA() {
+  const hq = new Firestore({ projectId: HQ_PROJECT });
+  const [sumSnap, assetsSnap] = await Promise.all([
+    hq.collection("summaries").doc("latest").get(),
+    hq.collection("settings").doc("assets").get(),
+  ]);
+  const sum = sumSnap.data() || {};
+  const accounts = sum.accounts || [];
+  let bank = 0, liab = 0;
+  for (const a of accounts) {
+    const bal = Number(a.balance) || 0;
+    if (bal >= 0) bank += bal; else liab += -bal;
+  }
+  const man = ((assetsSnap.data() || {}).items || []).reduce((t, a) => t + (Number(a.value) || 0), 0);
+  const netWorth = Math.round(bank + man - liab);
+  const totalBalance = Math.round(Number(sum.totalBalance) || bank);
+  const available = Math.round(Number(sum.totalAvailable) || 0);
+
+  const call = (domain, service, data) =>
+    fetch(`${HA_URL.value()}/api/services/${domain}/${service}`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${HA_TOKEN.value()}`, "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+  const setNum = (id, value) => call("input_number", "set_value", { entity_id: id, value });
+
+  await Promise.all([
+    setNum("input_number.hq_net_worth", netWorth),
+    setNum("input_number.hq_total_balance", totalBalance),
+    setNum("input_number.hq_available", available),
+    call("input_text", "set_value", {
+      entity_id: "input_text.hq_updated",
+      value: new Date().toISOString().slice(0, 16).replace("T", " "),
+    }),
+  ]);
+  logger.info("syncMoneyToHA", { netWorth, totalBalance, available, accounts: accounts.length });
+  return { netWorth, totalBalance, available, accounts: accounts.length };
+}
+
 exports.syncMoneyToHA = onSchedule(
   { schedule: "every 60 minutes", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
-  async () => {
-    const hq = new Firestore({ projectId: HQ_PROJECT });
-    const [sumSnap, assetsSnap] = await Promise.all([
-      hq.collection("summaries").doc("latest").get(),
-      hq.collection("settings").doc("assets").get(),
-    ]);
-    const sum = sumSnap.data() || {};
-    const accounts = sum.accounts || [];
-    let bank = 0, liab = 0;
-    for (const a of accounts) {
-      const bal = Number(a.balance) || 0;
-      if (bal >= 0) bank += bal; else liab += -bal;
+  async () => { await pushMoneyToHA(); },
+);
+
+// Secret-gated on-demand trigger (for testing + a "sync now" button).
+exports.syncMoneyNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET], region: "us-central1", maxInstances: 1 },
+  async (req, res) => {
+    if (req.query.key !== WA_WEBHOOK_SECRET.value()) { res.status(403).send("forbidden"); return; }
+    try {
+      const r = await pushMoneyToHA();
+      res.status(200).json({ ok: true, ...r });
+    } catch (e) {
+      logger.error("syncMoneyNow failed", e);
+      res.status(500).json({ ok: false, error: String(e && e.message || e) });
     }
-    const man = ((assetsSnap.data() || {}).items || []).reduce((t, a) => t + (Number(a.value) || 0), 0);
-    const netWorth = Math.round(bank + man - liab);
-    const totalBalance = Math.round(Number(sum.totalBalance) || bank);
-    const available = Math.round(Number(sum.totalAvailable) || 0);
-
-    const call = (domain, service, data) =>
-      fetch(`${HA_URL.value()}/api/services/${domain}/${service}`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${HA_TOKEN.value()}`, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-    const setNum = (id, value) => call("input_number", "set_value", { entity_id: id, value });
-
-    await Promise.all([
-      setNum("input_number.hq_net_worth", netWorth),
-      setNum("input_number.hq_total_balance", totalBalance),
-      setNum("input_number.hq_available", available),
-      call("input_text", "set_value", {
-        entity_id: "input_text.hq_updated",
-        value: new Date().toISOString().slice(0, 16).replace("T", " "),
-      }),
-    ]);
-    logger.info("syncMoneyToHA", { netWorth, totalBalance, available });
   },
 );
