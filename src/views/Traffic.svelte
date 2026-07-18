@@ -122,7 +122,7 @@
 
 <div class="col">
   <div class="kpis">
-    <div class="card k"><div class="lb">🚗 Vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month</div></div>
+    <div class="card k"><div class="lb">🚗 Passing vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month · on the road</div></div>
     <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
   </div>
 
@@ -148,7 +148,7 @@
   </div>
 
   <div class="card pad">
-    <div class="rh"><span class="lb">Vehicles past gate · 7 days</span><span class="sub">{thousands(ha.num(E.vehiclesWeek))} total</span></div>
+    <div class="rh"><span class="lb">Passing vehicles · 7 days</span><span class="sub">{thousands(ha.num(E.vehiclesWeek))} total on the road</span></div>
     <BarChart bars={weekBars} height={150} />
   </div>
 
