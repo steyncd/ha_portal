@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "./lib/store.svelte";
+  import { authStore } from "./lib/auth.svelte";
   import { prefs } from "./lib/prefs.svelte";
   import { NAV, type ViewId } from "./lib/nav";
   import { E } from "./lib/entities";
@@ -18,6 +19,7 @@
   import Reminders from "./views/Reminders.svelte";
   import System from "./views/System.svelte";
   import Me from "./views/Me.svelte";
+  import Vitality from "./views/Vitality.svelte";
   import Timeline from "./views/Timeline.svelte";
   import Insights from "./views/Insights.svelte";
   import Settings from "./views/Settings.svelte";
@@ -34,10 +36,14 @@
   );
   let moreOpen = $state(false);
   let isMobile = $state(false);
+  // ?mock=1 runs the whole UI offline with no HA — and no auth gate, for visual QA.
+  const mockMode =
+    new URLSearchParams(location.search).get("mock") === "1" ||
+    import.meta.env.VITE_MOCK === "1";
 
   onMount(() => {
     prefs.apply();
-    ha.init();
+    authStore.init();
     const mq = window.matchMedia("(max-width: 820px)");
     const upd = () => (isMobile = mq.matches);
     upd();
@@ -48,6 +54,11 @@
     };
     window.addEventListener("keydown", onkey);
     return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); };
+  });
+
+  // Connect to Home Assistant only once the user is signed in and authorised.
+  $effect(() => {
+    if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
   });
 
   const visible = (id: ViewId) => ["overview", "security", "settings"].includes(id) || prefs.viewsOn[id];
@@ -73,7 +84,28 @@
   }
 </script>
 
-{#if ha.status === "error"}
+{#if !mockMode && authStore.status === "loading"}
+  <div class="center"><div class="spinner"></div><p class="dim">Signing in…</p></div>
+{:else if !mockMode && authStore.status === "signedout"}
+  <div class="center">
+    <div class="bg"></div><div class="orb o1"></div><div class="orb o2"></div>
+    <div class="login">
+      <span class="llogo">🏠</span>
+      <h1>Steyn Home</h1>
+      <p class="dim">Sign in to continue</p>
+      <button class="gbtn" onclick={() => authStore.signIn()}>Continue with Google</button>
+      {#if authStore.error}<p class="err">{authStore.error}</p>{/if}
+    </div>
+  </div>
+{:else if !mockMode && authStore.status === "denied"}
+  <div class="center">
+    <div class="panel">
+      <strong>Not authorised</strong>
+      <p>{authStore.user?.email} isn't on the allow-list for this dashboard.</p>
+      <button onclick={() => authStore.signOut()}>Sign out</button>
+    </div>
+  </div>
+{:else if ha.status === "error"}
   <div class="center"><div class="panel"><strong>Couldn't connect to Home Assistant</strong><p>{ha.error}</p><button onclick={() => location.reload()}>Retry</button></div></div>
 {:else if ha.status === "connecting"}
   <div class="center"><div class="spinner"></div><p class="dim">Connecting to Home Assistant…</p></div>
@@ -106,7 +138,10 @@
             {/each}
           {/if}
         {/each}
-        <div class="user"><span class="uav">C</span>{#if !prefs.collapsed}<div class="ul"><span class="un">Christo</span><span class="ur">Admin</span></div>{/if}</div>
+        <button class="user" onclick={() => authStore.signOut()} title="Sign out">
+          <span class="uav">{(authStore.user?.displayName ?? authStore.user?.email ?? "C").charAt(0).toUpperCase()}</span>
+          {#if !prefs.collapsed}<div class="ul"><span class="un">{authStore.user?.displayName ?? "Signed in"}</span><span class="ur">Sign out</span></div>{/if}
+        </button>
       </aside>
     {/if}
 
@@ -134,6 +169,7 @@
         {:else if view === "reminders"}<Reminders />
         {:else if view === "system"}<System />
         {:else if view === "me"}<Me />
+        {:else if view === "vitality"}<Vitality />
         {:else if view === "timeline"}<Timeline />
         {:else if view === "insights"}<Insights />
         {:else if view === "settings"}<Settings ontv={() => (tv = true)} />{/if}
@@ -175,6 +211,13 @@
   .panel { background: rgba(20, 26, 36, 0.9); border-radius: 20px; padding: 24px; max-width: 440px; text-align: center; box-shadow: inset 0 0 0 1px var(--error); }
   .panel p { color: var(--text-2); font-size: 14px; }
   .panel button { margin-top: 8px; background: var(--grad); color: #0b1017; border-radius: 12px; padding: 10px 20px; font-weight: 700; }
+  .err { color: var(--error); font-size: 12.5px; margin-top: 4px; }
+
+  .login { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(20, 26, 36, 0.72); backdrop-filter: var(--glass-blur); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px 44px; box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7); }
+  .llogo { font-size: 42px; }
+  .login h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
+  .gbtn { margin-top: 14px; background: #fff; color: #1f1f1f; border-radius: 12px; padding: 12px 26px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px -8px rgba(0,0,0,0.5); }
+  .gbtn:hover { transform: translateY(-1px); }
 
   .bg { position: fixed; inset: 0; z-index: 0; background: var(--aurora); pointer-events: none; }
   .orb { position: fixed; z-index: 0; border-radius: 50%; filter: blur(90px); pointer-events: none; }

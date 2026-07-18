@@ -1,5 +1,6 @@
 import {
   getAuth,
+  createLongLivedTokenAuth,
   createConnection,
   subscribeEntities,
   callService,
@@ -74,6 +75,30 @@ export async function connect(): Promise<{ auth: Auth; connection: Connection }>
   }
 
   return { auth, connection };
+}
+
+/**
+ * Connect to Home Assistant using a stored long-lived access token — no OAuth
+ * redirect. Used when the portal has a saved HA connection (see haConfig.ts).
+ * The token auth object is non-expiring, so refreshAccessToken is a no-op.
+ */
+export async function connectWithToken(
+  url: string,
+  token: string,
+): Promise<{ auth: Auth; connection: Connection }> {
+  const auth = createLongLivedTokenAuth(url, token);
+  try {
+    const connection = await createConnection({ auth });
+    return { auth, connection };
+  } catch (err) {
+    if (err === ERR_INVALID_AUTH) {
+      throw new Error("The stored Home Assistant token was rejected — update it in Settings.");
+    }
+    if (err === ERR_CANNOT_CONNECT) {
+      throw new Error(`Cannot reach Home Assistant at ${url}.`);
+    }
+    throw err;
+  }
 }
 
 export { subscribeEntities, callService };

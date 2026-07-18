@@ -1,11 +1,13 @@
 import {
   connect,
+  connectWithToken,
   subscribeEntities,
   callService,
   type Connection,
   type HassEntities,
 } from "./ha";
 import { HASS_URL } from "./config";
+import { loadHaConnection } from "./haConfig";
 
 type Status = "connecting" | "connected" | "error";
 
@@ -78,7 +80,12 @@ class HAStore {
       return;
     }
     try {
-      const { auth, connection } = await connect();
+      // Prefer a stored long-lived token (set in Settings); fall back to the
+      // interactive HA OAuth flow if none is configured.
+      const stored = await loadHaConnection();
+      const { auth, connection } = stored
+        ? await connectWithToken(stored.url, stored.token)
+        : await connect();
       this.#conn = connection;
       this.#auth = auth;
       subscribeEntities(connection, (ents) => {
