@@ -154,14 +154,12 @@
 </div>
 
 <style>
-  /* Burn-in: very slow whole-frame pixel shift. Night: dim for comfort/longevity. */
+  /* Night: dim for comfort/ambiance in a dark room (LED panel — no burn-in mitigation needed). */
   .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; padding: clamp(20px, 2.6vw, 50px);
     display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 22px);
     background: radial-gradient(70vw 60vh at 12% -18%, rgba(129, 140, 248, 0.16), transparent 60%), radial-gradient(60vw 62vh at 116% 122%, rgba(84, 120, 255, 0.12), transparent 55%), #06060d;
-    animation: burnshift 320s ease-in-out infinite; transition: filter 3s ease; }
+    transition: filter 3s ease; }
   .tv.night { filter: brightness(0.52) saturate(0.92); }
-  @keyframes burnshift { 0%,100% { transform: translate(0,0); } 25% { transform: translate(4px,3px); } 50% { transform: translate(-3px,5px); } 75% { transform: translate(5px,-4px); } }
-  @media (prefers-reduced-motion: reduce) { .tv { animation: none; } }
 
   .exit { position: absolute; top: 16px; right: 18px; z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 16px; color: var(--text-2); }
 
