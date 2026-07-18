@@ -455,6 +455,12 @@ const ROWS: Row[] = [
   ["input_number.hq_available", "41250"],
   ["input_text.hq_updated", "2026-07-18 19:40"],
   ["input_boolean.hq_money_alerts", "on"],
+  // Markets & fuel
+  ["sensor.brent_crude_oil", "88.1", { unit_of_measurement: "USD" }],
+  ["sensor.usd_zar_rate", "16.48", { unit_of_measurement: "ZAR" }],
+  ["input_number.petrol_95_current", "26.10", { unit_of_measurement: "R/L" }],
+  ["input_number.petrol_95_forecast", "24.58", { unit_of_measurement: "R/L" }],
+  ["input_text.petrol_forecast_when", "from 5 Aug"],
   ["sensor.oura_workouts_today", "1"],
   ["sensor.oura_medium_activity_met_minutes", "127", { unit_of_measurement: "min" }],
   ["sensor.oura_high_activity_met_minutes", "0", { unit_of_measurement: "min" }],

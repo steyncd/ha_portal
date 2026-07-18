@@ -31,6 +31,13 @@
   const armed = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
   const occupancy = $derived(ha.state(E.occupancy) ?? "Home");
   const solarFcToday = $derived(ha.num("sensor.solar_forecast_today"));
+  // Markets & fuel
+  const brent = $derived(ha.num("sensor.brent_crude_oil"));
+  const usdzar = $derived(ha.num("sensor.usd_zar_rate"));
+  const petrolCur = $derived(ha.num("input_number.petrol_95_current"));
+  const petrolFc = $derived(ha.num("input_number.petrol_95_forecast"));
+  const petrolWhen = $derived(ha.state("input_text.petrol_forecast_when") ?? "");
+  const petrolChange = $derived(petrolFc != null && petrolCur != null ? petrolFc - petrolCur : null);
 
   const ICON: Record<string, string> = {
     "sunny": "☀️", "clear-night": "🌙", "clear": "🌙", "partlycloudy": "⛅", "cloudy": "☁️",
@@ -122,6 +129,15 @@
     </div>
   {/if}
 
+  <div class="markets">
+    <span class="mk"><span class="mkl">Brent crude</span><b>{brent != null ? "$" + brent.toFixed(1) : "—"}</b></span>
+    <span class="mk"><span class="mkl">USD / ZAR</span><b>{usdzar != null ? "R" + usdzar.toFixed(2) : "—"}</b></span>
+    <span class="mk"><span class="mkl">Petrol 95 · inland</span><b>{petrolCur != null ? "R" + petrolCur.toFixed(2) : "—"}</b></span>
+    {#if petrolChange != null}
+      <span class="mk"><span class="mkl">Next {petrolWhen}</span><b class:down={petrolChange < 0} class:up={petrolChange > 0}>{petrolChange < 0 ? "▼" : petrolChange > 0 ? "▲" : "■"} R{Math.abs(petrolChange).toFixed(2)}</b></span>
+    {/if}
+  </div>
+
   <footer class="foot">
     <span class="fdot"></span><span>Today</span>
     <b>{n(ha.num(E.solarYieldToday), 1)} kWh</b><span>solar</span>
@@ -190,6 +206,12 @@
   .foot { display: flex; align-items: center; gap: 1.1vw; flex-wrap: wrap; padding: clamp(13px, 1.3vw, 22px) clamp(18px, 1.8vw, 30px);
     border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08);
     font-size: clamp(13px, 1.25vw, 22px); color: var(--text-2); }
+  .markets { display: flex; gap: clamp(16px, 2.4vw, 48px); flex-wrap: wrap; padding: clamp(12px, 1.2vw, 20px) clamp(18px, 1.8vw, 30px); border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .mk { display: flex; flex-direction: column; gap: 2px; }
+  .mkl { font-size: clamp(11px, 1vw, 17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+  .mk b { font-size: clamp(20px, 2.3vw, 40px); font-weight: 800; letter-spacing: -0.02em; }
+  .mk b.down { color: var(--success); }
+  .mk b.up { color: var(--warning); }
   .foot .fdot { width: 8px; height: 8px; border-radius: 50%; background: var(--solar); box-shadow: 0 0 8px var(--solar); }
   .foot b { color: var(--text); } .foot .sep { color: var(--dim); } .streak { color: var(--success) !important; }
 
