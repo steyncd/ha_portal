@@ -11,12 +11,18 @@
 //
 // Secrets (firebase functions:secrets:set NAME): HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET
 const { onRequest } = require("firebase-functions/v2/https");
+const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
+const { Firestore } = require("@google-cloud/firestore");
 
 admin.initializeApp();
 const db = admin.firestore();
+
+// HQ finance app lives in its own project; the function's service account needs
+// roles/datastore.viewer on it to read the money summary (see README/deploy note).
+const HQ_PROJECT = "steyn-family-finance";
 
 const HA_URL = defineSecret("HA_URL");
 const HA_TOKEN = defineSecret("HA_TOKEN");
@@ -83,5 +89,47 @@ exports.waInbound = onRequest(
       logger.error("waInbound: forward failed", e);
       res.status(200).send("error"); // 200 so TextMeBot doesn't retry-storm
     }
+  },
+);
+
+// ---- Life-OS glue: push HQ money figures into Home Assistant hourly ----
+exports.syncMoneyToHA = onSchedule(
+  { schedule: "every 60 minutes", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => {
+    const hq = new Firestore({ projectId: HQ_PROJECT });
+    const [sumSnap, assetsSnap] = await Promise.all([
+      hq.collection("summaries").doc("latest").get(),
+      hq.collection("settings").doc("assets").get(),
+    ]);
+    const sum = sumSnap.data() || {};
+    const accounts = sum.accounts || [];
+    let bank = 0, liab = 0;
+    for (const a of accounts) {
+      const bal = Number(a.balance) || 0;
+      if (bal >= 0) bank += bal; else liab += -bal;
+    }
+    const man = ((assetsSnap.data() || {}).items || []).reduce((t, a) => t + (Number(a.value) || 0), 0);
+    const netWorth = Math.round(bank + man - liab);
+    const totalBalance = Math.round(Number(sum.totalBalance) || bank);
+    const available = Math.round(Number(sum.totalAvailable) || 0);
+
+    const call = (domain, service, data) =>
+      fetch(`${HA_URL.value()}/api/services/${domain}/${service}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${HA_TOKEN.value()}`, "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    const setNum = (id, value) => call("input_number", "set_value", { entity_id: id, value });
+
+    await Promise.all([
+      setNum("input_number.hq_net_worth", netWorth),
+      setNum("input_number.hq_total_balance", totalBalance),
+      setNum("input_number.hq_available", available),
+      call("input_text", "set_value", {
+        entity_id: "input_text.hq_updated",
+        value: new Date().toISOString().slice(0, 16).replace("T", " "),
+      }),
+    ]);
+    logger.info("syncMoneyToHA", { netWorth, totalBalance, available });
   },
 );

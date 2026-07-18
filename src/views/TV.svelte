@@ -31,6 +31,12 @@
   const armed = $derived((ha.state(E.alarmHome) ?? ha.state(E.alarmMain) ?? "").startsWith("armed"));
   const occupancy = $derived(ha.state(E.occupancy) ?? "Home");
   const solarFcToday = $derived(ha.num("sensor.solar_forecast_today"));
+  // HQ money bridge (populated by the syncMoneyToHA function)
+  const nw = $derived(ha.num("input_number.hq_net_worth"));
+  const safe = $derived(ha.num("input_number.hq_available"));
+  const bank = $derived(ha.num("input_number.hq_total_balance"));
+  const moneyOn = $derived((ha.state("input_text.hq_updated") ?? "unknown") !== "unknown");
+  const zar = (v: number | null) => (v == null ? "—" : "R " + Math.round(v).toLocaleString("en-ZA"));
 
   const ICON: Record<string, string> = {
     "sunny": "☀️", "clear-night": "🌙", "clear": "🌙", "partlycloudy": "⛅", "cloudy": "☁️",
@@ -122,6 +128,14 @@
     </div>
   {/if}
 
+  {#if moneyOn}
+    <div class="money">
+      <span class="mitem"><span class="ml">💰 Net worth</span><b>{zar(nw)}</b></span>
+      <span class="mitem"><span class="ml">Safe to spend</span><b>{zar(safe)}</b></span>
+      <span class="mitem"><span class="ml">In the bank</span><b>{zar(bank)}</b></span>
+    </div>
+  {/if}
+
   <footer class="foot">
     <span class="fdot"></span><span>Today</span>
     <b>{n(ha.num(E.solarYieldToday), 1)} kWh</b><span>solar</span>
@@ -190,6 +204,10 @@
   .foot { display: flex; align-items: center; gap: 1.1vw; flex-wrap: wrap; padding: clamp(13px, 1.3vw, 22px) clamp(18px, 1.8vw, 30px);
     border-radius: clamp(14px, 1.3vw, 22px); background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08);
     font-size: clamp(13px, 1.25vw, 22px); color: var(--text-2); }
+  .money { display: flex; gap: clamp(16px, 2.4vw, 48px); padding: clamp(13px, 1.3vw, 22px) clamp(18px, 1.8vw, 30px); border-radius: clamp(14px, 1.3vw, 22px); background: radial-gradient(120% 140% at 0 0, color-mix(in srgb, var(--success) 12%, transparent), transparent 60%), rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.08); }
+  .mitem { display: flex; flex-direction: column; gap: 2px; }
+  .mitem .ml { font-size: clamp(11px, 1vw, 17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+  .mitem b { font-size: clamp(22px, 2.4vw, 42px); font-weight: 800; letter-spacing: -0.02em; }
   .foot .fdot { width: 8px; height: 8px; border-radius: 50%; background: var(--solar); box-shadow: 0 0 8px var(--solar); }
   .foot b { color: var(--text); } .foot .sep { color: var(--dim); } .streak { color: var(--success) !important; }
 

@@ -449,6 +449,12 @@ const ROWS: Row[] = [
   ["sensor.vitality_gym_discount_status", "22 visits to 75% off", { visits: 14, target: 36, on_track: false }],
   ["sensor.vitality_cardio_fitness_level", "Good", { vo2_max: 41 }],
   ["input_number.vitality_gym_visits_12mo", "14", { min: 0, max: 400, step: 1 }],
+  // HQ money bridge
+  ["input_number.hq_net_worth", "4285000"],
+  ["input_number.hq_total_balance", "128400"],
+  ["input_number.hq_available", "41250"],
+  ["input_text.hq_updated", "2026-07-18 19:40"],
+  ["input_boolean.hq_money_alerts", "on"],
   ["sensor.oura_workouts_today", "1"],
   ["sensor.oura_medium_activity_met_minutes", "127", { unit_of_measurement: "min" }],
   ["sensor.oura_high_activity_met_minutes", "0", { unit_of_measurement: "min" }],
