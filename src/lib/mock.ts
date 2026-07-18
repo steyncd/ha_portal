@@ -82,6 +82,12 @@ const ROWS: Row[] = [
   ["sensor.indoor_average_temperature", "16.0", { unit_of_measurement: "°C" }],
   ["sensor.outdoor_temperature", "20.4", { unit_of_measurement: "°C" }],
   ["sensor.outdoor_humidity", "21", { unit_of_measurement: "%" }],
+  ["sensor.outdoor_forecast_temperature", "19.0", { unit_of_measurement: "°C" }],
+  ["sensor.outdoor_temp_vs_forecast", "1.4", { unit_of_measurement: "°C" }],
+  ["sensor.home_integrity", "2", { issues: [
+    { area: "water", msg: "Possible water leak", detail: "Tank draining 45 L/h with no tap use and borehole off" },
+    { area: "system", msg: "Sensor(s) faulty/stale", detail: "Guest Room Temperature (stale 5h)" },
+  ] }],
   ["weather.home", "clear-night", { temperature: 14 }],
   ["sensor.main_room_temperature", "16.7", { unit_of_measurement: "°C" }],
   ["sensor.liam_s_room_temperature", "16.68", { unit_of_measurement: "°C" }],

@@ -116,6 +116,11 @@
   let loiter = $state<{ total: number; week: number; longestMin: number; recent: { t: number; min: number }[] } | null>(null);
   let refreshing = $state(false);
 
+  // System integrity / sanity checks (sensor.home_integrity, HA-computed)
+  const integrityCount = $derived(ha.num("sensor.home_integrity"));
+  const integrityIssues = $derived((ha.attr("sensor.home_integrity", "issues") as { area: string; msg: string; detail?: string }[] | undefined) ?? []);
+  const AREA_ICON: Record<string, string> = { energy: "⚡", water: "💧", security: "🛡️", system: "🖥️" };
+
   // Cache the computed analysis so repeat visits paint instantly, then refresh in the background.
   const CACHE_KEY = "ha_portal_insights_v1";
   function saveCache() {
@@ -320,6 +325,21 @@
     <div><h1>Insights</h1><p>Long-term trends + {heatDays}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</p></div>
   </div>
 
+  {#if integrityCount != null}
+    <div class="card pad integ" class:ok={integrityCount === 0}>
+      <div class="rh"><span class="lb">System integrity · sanity checks</span><span class="sub" style="color:{integrityCount === 0 ? 'var(--success)' : 'var(--warning)'}">{integrityCount === 0 ? "✓ all clear" : `${integrityCount} issue${integrityCount > 1 ? "s" : ""}`}</span></div>
+      {#if integrityIssues.length}
+        <div class="ilist">
+          {#each integrityIssues as it}
+            <div class="irow"><span class="ii">{AREA_ICON[it.area] ?? "⚠️"}</span><span class="itxt"><span class="im">{it.msg}</span>{#if it.detail}<span class="id">{it.detail}</span>{/if}</span></div>
+          {/each}
+        </div>
+      {:else}
+        <div class="note">Energy balance, solar-vs-forecast, water mass-balance, presence, sensor health and camera liveness all check out.</div>
+      {/if}
+    </div>
+  {/if}
+
   {#if !ready}
     <div class="card pad note">Crunching {DAYS} days of history…</div>
   {:else}
@@ -431,6 +451,14 @@
   .head h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
   .refreshing { color: var(--acc); font-weight: 600; }
+  .integ.ok { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 30%, transparent); }
+  .integ:not(.ok) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 34%, transparent); }
+  .ilist { display: flex; flex-direction: column; gap: 9px; }
+  .irow { display: flex; align-items: flex-start; gap: 11px; }
+  .ii { font-size: 16px; width: 22px; text-align: center; flex-shrink: 0; }
+  .itxt { display: flex; flex-direction: column; gap: 1px; }
+  .im { font-size: 13px; font-weight: 600; color: var(--text); }
+  .id { font-size: 11.5px; color: var(--muted); }
   .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }

@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { n, power, tempColor } from "../lib/format";
   import AreaChart from "../lib/components/AreaChart.svelte";
+  import Overlay from "../lib/components/Overlay.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
 
   type Dev = { id: string; label: string; icon: string; power?: string };
@@ -105,6 +107,15 @@
   });
 
   const pw = (id?: string) => (id ? `${power(ha.num(id)).val} ${power(ha.num(id)).unit}` : "");
+
+  // Outdoor actual vs weather-service forecast (48h overlay)
+  let outHist = $state<{ t: number; v: number }[]>([]);
+  let fcHist = $state<{ t: number; v: number }[]>([]);
+  onMount(async () => {
+    outHist = await ha.history("sensor.outdoor_temperature", 48);
+    fcHist = await ha.history("sensor.outdoor_forecast_temperature", 48);
+  });
+  const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
 </script>
 
 {#snippet devtile(d: Dev)}
@@ -186,11 +197,24 @@
       <div class="none">No sensors or controls in this room.</div>
     {/if}
   </div>
+
+  {#if ha.available("sensor.outdoor_temperature")}
+    <div class="card pad wide">
+      <div class="rh"><span class="lb">Outdoor · actual vs forecast · 48h</span><span class="sub">Now {n(ha.num("sensor.outdoor_temperature"), 1)}° · forecast {n(ha.num("sensor.outdoor_forecast_temperature"), 1)}°{#if fcDelta != null} · <span style="color:{Math.abs(fcDelta) >= 2 ? 'var(--warning)' : 'var(--muted)'}">{fcDelta > 0 ? "+" : ""}{n(fcDelta, 1)}° vs forecast</span>{/if}</span></div>
+      <Overlay height={150} series={[
+        { data: outHist, color: "var(--acc)", label: "Actual", fill: true },
+        { data: fcHist, color: "var(--muted)", label: "Forecast", dash: "4 3" },
+      ]} />
+      <div class="note">Your microclimate sensor vs the weather service. A persistent gap means the forecast runs warm or cool for your spot — both are logged, so the pattern builds over time.</div>
+    </div>
+  {/if}
 </div>
 
 <style>
   .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .wide { grid-column: 1 / -1; }
+  .note { font-size: 11.5px; color: var(--muted-2); margin-top: 10px; }
   .pad { padding: 18px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
