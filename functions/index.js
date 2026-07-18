@@ -1,61 +1,87 @@
 // Public webhook proxy: TextMeBot -> Firebase -> Home Assistant.
 //
-// TextMeBot POSTs each inbound WhatsApp message here. We forward it to HA's
-// authenticated REST API (which works reliably over the Nabu Casa remote URL,
-// unlike the raw /api/webhook path), calling script.wa_process_message — the
-// single routing brain that lives in Home Assistant (packages/feature_wa_inbound.yaml).
+// TextMeBot POSTs each inbound WhatsApp message here. We validate + rate-limit,
+// then forward to HA's authenticated REST API (reliable over Nabu Casa remote),
+// calling script.wa_process_message — the routing brain in Home Assistant.
 //
-// Secrets (set with `firebase functions:secrets:set NAME`):
-//   HA_URL             e.g. https://<id>.ui.nabu.casa   (your Nabu Casa remote URL)
-//   HA_TOKEN           a Home Assistant long-lived access token
-//   WA_WEBHOOK_SECRET  a random string; callers must pass ?key=<it>
+// Hardening: POST-only, shared-secret key, per-sender rate limit (Firestore
+// sliding window), message-length cap, capped instances, structured logging.
+// The sender allow-list (the actual authorization) lives in HA and is editable
+// from the portal (Settings -> WhatsApp).
+//
+// Secrets (firebase functions:secrets:set NAME): HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET
 const { onRequest } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
+const admin = require("firebase-admin");
+
+admin.initializeApp();
+const db = admin.firestore();
 
 const HA_URL = defineSecret("HA_URL");
 const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 
+const RATE_LIMIT = 30; // max messages per sender per rolling minute
+const WINDOW_MS = 60_000;
+const MAX_LEN = 1000; // cap message length before it reaches HA/Gemini
+
 exports.waInbound = onRequest(
-  {
-    secrets: [HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET],
-    region: "us-central1",
-    maxInstances: 3, // bound cost/blast-radius if the endpoint is ever flooded
-  },
+  { secrets: [HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET], region: "us-central1", maxInstances: 3 },
   async (req, res) => {
-    // Shared-secret gate so only TextMeBot (with the key) can reach HA.
+    if (req.method !== "POST") {
+      res.status(405).send("method not allowed");
+      return;
+    }
     const expected = WA_WEBHOOK_SECRET.value();
     if (expected && req.query.key !== expected) {
+      logger.warn("waInbound: bad key", { ip: req.ip });
       res.status(403).send("forbidden");
       return;
     }
 
     const b = req.body || {};
-    // TextMeBot sends { type, from, from_name, to, file, message }
-    const message = (b.message || b.text || b.body || b.Body || "").toString().trim();
+    let message = (b.message || b.text || b.body || b.Body || "").toString().trim();
     const sender = (b.from || b.sender || b.From || "").toString();
-
     if (!message) {
       res.status(200).send("no message");
       return;
+    }
+    if (message.length > MAX_LEN) message = message.slice(0, MAX_LEN);
+
+    // Per-sender sliding-window rate limit (fails open on infra error).
+    const sd = (sender.match(/\d+/g) || []).join("") || "unknown";
+    try {
+      const ref = db.collection("waRate").doc(sd);
+      const ok = await db.runTransaction(async (tx) => {
+        const snap = await tx.get(ref);
+        const nowMs = Date.now();
+        let { count = 0, windowStart = nowMs } = snap.exists ? snap.data() : {};
+        if (nowMs - windowStart > WINDOW_MS) { count = 0; windowStart = nowMs; }
+        count += 1;
+        tx.set(ref, { count, windowStart });
+        return count <= RATE_LIMIT;
+      });
+      if (!ok) {
+        logger.warn("waInbound: rate limited", { sender: sd });
+        res.status(429).send("rate limited");
+        return;
+      }
+    } catch (e) {
+      logger.error("waInbound: rate check failed (allowing)", e);
     }
 
     try {
       const r = await fetch(`${HA_URL.value()}/api/services/script/wa_process_message`, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${HA_TOKEN.value()}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${HA_TOKEN.value()}`, "Content-Type": "application/json" },
         body: JSON.stringify({ message, sender }),
       });
-      logger.info("forwarded to HA", { sender, message, status: r.status });
+      logger.info("waInbound: forwarded", { sender: sd, len: message.length, status: r.status });
       res.status(200).send(r.ok ? "ok" : `ha ${r.status}`);
     } catch (e) {
-      logger.error("forward failed", e);
-      // 200 so TextMeBot doesn't retry-storm on a transient HA hiccup.
-      res.status(200).send("error");
+      logger.error("waInbound: forward failed", e);
+      res.status(200).send("error"); // 200 so TextMeBot doesn't retry-storm
     }
   },
 );
