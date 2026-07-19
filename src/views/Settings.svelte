@@ -8,7 +8,19 @@
   import { addMember, removeMember, promote, demote } from "../lib/access";
   import { enablePush, pushGranted } from "../lib/push";
   import { parseDocument, type ParseKind } from "../lib/documents";
+  import { watchParcels, addParcel, removeParcel, refreshParcels, type Parcel } from "../lib/parcels";
   import Toggle from "../lib/components/Toggle.svelte";
+  import { onMount } from "svelte";
+
+  // ---- parcels (Ship24) ----
+  let parcels = $state<Parcel[]>([]);
+  let newTracking = $state("");
+  let newLabel = $state("");
+  onMount(() => watchParcels((p) => (parcels = p)));
+  async function onAddParcel() {
+    try { await addParcel(newTracking, newLabel); newTracking = ""; newLabel = ""; toast.show("Parcel added"); refreshParcels(); }
+    catch (e) { toast.show(e instanceof Error ? e.message : String(e)); }
+  }
 
   let pushOn = $state(pushGranted());
 
@@ -362,6 +374,25 @@
         <button class="vchip" class:on={prefs.viewsOn[v.id]} onclick={() => toggleView(v.id)}><span>{v.icon}</span>{v.name}</button>
       {/each}
     </div>
+  </div>
+
+  <h2 class="section">Deliveries</h2>
+  <div class="card pad">
+    <div class="lb" style="margin-bottom:12px">📦 Parcel tracking</div>
+    {#if parcels.length === 0}<div class="sub" style="margin-bottom:10px">No parcels tracked yet — add a tracking number below (courier auto-detected).</div>{/if}
+    {#each parcels as p}
+      <div class="urow">
+        <span class="uav2">📦</span>
+        <div class="uinfo"><div class="uem">{p.label || p.trackingNumber}</div><div class="urole" style="text-transform:capitalize">{(p.status || "pending").replace(/_/g, " ")}{#if p.lastEvent} · {p.lastEvent}{/if}</div></div>
+        <button class="rmbtn" onclick={() => removeParcel(p.id)} aria-label="Remove">✕</button>
+      </div>
+    {/each}
+    <div class="composer" style="margin-top:12px">
+      <input bind:value={newTracking} placeholder="Tracking number" onkeydown={(e) => e.key === "Enter" && onAddParcel()} />
+      <input bind:value={newLabel} placeholder="Label" style="max-width:130px" />
+      <button class="send" onclick={onAddParcel}>Add</button>
+    </div>
+    <button class="minibtn ghost" style="margin-top:10px" onclick={refreshParcels}>↻ Refresh statuses</button>
   </div>
 
   <h2 class="section">Documents</h2>

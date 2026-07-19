@@ -28,6 +28,7 @@ const HA_URL = defineSecret("HA_URL");
 const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+const SHIP24_KEY = defineSecret("SHIP24_KEY");
 
 const RATE_LIMIT = 30; // max messages per sender per rolling minute
 const WINDOW_MS = 60_000;
@@ -230,5 +231,50 @@ exports.parseDocument = onRequest(
       logger.error("parseDocument failed", e);
       res.status(500).json({ ok: false, error: String((e && e.message) || e) });
     }
+  },
+);
+
+// ---- Ship24 parcel tracking: refresh all tracked parcels' status ----
+async function refreshAllParcels() {
+  const snap = await db.collection("parcels").get();
+  for (const doc of snap.docs) {
+    const tn = (doc.data().trackingNumber || "").toString().trim();
+    if (!tn) continue;
+    try {
+      const r = await fetch("https://api.ship24.com/public/v1/trackers/track", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SHIP24_KEY.value()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ trackingNumber: tn }),
+      });
+      const j = await r.json();
+      const t = j?.data?.trackings?.[0];
+      const milestone = t?.shipment?.statusMilestone || "pending";
+      const ev = (t?.events || [])[0];
+      await doc.ref.set({
+        status: milestone,
+        courier: (t?.tracker?.courierCode || [])[0] || null,
+        lastEvent: ev ? `${ev.status || ""}${ev.location ? " · " + ev.location : ""}`.trim() : null,
+        delivered: milestone === "delivered",
+        refreshedAt: Date.now(),
+      }, { merge: true });
+    } catch (e) {
+      logger.error("ship24 refresh failed", { tn, e: String((e && e.message) || e) });
+    }
+  }
+}
+
+exports.refreshParcels = onSchedule(
+  { schedule: "every 120 minutes", secrets: [SHIP24_KEY], region: "us-central1", maxInstances: 1 },
+  async () => { await refreshAllParcels(); },
+);
+
+exports.refreshParcelsNow = onRequest(
+  { secrets: [SHIP24_KEY], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { await refreshAllParcels(); res.status(200).json({ ok: true }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );
