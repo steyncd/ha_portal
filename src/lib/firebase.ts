@@ -9,6 +9,7 @@
 // Keeping it out of source just avoids secret-scanner noise. The real hardening
 // is HTTP-referrer + API restrictions on the key in the Google Cloud console.
 import { initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
@@ -27,6 +28,20 @@ if (!firebaseConfig.apiKey) {
 }
 
 export const app = initializeApp(firebaseConfig);
+
+// App Check (reCAPTCHA v3) — attests requests come from the real app. Enforce
+// per-service (Firestore/Storage) in the Firebase console once tokens are flowing.
+if (typeof window !== "undefined" && env.VITE_RECAPTCHA_SITE_KEY) {
+  try {
+    initializeAppCheck(app, {
+      provider: new ReCaptchaV3Provider(env.VITE_RECAPTCHA_SITE_KEY),
+      isTokenAutoRefreshEnabled: true,
+    });
+  } catch (e) {
+    console.error("App Check init failed", e);
+  }
+}
+
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const googleProvider = new GoogleAuthProvider();

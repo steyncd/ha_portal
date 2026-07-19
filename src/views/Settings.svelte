@@ -6,7 +6,15 @@
   import { HASS_URL } from "../lib/config";
   import { authStore, BOOTSTRAP_OWNERS } from "../lib/auth.svelte";
   import { addMember, removeMember, promote, demote } from "../lib/access";
+  import { enablePush, pushGranted } from "../lib/push";
   import Toggle from "../lib/components/Toggle.svelte";
+
+  let pushOn = $state(pushGranted());
+  async function turnOnPush() {
+    const r = await enablePush();
+    toast.show(r.msg);
+    if (r.ok) pushOn = true;
+  }
 
   let { ontv }: { ontv: () => void } = $props();
 
@@ -232,6 +240,10 @@
       </div>
     </div>
     <div class="card pad row"><div><div class="rn">Motion & aurora</div><div class="rs">Drifting glow + flows</div></div><Toggle on={prefs.motion} onchange={toggleMotion} /></div>
+  </div>
+  <div class="card pad row">
+    <div><div class="rn">🔔 Push notifications</div><div class="rs">Alarm, low balance, load-shedding — to this device</div></div>
+    {#if pushOn}<span class="rolechip owner">Enabled</span>{:else}<button class="minibtn" onclick={turnOnPush}>Enable</button>{/if}
   </div>
 
   <!-- people -->

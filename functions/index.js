@@ -151,3 +151,35 @@ exports.syncMoneyNow = onRequest(
     }
   },
 );
+
+// ---- Web push fan-out: send a notification to all registered portal devices ----
+exports.sendPush = onRequest(
+  { secrets: [WA_WEBHOOK_SECRET], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const key = req.query.key || (req.body && req.body.key);
+    if (key !== WA_WEBHOOK_SECRET.value()) { res.status(403).send("forbidden"); return; }
+    const p = { ...req.query, ...(req.body || {}) };
+    const title = (p.title || "Steyn Home").toString();
+    const body = (p.body || p.message || "").toString();
+    const tag = p.tag ? p.tag.toString() : undefined;
+
+    const snap = await db.collection("pushTokens").get();
+    const tokens = snap.docs.map((d) => d.id);
+    if (!tokens.length) { res.status(200).json({ sent: 0, note: "no registered devices" }); return; }
+
+    const resp = await admin.messaging().sendEachForMulticast({
+      tokens,
+      notification: { title, body },
+      webpush: { notification: { icon: "/favicon.svg", tag }, fcmOptions: { link: "/" } },
+      data: tag ? { tag } : {},
+    });
+    // prune dead tokens
+    const dead = [];
+    resp.responses.forEach((r, i) => {
+      if (!r.success && ["messaging/registration-token-not-registered", "messaging/invalid-argument"].includes(r.error?.code)) dead.push(tokens[i]);
+    });
+    await Promise.all(dead.map((t) => db.collection("pushTokens").doc(t).delete()));
+    logger.info("sendPush", { sent: resp.successCount, failed: resp.failureCount, pruned: dead.length });
+    res.status(200).json({ sent: resp.successCount, failed: resp.failureCount, pruned: dead.length });
+  },
+);
