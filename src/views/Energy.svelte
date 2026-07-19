@@ -32,6 +32,19 @@
 
   const indep = $derived(ha.num(E.gridIndepToday));
 
+  // Grid status: load-shedding + time-of-use tariff (already in HA) + air quality
+  const loadshedStatus = $derived(ha.state("sensor.loadshedding") ?? "—");
+  const loadshedActive = $derived(!(ha.state("sensor.loadshedding") ?? "").toLowerCase().includes("no loadshedding"));
+  const tariffPeriod = $derived((ha.state("sensor.eskom_current_tariff_period") ?? "—").replace(/_/g, " "));
+  const tariffRate = $derived(ha.num("sensor.eskom_current_rate"));
+  const isPeak = $derived(["true", "on", "peak"].includes(String(ha.state("sensor.is_peak_tariff_now")).toLowerCase()));
+  const nextRateChange = $derived(ha.state("sensor.eskom_next_rate_change") ?? "—");
+  const aqCategory = $derived(ha.state("sensor.air_quality_category") ?? "—");
+  const aqi = $derived(ha.num("sensor.outdoor_aqi"));
+  const aqColor = $derived((ha.attr("sensor.air_quality_category", "color") as string) ?? "var(--text)");
+  const uv = $derived(ha.num("sensor.outdoor_uv_index"));
+  const pm25 = $derived(ha.num("sensor.outdoor_pm2_5"));
+
   // Energy insights (packages/energy_insights*.yaml)
   const banner = $derived(ha.state(E.energyBanner));
   const bannerLevel = $derived((ha.attr(E.energyBanner, "level") as string) ?? "neutral");
@@ -137,6 +150,12 @@
       <div style="font-size:15px;font-weight:650;color:{bannerColor}">{banner}</div>
     </div>
   {/if}
+
+  <div class="genv">
+    <div class="card pad ge"><div class="gl">⚡ Load-shedding</div><div class="gv" style="color:{loadshedActive ? 'var(--warning)' : 'var(--success)'}">{loadshedStatus}</div></div>
+    <div class="card pad ge"><div class="gl">💰 Tariff now</div><div class="gv" style="color:{isPeak ? 'var(--warning)' : 'var(--success)'}">{tariffPeriod}{#if tariffRate != null} · R{tariffRate}/kWh{/if}</div><div class="gs">next: {nextRateChange}</div></div>
+    <div class="card pad ge"><div class="gl">🌬️ Air quality</div><div class="gv" style="color:{aqColor}">{aqCategory}{#if aqi != null} · {aqi}{/if}</div><div class="gs">UV {uv ?? "—"} · PM2.5 {pm25 ?? "—"} µg/m³</div></div>
+  </div>
 
   <div class="kpis">
     <div class="card k"><div class="lb">Battery</div><div class="big">{n(ha.num(E.batterySoc))}<span class="u">%</span></div><div class="sub" style="color:var(--water)">{n(ha.num(E.batteryPower))} W → home</div></div>
@@ -326,6 +345,12 @@
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
   .k { padding: 16px; }
+  .genv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  @media (max-width: 760px) { .genv { grid-template-columns: 1fr; } }
+  .ge { padding: 15px 18px; }
+  .gl { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gv { font-size: 19px; font-weight: 800; margin-top: 4px; }
+  .gs { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
   .u { font-size: 15px; color: var(--dim); }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
