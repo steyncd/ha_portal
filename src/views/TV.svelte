@@ -154,14 +154,15 @@
 </div>
 
 <style>
-  /* Night: dim for comfort/ambiance in a dark room (LED panel — no burn-in mitigation needed). */
-  .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; padding: clamp(20px, 2.6vw, 50px);
+  /* Padding is a TV title-safe zone (~4%) so Google-TV/TCL overscan never clips
+     the header, tiles, or strip. Night: dim for comfort in a dark room (LED — no burn-in). */
+  .tv { position: fixed; inset: 0; z-index: 90; overflow: hidden; padding: max(24px, 4vh) max(28px, 4vw);
     display: flex; flex-direction: column; gap: clamp(12px, 1.5vw, 22px);
     background: radial-gradient(70vw 60vh at 12% -18%, rgba(129, 140, 248, 0.16), transparent 60%), radial-gradient(60vw 62vh at 116% 122%, rgba(84, 120, 255, 0.12), transparent 55%), #06060d;
     transition: filter 3s ease; }
   .tv.night { filter: brightness(0.52) saturate(0.92); }
 
-  .exit { position: absolute; top: 16px; right: 18px; z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 16px; color: var(--text-2); }
+  .exit { position: absolute; top: max(18px, 3vh); right: max(22px, 3.4vw); z-index: 5; width: 38px; height: 38px; border-radius: 50%; background: rgba(255,255,255,0.1); font-size: 16px; color: var(--text-2); }
 
   /* critical alert banner — only appears when it warrants focus */
   .alert { display: flex; align-items: center; gap: 14px; padding: clamp(12px,1.3vw,20px) clamp(20px,2vw,32px); border-radius: 16px;
