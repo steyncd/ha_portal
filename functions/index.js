@@ -27,6 +27,7 @@ const HQ_PROJECT = "steyn-family-finance";
 const HA_URL = defineSecret("HA_URL");
 const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
+const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 
 const RATE_LIMIT = 30; // max messages per sender per rolling minute
 const WINDOW_MS = 60_000;
@@ -181,5 +182,53 @@ exports.sendPush = onRequest(
     await Promise.all(dead.map((t) => db.collection("pushTokens").doc(t).delete()));
     logger.info("sendPush", { sent: resp.successCount, failed: resp.failureCount, pruned: dead.length });
     res.status(200).json({ sent: resp.successCount, failed: resp.failureCount, pruned: dead.length });
+  },
+);
+
+// ---- Receipt / statement parsing via Gemini vision ----
+// Portal (authed user) POSTs { fileBase64, mimeType, kind } → structured JSON,
+// stored in Firestore `documents`. Statements can feed net worth; receipts spend.
+exports.parseDocument = onRequest(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 3 },
+  async (req, res) => {
+    if (req.method !== "POST") { res.status(405).send("method not allowed"); return; }
+    // caller must be a signed-in portal user (Firebase ID token)
+    const authz = req.headers.authorization || "";
+    const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
+    let user;
+    try { user = await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+
+    const { fileBase64, mimeType, kind } = req.body || {};
+    if (!fileBase64 || !mimeType) { res.status(400).json({ ok: false, error: "missing file/mimeType" }); return; }
+
+    const schema = kind === "receipt"
+      ? '{"type":"receipt","merchant":string|null,"date":"YYYY-MM-DD"|null,"total":number|null,"currency":string|null,"category":string|null,"items":[{"name":string,"price":number}]}'
+      : '{"type":"statement","provider":string|null,"account":string|null,"value":number|null,"currency":string|null,"statement_date":"YYYY-MM-DD"|null}';
+    const prompt = `You are a precise data extractor. Extract the ${kind || "document"} as STRICT JSON matching this shape: ${schema}. Amounts must be plain numbers (no currency symbols, no thousands separators). Use null for anything not present. For a retirement/investment statement, "value" is the current total fund/portfolio value. Respond with JSON only.`;
+
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY.value()}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ inline_data: { mime_type: mimeType, data: fileBase64 } }, { text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json", temperature: 0 },
+        }),
+      });
+      const j = await r.json();
+      if (!r.ok) { logger.error("gemini error", j); res.status(502).json({ ok: false, error: j?.error?.message || `gemini ${r.status}` }); return; }
+      const text = j?.candidates?.[0]?.content?.parts?.[0]?.text || "{}";
+      let extracted;
+      try { extracted = JSON.parse(text); } catch { extracted = { raw: text }; }
+      const ref = await db.collection("documents").add({
+        kind: kind || "document", extracted, uploadedBy: user.email || user.uid, ts: Date.now(),
+      });
+      logger.info("parseDocument", { kind, id: ref.id, by: user.email });
+      res.status(200).json({ ok: true, id: ref.id, extracted });
+    } catch (e) {
+      logger.error("parseDocument failed", e);
+      res.status(500).json({ ok: false, error: String((e && e.message) || e) });
+    }
   },
 );

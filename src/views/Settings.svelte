@@ -7,9 +7,27 @@
   import { authStore, BOOTSTRAP_OWNERS } from "../lib/auth.svelte";
   import { addMember, removeMember, promote, demote } from "../lib/access";
   import { enablePush, pushGranted } from "../lib/push";
+  import { parseDocument, type ParseKind } from "../lib/documents";
   import Toggle from "../lib/components/Toggle.svelte";
 
   let pushOn = $state(pushGranted());
+
+  // ---- document (receipt / statement) parsing ----
+  let docKind = $state<ParseKind>("statement");
+  let docBusy = $state(false);
+  let docErr = $state("");
+  let docResult = $state<Record<string, unknown> | null>(null);
+  async function onDocFile(e: Event) {
+    const f = (e.target as HTMLInputElement).files?.[0];
+    if (!f) return;
+    docBusy = true; docErr = ""; docResult = null;
+    try {
+      const r = await parseDocument(f, docKind);
+      if (r.ok) { docResult = r.extracted ?? {}; toast.show("Document parsed"); }
+      else docErr = r.error ?? "Couldn't parse the document";
+    } catch (err) { docErr = err instanceof Error ? err.message : String(err); }
+    docBusy = false;
+  }
   async function turnOnPush() {
     const r = await enablePush();
     toast.show(r.msg);
@@ -346,6 +364,26 @@
     </div>
   </div>
 
+  <h2 class="section">Documents</h2>
+  <div class="card pad">
+    <div class="lb" style="margin-bottom:12px">📄 Scan a receipt or statement</div>
+    <div class="seg" style="max-width:280px;margin-bottom:14px">
+      <button class:active={docKind === "statement"} onclick={() => (docKind = "statement")}>Statement</button>
+      <button class:active={docKind === "receipt"} onclick={() => (docKind = "receipt")}>Receipt</button>
+    </div>
+    <input type="file" accept="image/*,application/pdf" onchange={onDocFile} disabled={docBusy} />
+    {#if docBusy}<div class="note">Analysing with AI…</div>{/if}
+    {#if docErr}<div class="wawarn" style="margin-top:10px">{docErr}</div>{/if}
+    {#if docResult}
+      <div class="docres">
+        {#each Object.entries(docResult) as [k, v]}
+          {#if k !== "items" && k !== "type"}<div><span>{k.replace(/_/g, " ")}</span><b>{v ?? "—"}</b></div>{/if}
+        {/each}
+      </div>
+    {/if}
+    <div class="note">Statements feed net worth (Allan Gray / Alex Forbes / PPS); receipts log spend. Data extracted by Gemini vision.</div>
+  </div>
+
   <div class="card tvlink">Casting to a wall display? Open the standalone <button class="tvbtn" onclick={ontv}>TV Overview →</button></div>
 </div>
 
@@ -387,6 +425,10 @@
   .wax { width: 20px; height: 20px; border-radius: 50%; background: rgba(255,255,255,0.1); color: var(--muted); font-size: 11px; }
   .wax:hover { background: color-mix(in srgb, var(--error) 22%, transparent); color: #fecdd6; }
   .wawarn { font-size: 12.5px; color: var(--warning); background: color-mix(in srgb, var(--warning) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 30%, transparent); padding: 10px 12px; border-radius: 11px; line-height: 1.5; }
+  .docres { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .docres div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+  .docres span { color: var(--muted); text-transform: capitalize; }
+  .docres b { font-weight: 700; }
   .goal { padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .goal:last-of-type { border-bottom: none; }
   .grow { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 9px; }
