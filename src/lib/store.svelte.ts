@@ -66,6 +66,25 @@ class HAStore {
   #conn: Connection | undefined;
   #auth: { accessToken: string; expired: boolean; refreshAccessToken: () => Promise<void> } | undefined;
   #mock = false;
+  #pending: HassEntities | null = null;
+  #throttle: ReturnType<typeof setTimeout> | null = null;
+
+  // Coalesce HA state pushes: apply the first immediately (leading edge), then at
+  // most once per 300ms, always applying the latest snapshot on the trailing edge.
+  // Without this, every WS tick (Victron power pushes ~1/s) reassigns the whole
+  // entities map, invalidating every $derived across every view — a recompute +
+  // re-layout storm. Dashboards don't need sub-second refresh.
+  #applyEntities(ents: HassEntities) {
+    if (this.#throttle == null) {
+      this.entities = ents;
+      this.#throttle = setTimeout(() => {
+        this.#throttle = null;
+        if (this.#pending) { this.entities = this.#pending; this.#pending = null; }
+      }, 300);
+    } else {
+      this.#pending = ents;
+    }
+  }
 
   async init() {
     if (this.status === "connected") return;
@@ -88,9 +107,7 @@ class HAStore {
         : await connect();
       this.#conn = connection;
       this.#auth = auth;
-      subscribeEntities(connection, (ents) => {
-        this.entities = ents;
-      });
+      subscribeEntities(connection, (ents) => this.#applyEntities(ents));
       this.status = "connected";
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);

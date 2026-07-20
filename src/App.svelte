@@ -7,25 +7,36 @@
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
-  import Overview from "./views/Overview.svelte";
-  import Energy from "./views/Energy.svelte";
-  import PowerTrends from "./views/PowerTrends.svelte";
-  import Water from "./views/Water.svelte";
-  import Irrigation from "./views/Irrigation.svelte";
-  import Rooms from "./views/Rooms.svelte";
-  import Appliances from "./views/Appliances.svelte";
-  import Security from "./views/Security.svelte";
-  import Cameras from "./views/Cameras.svelte";
-  import Traffic from "./views/Traffic.svelte";
-  import Lights from "./views/Lights.svelte";
-  import Reminders from "./views/Reminders.svelte";
-  import System from "./views/System.svelte";
-  import Me from "./views/Me.svelte";
-  import Vitality from "./views/Vitality.svelte";
-  import Timeline from "./views/Timeline.svelte";
-  import Insights from "./views/Insights.svelte";
-  import Settings from "./views/Settings.svelte";
-  import TV from "./views/TV.svelte";
+  // Views are lazy-loaded (dynamic import) so only the active view's code ships in
+  // the initial parse — Vite emits one chunk per view. Keeps first paint light on
+  // low-power devices (TV/phone) where parsing the whole app up front was costly.
+  import type { Component } from "svelte";
+  const VIEWS: Record<string, () => Promise<{ default: Component<any> }>> = {
+    overview: () => import("./views/Overview.svelte"),
+    energy: () => import("./views/Energy.svelte"),
+    powertrends: () => import("./views/PowerTrends.svelte"),
+    water: () => import("./views/Water.svelte"),
+    irrigation: () => import("./views/Irrigation.svelte"),
+    climate: () => import("./views/Rooms.svelte"),
+    appliances: () => import("./views/Appliances.svelte"),
+    security: () => import("./views/Security.svelte"),
+    cameras: () => import("./views/Cameras.svelte"),
+    traffic: () => import("./views/Traffic.svelte"),
+    lights: () => import("./views/Lights.svelte"),
+    reminders: () => import("./views/Reminders.svelte"),
+    system: () => import("./views/System.svelte"),
+    me: () => import("./views/Me.svelte"),
+    vitality: () => import("./views/Vitality.svelte"),
+    timeline: () => import("./views/Timeline.svelte"),
+    insights: () => import("./views/Insights.svelte"),
+    settings: () => import("./views/Settings.svelte"),
+  };
+  // Per-view props (most take none).
+  const viewProps = (id: string): Record<string, unknown> => {
+    if (id === "overview" || id === "energy" || id === "powertrends" || id === "insights") return { onnav: go };
+    if (id === "settings") return { ontv: () => (tv = true) };
+    return {};
+  };
   import CommandPalette from "./lib/components/CommandPalette.svelte";
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
@@ -190,24 +201,16 @@
       </header>
 
       <div class="body">
-        {#if view === "overview"}<Overview onnav={go} />
-        {:else if view === "energy"}<Energy onnav={go} />
-        {:else if view === "powertrends"}<PowerTrends onnav={go} />
-        {:else if view === "water"}<Water />
-        {:else if view === "irrigation"}<Irrigation />
-        {:else if view === "climate"}<Rooms />
-        {:else if view === "appliances"}<Appliances />
-        {:else if view === "security"}<Security />
-        {:else if view === "cameras"}<Cameras />
-        {:else if view === "traffic"}<Traffic />
-        {:else if view === "lights"}<Lights />
-        {:else if view === "reminders"}<Reminders />
-        {:else if view === "system"}<System />
-        {:else if view === "me"}<Me />
-        {:else if view === "vitality"}<Vitality />
-        {:else if view === "timeline"}<Timeline />
-        {:else if view === "insights"}<Insights onnav={go} />
-        {:else if view === "settings"}<Settings ontv={() => (tv = true)} />{/if}
+        {#key view}
+          {#await VIEWS[view]()}
+            <div class="vload"><div class="spinner"></div></div>
+          {:then mod}
+            {@const Cmp = mod.default}
+            <Cmp {...viewProps(view)} />
+          {:catch e}
+            <div class="panel"><strong>Couldn't load this view</strong><p>{e.message}</p></div>
+          {/await}
+        {/key}
       </div>
     </main>
   </div>
@@ -236,7 +239,12 @@
   <CommandPalette open={palette} onnav={go} onclose={() => (palette = false)} />
   <LightSheet />
   <Toast />
-  {#if tv}<TV onexit={() => (tv = false)} />{/if}
+  {#if tv}
+    {#await import("./views/TV.svelte") then mod}
+      {@const TVView = mod.default}
+      <TVView onexit={() => (tv = false)} />
+    {/await}
+  {/if}
 {/if}
 
 <style>
@@ -299,6 +307,7 @@
   .chip.arm { background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent); color: var(--text); }
   .ad { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
   .body { flex: 1; padding: 20px; padding-bottom: 40px; }
+  .vload { min-height: 60dvh; display: grid; place-items: center; }
 
   .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: rgba(7, 11, 17, 0.92); backdrop-filter: blur(18px); border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; min-height: 46px; color: var(--muted-2); }
