@@ -4,7 +4,9 @@
   import { authStore } from "./lib/auth.svelte";
   import { prefs } from "./lib/prefs.svelte";
   import { NAV, type ViewId } from "./lib/nav";
-  import { E } from "./lib/entities";
+  import { E, ALL_LIGHTS } from "./lib/entities";
+  import { ui } from "./lib/ui.svelte";
+  import { toast } from "./lib/toast.svelte";
   import Overview from "./views/Overview.svelte";
   import Energy from "./views/Energy.svelte";
   import PowerTrends from "./views/PowerTrends.svelte";
@@ -36,6 +38,7 @@
   );
   let moreOpen = $state(false);
   let isMobile = $state(false);
+  let now = $state(new Date());
   // ?mock=1 runs the whole UI offline with no HA — and no auth gate, for visual QA.
   const mockMode =
     new URLSearchParams(location.search).get("mock") === "1" ||
@@ -53,7 +56,36 @@
       else if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); palette = true; }
     };
     window.addEventListener("keydown", onkey);
-    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); };
+    const tick = setInterval(() => (now = new Date()), 30_000);
+    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); clearInterval(tick); };
+  });
+
+  // Live clock/date + day-night weather icon for the top bar.
+  const clock = $derived(now.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false }));
+  const dateStr = $derived(now.toLocaleDateString("en-ZA", { weekday: "short", day: "numeric", month: "short" }));
+  const tempIcon = $derived(
+    ha.exists("sun.sun") ? (ha.state("sun.sun") === "above_horizon" ? "☀️" : "🌙") : now.getHours() >= 6 && now.getHours() < 19 ? "☀️" : "🌙",
+  );
+  const weatherTemp = $derived(ha.attr(E.weather, "temperature") != null ? Math.round(ha.attr(E.weather, "temperature") as number) : null);
+
+  // Per-page primary action for the top bar (only where it applies).
+  const hAct = $derived.by(() => {
+    switch (view) {
+      case "overview":
+        return { icon: "✦", label: ui.overviewCustomize ? "Done" : "Customize", run: () => (ui.overviewCustomize = !ui.overviewCustomize) };
+      case "security": {
+        const armed = (ha.state(E.alarmHome) ?? "").startsWith("armed");
+        return { icon: armed ? "🔓" : "🔒", label: armed ? "Disarm" : "Arm", run: () => (armed ? ha.disarm(E.alarmHome) : ha.armAway(E.alarmHome)) };
+      }
+      case "lights":
+        return { icon: "🌑", label: "All off", run: () => { ha.turnOff(ALL_LIGHTS); toast.show("All lights off"); } };
+      case "irrigation":
+        return { icon: "⏹", label: "Stop all", run: () => { ha.script(E.irrStopAll); toast.show("Stopping irrigation"); } };
+      case "reminders":
+        return { icon: "＋", label: "New reminder", run: () => ui.newReminderTick++ };
+      default:
+        return null;
+    }
   });
 
   // Connect to Home Assistant only once the user is signed in and authorised.
@@ -149,15 +181,18 @@
       <header>
         <div class="htitle"><span class="hi">{active.icon}</span><span class="hn">{active.name}</span></div>
         <div class="hchips">
+          <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">⌘K</span></button>
+          {#if hAct}<button class="chip hact" onclick={hAct.run}>{hAct.icon} {hAct.label}</button>{/if}
           <button class="chip arm" style="--c:{alarm.color}" onclick={() => go("security")}><span class="ad"></span>{alarm.label}</button>
-          <span class="chip">🌙 {ha.attr(E.weather, "temperature") != null ? Math.round(ha.attr(E.weather, "temperature") as number) : 16}°</span>
+          <span class="chip">{tempIcon} {weatherTemp != null ? weatherTemp + "°" : "—"}</span>
+          <div class="clockcol"><span class="ck">{clock}</span><span class="cd">{dateStr}</span></div>
         </div>
       </header>
 
       <div class="body">
         {#if view === "overview"}<Overview onnav={go} />
         {:else if view === "energy"}<Energy onnav={go} />
-        {:else if view === "powertrends"}<PowerTrends />
+        {:else if view === "powertrends"}<PowerTrends onnav={go} />
         {:else if view === "water"}<Water />
         {:else if view === "irrigation"}<Irrigation />
         {:else if view === "climate"}<Rooms />
@@ -171,7 +206,7 @@
         {:else if view === "me"}<Me />
         {:else if view === "vitality"}<Vitality />
         {:else if view === "timeline"}<Timeline />
-        {:else if view === "insights"}<Insights />
+        {:else if view === "insights"}<Insights onnav={go} />
         {:else if view === "settings"}<Settings ontv={() => (tv = true)} />{/if}
       </div>
     </main>
@@ -250,7 +285,16 @@
   .htitle { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
   .hi { font-size: 20px; }
   .hn { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
-  .hchips { display: flex; align-items: center; gap: 9px; }
+  .hchips { display: flex; align-items: center; gap: 12px 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip.srch, .chip.hact { border: none; cursor: pointer; }
+  .chip.srch:hover, .chip.hact:hover { background: rgba(255, 255, 255, 0.09); color: var(--text); }
+  .kbd { font-size: 10px; font-weight: 700; color: var(--muted-2); background: rgba(255, 255, 255, 0.07); padding: 2px 6px; border-radius: 6px; }
+  .chip.hact { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); font-weight: 700; }
+  .chip.arm { cursor: pointer; }
+  .clockcol { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.15; padding-left: 3px; }
+  .clockcol .ck { font-size: 13px; font-weight: 700; color: #eef4fc; font-variant-numeric: tabular-nums; }
+  .clockcol .cd { font-size: 10px; color: var(--muted-2); }
+  @media (max-width: 640px) { .chip.srch .kbd { display: none; } .clockcol { display: none; } }
   .chip { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 12px; font-weight: 600; color: var(--text-2); }
   .chip.arm { background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 40%, transparent); color: var(--text); }
   .ad { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }

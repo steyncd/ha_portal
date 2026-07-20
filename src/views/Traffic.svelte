@@ -228,7 +228,7 @@
   .tv { font-size: 13px; font-weight: 700; }
   .bar { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; transition: height 0.5s; }
   .tl { font-size: 11px; color: var(--dim); }
-  .callout { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .callout { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   @media (max-width: 640px) { .callout { grid-template-columns: 1fr; } }
   .co { padding: 15px 18px; border-radius: 16px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08); }
   .cov { font-size: 20px; font-weight: 800; }

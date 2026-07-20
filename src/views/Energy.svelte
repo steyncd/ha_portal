@@ -8,6 +8,7 @@
   import BarChart from "../lib/components/BarChart.svelte";
   import Overlay from "../lib/components/Overlay.svelte";
   import Sankey from "../lib/components/Sankey.svelte";
+  import CrossLinks from "../lib/components/CrossLinks.svelte";
 
   let { onnav }: { onnav?: (id: string) => void } = $props();
 
@@ -170,6 +171,13 @@
     <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u"> kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
     <div class="card k"><div class="lb">Solar strings</div><div class="big" style="color:{mppt === 'ok' ? 'var(--success)' : 'var(--warning)'};font-size:22px;text-transform:capitalize">{mppt ?? '—'}</div><div class="sub">battery {rand(ha.num(E.batteryValueNow))}/h · {ha.state(E.batteryTou) ?? '—'}</div></div>
   </div>
+
+  {#if onnav}
+    <CrossLinks {onnav} links={[
+      { icon: "📊", title: "Per-device breakdown", sub: "Power Trends", to: "powertrends" },
+      { icon: "📈", title: "Long-term trends", sub: "Insights", to: "insights" },
+    ]} />
+  {/if}
 
   <div class="card pad">
     <div class="rh">
@@ -342,7 +350,7 @@
   .hv { font-size: 17px; font-weight: 800; }
   .hk { font-size: 11px; color: var(--muted); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
   .k { padding: 16px; }
   .genv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }

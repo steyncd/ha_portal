@@ -4,13 +4,14 @@
   import { prefs } from "../lib/prefs.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
   import { toast } from "../lib/toast.svelte";
+  import { ui } from "../lib/ui.svelte";
   import { E, ROOMS, INDOOR_LIGHTS, ALL_LIGHTS, SCENES } from "../lib/entities";
   import { n, power, greeting, tempColor, dateMedium, sastHour } from "../lib/format";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
   import Spark from "../lib/components/Spark.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
 
-  let customizing = $state(false);
+  // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
 
   let battHist = $state<{ t: number; v: number }[]>([]);
@@ -112,8 +113,8 @@
   </div>
   <div class="actions">
     <button class="btn" onclick={() => onnav("__palette")}><span>⌘</span> Search</button>
-    <button class="btn" class:active={customizing} onclick={() => (customizing = !customizing)}>✨ {customizing ? "Done" : "Customize"}</button>
-    {#if customizing}
+    <button class="btn" class:active={ui.overviewCustomize} onclick={() => (ui.overviewCustomize = !ui.overviewCustomize)}>✨ {ui.overviewCustomize ? "Done" : "Customize"}</button>
+    {#if ui.overviewCustomize}
       <div class="custom">
         <div class="ch"><span class="lb">Show on overview</span><button class="reset" onclick={() => prefs.resetWidgets()}>Reset</button></div>
         {#each WIDGETS as w}

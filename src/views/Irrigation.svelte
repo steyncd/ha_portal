@@ -69,7 +69,7 @@
       <div class="sub">{smart ? "Auto-skips runs when rain is forecast and adapts to soil moisture." : "Manual scheduling — runs as programmed."}</div>
       <div class="rt">
         <div class="rtrow"><span class="lb">Run time per zone</span><span class="rtv">{n(runtime)} min</span></div>
-        <input type="range" min="1" max="30" value={runtime} oninput={setRuntime} />
+        <input type="range" min="1" max="30" value={runtime} oninput={setRuntime} style="--fill:{((runtime - 1) / 29) * 100}%" />
       </div>
     </div>
     <div class="card pad">

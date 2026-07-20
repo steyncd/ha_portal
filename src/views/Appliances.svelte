@@ -3,14 +3,20 @@
   import { APPLIANCE_AREAS, APPLIANCES, type Appliance } from "../lib/entities";
   import { power } from "../lib/format";
 
-  // Metering plugs (meter:true) have unreliable switch state — derive on/off from power.
-  const appOn = (a: Appliance) => (a.meter ? (ha.num(a.power) ?? 0) > (a.threshold ?? 5) : ha.isOn(a.sw));
+  // Three-state: ON (drawing power), IDLE (switched on but <1 W), OFF (standby).
+  // Metering plugs (meter:true) have unreliable switch state — on/off from power only.
+  const appState = (a: Appliance): "on" | "idle" | "off" => {
+    const w = ha.num(a.power) ?? 0;
+    if (a.meter) return w > (a.threshold ?? 5) ? "on" : "off";
+    if (!ha.isOn(a.sw)) return "off";
+    return w >= 1 ? "on" : "idle";
+  };
 
   const draw = (items: Appliance[]) =>
-    items.reduce((s, a) => s + (appOn(a) ? (ha.num(a.power) ?? 0) : 0), 0);
+    items.reduce((s, a) => s + (appState(a) !== "off" ? (ha.num(a.power) ?? 0) : 0), 0);
 
   const totalDraw = $derived(draw(APPLIANCES));
-  const onCount = $derived(APPLIANCES.filter(appOn).length);
+  const onCount = $derived(APPLIANCES.filter((a) => appState(a) !== "off").length);
 </script>
 
 <div class="col">
@@ -40,9 +46,9 @@
       <div class="appgrid">
         {#each area.items as a}
           {@const p = ha.num(a.power)}
-          {@const on = appOn(a)}
+          {@const st = appState(a)}
           {@const avail = ha.available(a.sw)}
-          <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!avail}>
+          <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw)} disabled={!avail}>
             <span class="aicn">{a.icon}</span>
             <span class="al">
               <span class="anm">{a.label}</span>
@@ -51,7 +57,7 @@
             {#if !avail}
               <span class="apill">N/A</span>
             {:else}
-              <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
+              <span class="apill" class:apon={st === "on"} class:apidle={st === "idle"}>{st === "on" ? "ON" : st === "idle" ? "IDLE" : "OFF"}</span>
             {/if}
           </button>
         {/each}
@@ -80,6 +86,7 @@
   .app { display: flex; align-items: center; gap: 12px; padding: 13px 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); text-align: left; }
   .app:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
   .app.on { background: color-mix(in srgb, var(--warning) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }
+  .app.idle { background: color-mix(in srgb, var(--warning) 6%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 22%, transparent); }
   .app:disabled { opacity: 0.4; cursor: default; }
   .aicn { font-size: 18px; flex-shrink: 0; }
   .al { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
@@ -87,6 +94,7 @@
   .aw { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
   .apill { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; background: rgba(255, 255, 255, 0.08); color: var(--muted); }
   .apill.apon { background: color-mix(in srgb, var(--warning) 30%, transparent); color: #fff; }
+  .apill.apidle { background: color-mix(in srgb, #fbbf24 16%, transparent); color: #fcd34d; }
 
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
 </style>

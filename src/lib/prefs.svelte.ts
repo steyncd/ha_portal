@@ -19,6 +19,7 @@ type Stored = {
   motion: boolean;
   density: "comfortable" | "compact";
   collapsed: boolean;
+  settingsTab: string;
   viewsOn: Record<string, boolean>;
   widgets: Record<string, boolean>;
 };
@@ -29,6 +30,7 @@ const DEFAULTS: Stored = {
   motion: true,
   density: "comfortable",
   collapsed: false,
+  settingsTab: "account",
   viewsOn: {
     energy: true, powertrends: true, water: true, irrigation: true, climate: true, appliances: true,
     cameras: true, traffic: true, lights: true, reminders: true, system: true, me: true, vitality: true, timeline: true, insights: true,
@@ -60,6 +62,7 @@ class Prefs {
   motion = $state(DEFAULTS.motion);
   density = $state<"comfortable" | "compact">(DEFAULTS.density);
   collapsed = $state(DEFAULTS.collapsed);
+  settingsTab = $state(DEFAULTS.settingsTab);
   viewsOn = $state<Record<string, boolean>>({ ...DEFAULTS.viewsOn });
   widgets = $state<Record<string, boolean>>({ ...DEFAULTS.widgets });
 
@@ -70,6 +73,7 @@ class Prefs {
     this.motion = s.motion;
     this.density = s.density;
     this.collapsed = s.collapsed;
+    this.settingsTab = s.settingsTab;
     this.viewsOn = s.viewsOn;
     this.widgets = s.widgets;
   }
@@ -78,6 +82,7 @@ class Prefs {
     const data: Stored = {
       accent: this.accent, hue: this.hue, motion: this.motion,
       density: this.density, collapsed: this.collapsed,
+      settingsTab: this.settingsTab,
       viewsOn: this.viewsOn, widgets: this.widgets,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore */ }

@@ -4,6 +4,9 @@
   import { n, power, rand, dateShort } from "../lib/format";
   import AreaChart from "../lib/components/AreaChart.svelte";
   import BarChart from "../lib/components/BarChart.svelte";
+  import CrossLinks from "../lib/components/CrossLinks.svelte";
+
+  let { onnav }: { onnav?: (id: string) => void } = $props();
 
   type Stat = { t: number; mean: number | null; min: number | null; max: number | null };
 
@@ -226,6 +229,13 @@
     {/if}
   </div>
 
+  {#if onnav}
+    <CrossLinks {onnav} links={[
+      { icon: "⚡", title: "Live totals & power flow", sub: "Energy", to: "energy" },
+      { icon: "📈", title: "Long-term patterns", sub: "Insights", to: "insights" },
+    ]} />
+  {/if}
+
   <!-- headline KPIs -->
   <div class="kpis">
     <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u"> kWh</span></div><div class="sub">over {spanTxt}</div></div>
@@ -307,7 +317,7 @@
   .seg button { padding: 7px 13px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--muted); }
   .seg button.on { background: color-mix(in srgb, var(--brand) 26%, transparent); color: var(--text); }
 
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
   .k { padding: 16px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .big { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
@@ -318,7 +328,7 @@
   .rh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .empty { padding: 40px 0; text-align: center; color: var(--dim); font-size: 13px; }
 
-  .ig { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .ig { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .ic { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); }
   .il { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
   .iv { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }

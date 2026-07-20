@@ -168,9 +168,29 @@
 
   const configurableViews = NAV.filter((v) => !["overview", "security", "settings"].includes(v.id));
   function timeVal(id: string) { return (ha.state(id) ?? "").slice(0, 5); }
+
+  // ---- section tabs ----
+  const TABS = [
+    { id: "account", name: "Account" },
+    { id: "appearance", name: "Appearance" },
+    { id: "alarm", name: "Alarm" },
+    { id: "notify", name: "Notify" },
+    { id: "health", name: "Health" },
+    { id: "views", name: "Views" },
+    { id: "system", name: "System" },
+  ];
+  let tab = $state(prefs.settingsTab);
+  function setTab(id: string) { tab = id; prefs.settingsTab = id; prefs.save(); }
 </script>
 
 <div class="col">
+  <div class="tabbar">
+    {#each TABS as t}
+      <button class="tb" class:active={tab === t.id} onclick={() => setTab(t.id)}>{t.name}</button>
+    {/each}
+  </div>
+
+  {#if tab === "account"}
   <!-- profile -->
   <h2 class="section">Profile</h2>
   <div class="card pad acct">
@@ -197,9 +217,10 @@
     </div>
     <button class="signout" onclick={signOut}>Sign out</button>
   </div>
+  {/if}
 
   <!-- admin: user access (owners only) -->
-  {#if authStore.isOwner}
+  {#if tab === "system" && authStore.isOwner}
     <h2 class="section">Admin · Portal access</h2>
     <div class="card pad">
       <div class="lb" style="margin-bottom:12px">Who can sign in ({roster.length})</div>
@@ -225,7 +246,7 @@
   {/if}
 
   <!-- WhatsApp inbound (owners only) -->
-  {#if authStore.isOwner && waConfigured}
+  {#if tab === "notify" && authStore.isOwner && waConfigured}
     <h2 class="section">WhatsApp · HQ chat</h2>
     <div class="card pad">
       <div class="arow"><span class="ni">💬</span><div class="al"><div class="an">Inbound commands &amp; chat</div><div class="as">Text your HQ number to log data, ask questions, or control the house</div></div><Toggle on={waEnabled} onchange={() => ha.toggleBoolean("input_boolean.wa_inbound_enabled")} /></div>
@@ -247,6 +268,7 @@
     </div>
   {/if}
 
+  {#if tab === "appearance"}
   <!-- appearance -->
   <h2 class="section">Appearance</h2>
   <div class="card pad">
@@ -275,7 +297,9 @@
     <div><div class="rn">🔔 Push notifications</div><div class="rs">Alarm, low balance, load-shedding — to this device</div></div>
     {#if pushOn}<span class="rolechip owner">Enabled</span>{:else}<button class="minibtn" onclick={turnOnPush}>Enable</button>{/if}
   </div>
+  {/if}
 
+  {#if tab === "account"}
   <!-- people -->
   <h2 class="section">Household</h2>
   <div class="card pad">
@@ -289,7 +313,9 @@
       </div>
     {/each}
   </div>
+  {/if}
 
+  {#if tab === "alarm"}
   <!-- alarm automations + schedule -->
   <h2 class="section">Security &amp; alarm</h2>
   <div class="two">
@@ -325,6 +351,9 @@
     </div>
   </div>
 
+  {/if}
+
+  {#if tab === "system"}
   <h2 class="section">Automations</h2>
   <div class="card pad">
     <div class="agrid">
@@ -334,8 +363,10 @@
     </div>
   </div>
 
+  {/if}
+
   <!-- health goals -->
-  {#if healthGoals.length}
+  {#if tab === "health" && healthGoals.length}
     <h2 class="section">Health &amp; goals</h2>
     <div class="card pad">
       {#each healthGoals as g}
@@ -352,6 +383,7 @@
     </div>
   {/if}
 
+  {#if tab === "notify"}
   <!-- broadcast -->
   <h2 class="section">Messages</h2>
   <div class="card pad">
@@ -365,6 +397,9 @@
     </div>
   </div>
 
+  {/if}
+
+  {#if tab === "views"}
   <!-- enabled views -->
   <h2 class="section">Views</h2>
   <div class="card pad">
@@ -376,6 +411,9 @@
     </div>
   </div>
 
+  {/if}
+
+  {#if tab === "notify"}
   <h2 class="section">Deliveries</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:12px">📦 Parcel tracking</div>
@@ -394,7 +432,9 @@
     </div>
     <button class="minibtn ghost" style="margin-top:10px" onclick={refreshParcels}>↻ Refresh statuses</button>
   </div>
+  {/if}
 
+  {#if tab === "system"}
   <h2 class="section">Documents</h2>
   <div class="card pad">
     <div class="lb" style="margin-bottom:12px">📄 Scan a receipt or statement</div>
@@ -414,6 +454,7 @@
     {/if}
     <div class="note">Statements feed net worth (Allan Gray / Alex Forbes / PPS); receipts log spend. Data extracted by Gemini vision.</div>
   </div>
+  {/if}
 
   <div class="card tvlink">Casting to a wall display? Open the standalone <button class="tvbtn" onclick={ontv}>TV Overview →</button></div>
 </div>
@@ -422,6 +463,10 @@
   .col { display: flex; flex-direction: column; gap: 14px; }
   .section { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted-2); margin: 8px 2px -4px; }
   .section:first-child { margin-top: 0; }
+  .tabbar { display: flex; gap: 5px; flex-wrap: wrap; padding: 5px; border-radius: 14px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .tb { flex: 1 1 auto; min-width: 76px; padding: 9px 12px; border: none; border-radius: 10px; background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; transition: color 0.15s, background 0.15s; }
+  .tb:hover { color: var(--text); }
+  .tb.active { background: var(--grad); color: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28); }
   .agrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
   @media (max-width: 640px) { .agrid { grid-template-columns: 1fr; } }
   .pad { padding: 22px; }

@@ -5,6 +5,7 @@
       "name": "ha-portal-dev",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "C:\\Code\\HA_Portal",
       "port": 5173
     }
   ]

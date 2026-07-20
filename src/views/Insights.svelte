@@ -6,6 +6,8 @@
   import TrendCard from "../lib/components/TrendCard.svelte";
   import { analyze, analyzeScalars, toSeries, rank, type MetricDef, type Trend, type StatPoint } from "../lib/trends";
 
+  let { onnav }: { onnav?: (id: string) => void } = $props();
+
   const DAYS = 7;
   const HRS = 24 * DAYS;
 
@@ -321,8 +323,15 @@
 </script>
 
 <div class="col">
-  <div class="head">
-    <div><h1>Insights</h1><p>Long-term trends + {heatDays}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</p></div>
+  <div class="card pad hero">
+    <span class="hglow"></span>
+    <span class="hicon">📈</span>
+    <div class="hmain">
+      <div class="hlbl">Patterns &amp; long-term trends</div>
+      <div class="htitle">{headlines.length ? `Everything's on track — ${headlines.length} gentle nudge${headlines.length === 1 ? "" : "s"}` : "Everything's on track"}</div>
+      <div class="hsub">{heatDays}-day patterns · computed from your history{#if refreshing} · <span class="refreshing">updating…</span>{/if}</div>
+    </div>
+    {#if onnav}<button class="hx" onclick={() => onnav?.("powertrends")}>📊 Per-device →</button>{/if}
   </div>
 
   {#if integrityCount != null}
@@ -448,8 +457,15 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .head h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
+  .hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; overflow: hidden; }
+  .hglow { position: absolute; inset: 0; background: radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 60%); pointer-events: none; }
+  .hicon { position: relative; width: 52px; height: 52px; flex-shrink: 0; border-radius: 15px; display: grid; place-items: center; font-size: 24px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
+  .hmain { position: relative; flex: 1; min-width: 200px; }
+  .hlbl { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--acc); }
+  .htitle { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; margin-top: 4px; }
+  .hsub { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+  .hx { position: relative; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 11px; background: rgba(255, 255, 255, 0.06); color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; }
+  .hx:hover { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); }
   .refreshing { color: var(--acc); font-weight: 600; }
   .integ.ok { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 30%, transparent); }
   .integ:not(.ok) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 34%, transparent); }
@@ -470,7 +486,7 @@
   .hli { font-size: 17px; width: 22px; text-align: center; flex-shrink: 0; }
 
   .tgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
-  .vs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .vs { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   @media (max-width: 640px) { .vs { grid-template-columns: 1fr; } }
   .vscard { padding: 16px 18px; }
   .vslbl { font-size: 11.5px; color: var(--muted); }

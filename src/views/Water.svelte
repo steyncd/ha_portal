@@ -206,7 +206,7 @@
   .wear.warn { color: #fecaca; background: color-mix(in srgb, var(--error) 14%, transparent); }
   .wear.good { color: #bbf7d0; background: color-mix(in srgb, var(--success) 12%, transparent); }
   .note { font-size: 11.5px; color: var(--muted-2); }
-  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .s { padding: 16px; }
   .sv { font-size: 24px; font-weight: 800; margin-top: 5px; }
   .u { font-size: 13px; color: var(--dim); }

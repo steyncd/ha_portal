@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { ha, type Reminder } from "../lib/store.svelte";
   import { toast } from "../lib/toast.svelte";
+  import { ui } from "../lib/ui.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
 
   const SPEAKERS = [
@@ -97,6 +98,9 @@
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   }
   function openNew() { editingUid = null; f = newForm(); building = true; preview = ""; }
+  // Open the builder when the global top-bar "New reminder" action fires (Reminders is mounted then).
+  let seenNewTick = ui.newReminderTick;
+  $effect(() => { if (ui.newReminderTick !== seenNewTick) { seenNewTick = ui.newReminderTick; openNew(); } });
   function openEdit(r: Reminder) {
     const c = parseCfg(r); const d = start(r) ? new Date(start(r)!) : new Date();
     f = {

@@ -183,7 +183,7 @@
 
     {#if temps.length}
       <div class="tr">
-        <div class="bigt" style="color:{tempColor(temp)}">{n(temp, 1)}<span class="deg">°</span></div>
+        <div class="bigt" style="color:{tempColor(temp)}">{n(temp, 1)}{#if temp != null}<span class="deg">°</span>{/if}</div>
         <div class="pill" style="background:color-mix(in srgb,{comfort.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{comfort.color} 34%,transparent)">
           <span class="pd" style="background:{comfort.color};box-shadow:0 0 8px {comfort.color}"></span>{comfort.label}
         </div>

@@ -112,7 +112,7 @@
   .pt { font-size: 16px; font-weight: 800; }
   .psub { font-size: 12px; color: var(--dim); margin-top: 2px; }
   .pcount { font-size: 20px; font-weight: 800; color: var(--warning); }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
   .k { padding: 16px; }
   .big { font-size: 26px; font-weight: 800; margin-top: 5px; }

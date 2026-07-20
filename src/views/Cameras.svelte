@@ -49,9 +49,9 @@
           {#if src && !failed[c.id]}
             <img {src} alt="" loading="lazy" onerror={() => (failed = { ...failed, [c.id]: true })} />
           {:else}
-            <span class="fl">{up ? "no snapshot" : "offline"}</span>
+            <div class="ph"><span class="phic">📷</span><span class="fl">{up ? "snapshot · pending" : "offline"}</span></div>
           {/if}
-          <span class="rec" class:off={!up}><span class="rd"></span>{up ? (ha.state(c.id) === "recording" ? "REC" : "LIVE") : "OFFLINE"}</span>
+          <span class="rec" class:off={!up} class:live={up && ha.state(c.id) !== "recording"}><span class="rd"></span>{up ? (ha.state(c.id) === "recording" ? "REC" : "LIVE") : "OFFLINE"}</span>
         </div>
         <div class="cf"><span class="cn">{c.label}</span><span class="cs">{c.sub}</span></div>
       </div>
@@ -62,7 +62,7 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
   .k { padding: 15px; }
   .big { font-size: 26px; font-weight: 800; margin-top: 5px; }
@@ -76,12 +76,16 @@
   .etime { font-size: 11.5px; color: var(--muted-2); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
   .cam { overflow: hidden; }
-  .feed { aspect-ratio: 16/9; background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.035) 0 12px, rgba(255, 255, 255, 0.06) 12px 24px); display: flex; align-items: center; justify-content: center; position: relative; }
+  .feed { aspect-ratio: 16/9; background: radial-gradient(120% 120% at 50% 28%, rgba(129, 140, 248, 0.12), rgba(8, 12, 19, 0.92)); display: flex; align-items: center; justify-content: center; position: relative; }
   .feed img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .ph { display: flex; flex-direction: column; align-items: center; gap: 7px; }
+  .phic { font-size: 32px; opacity: 0.45; }
   .fl { font-family: ui-monospace, Menlo, monospace; font-size: 11px; color: var(--muted-2); }
   .rec { position: absolute; top: 9px; left: 9px; z-index: 1; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px; background: rgba(0, 0, 0, 0.5); font-size: 10px; font-weight: 700; color: var(--error); }
   .rec.off { color: var(--muted-2); }
+  .rec.live { color: var(--success); }
   .rd { width: 6px; height: 6px; border-radius: 50%; background: var(--error); animation: pulse 1.5s infinite; }
+  .rec.live .rd { background: var(--success); }
   .rec.off .rd { background: var(--muted-2); animation: none; }
   .cf { padding: 11px 13px; display: flex; justify-content: space-between; align-items: center; }
   .cn { font-size: 12.5px; font-weight: 600; }
