@@ -111,11 +111,30 @@
   // Outdoor actual vs weather-service forecast (48h overlay)
   let outHist = $state<{ t: number; v: number }[]>([]);
   let fcHist = $state<{ t: number; v: number }[]>([]);
+  // Floating (portable) temperature sensor — roams the house, not tied to a room.
+  let fhist = $state<{ t: number; v: number }[]>([]);
   onMount(async () => {
     outHist = await ha.history("sensor.outdoor_temperature", 48);
     fcHist = await ha.history("sensor.outdoor_forecast_temperature", 48);
+    fhist = await ha.history("sensor.floating_temp_sensor_temperature", 24);
   });
   const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
+
+  // Floating Temp Sensor (portable Zigbee): temp + humidity + light + battery.
+  const FLOAT_T = "sensor.floating_temp_sensor_temperature";
+  const ftemp = $derived(ha.num(FLOAT_T));
+  const fhum = $derived(ha.num("sensor.floating_temp_sensor_humidity"));
+  const flux = $derived(ha.num("sensor.floating_temp_sensor_illuminance"));
+  const fbatt = $derived(ha.num("sensor.floating_temp_sensor_battery"));
+  const fcomfort = $derived.by(() => {
+    const t = ftemp;
+    if (t == null) return { label: "No reading", color: "var(--muted)" };
+    if (t < 14) return { label: "Cold", color: "#3b82f6" };
+    if (t < 17) return { label: "Cool", color: "var(--water)" };
+    if (t < 21.5) return { label: "Comfortable", color: "var(--success)" };
+    if (t < 25) return { label: "Warm", color: "var(--warning)" };
+    return { label: "Hot", color: "var(--error)" };
+  });
 </script>
 
 {#snippet devtile(d: Dev)}
@@ -197,6 +216,24 @@
       <div class="none">No sensors or controls in this room.</div>
     {/if}
   </div>
+
+  {#if ha.available(FLOAT_T)}
+    <div class="card pad">
+      <div class="rh"><span class="an">📟 Floating sensor</span><span class="sub">portable{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
+      <div class="tr">
+        <div class="bigt" style="color:{tempColor(ftemp)}">{n(ftemp, 1)}<span class="deg">°</span></div>
+        <div class="pill" style="background:color-mix(in srgb,{fcomfort.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{fcomfort.color} 34%,transparent)">
+          <span class="pd" style="background:{fcomfort.color};box-shadow:0 0 8px {fcomfort.color}"></span>{fcomfort.label}
+        </div>
+      </div>
+      <div class="chips">
+        {#if fhum != null}<span class="chip"><span class="ck">Humidity</span><span class="cv">{n(fhum)}%</span></span>{/if}
+        {#if flux != null}<span class="chip"><span class="ck">Light</span><span class="cv">{n(flux)} lx</span></span>{/if}
+      </div>
+      <div class="rh" style="margin:18px 0 2px"><span class="lb">Temperature · 24h</span></div>
+      <AreaChart data={fhist} color={fcomfort.color} unit="°" digits={0} height={120} />
+    </div>
+  {/if}
 
   {#if ha.available("sensor.outdoor_temperature")}
     <div class="card pad wide">
