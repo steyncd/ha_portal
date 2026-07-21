@@ -22,13 +22,18 @@
   let solarWeek = $state<{ label: string; value: number | null }[]>([]);
   let solarMonth = $state<{ t: number; v: number }[]>([]);
   onMount(async () => {
-    socHist = await ha.history(E.batterySoc, 24);
-    pvHist = await ha.history(E.pvPower, 24);
-    loadHist = await ha.history(E.loads, 24);
-    gridHist = await ha.history(E.gridPower, 24);
-    solarWeek = dailyMax(await ha.history(E.solarYieldToday, 24 * 7), 7);
-    const m = dailyMax(await ha.history(E.solarYieldToday, 24 * 30), 30);
-    solarMonth = m.map((d, i) => ({ t: i, v: d.value ?? 0 }));
+    // Parallel + batched: the four 24h reads collapse to a single WS request.
+    const [soc, pv, load, grid, week, month] = await Promise.all([
+      ha.history(E.batterySoc, 24),
+      ha.history(E.pvPower, 24),
+      ha.history(E.loads, 24),
+      ha.history(E.gridPower, 24),
+      ha.history(E.solarYieldToday, 24 * 7),
+      ha.history(E.solarYieldToday, 24 * 30),
+    ]);
+    socHist = soc; pvHist = pv; loadHist = load; gridHist = grid;
+    solarWeek = dailyMax(week, 7);
+    solarMonth = dailyMax(month, 30).map((d, i) => ({ t: i, v: d.value ?? 0 }));
   });
 
   const indep = $derived(ha.num(E.gridIndepToday));

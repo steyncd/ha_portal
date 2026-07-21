@@ -68,6 +68,10 @@ class HAStore {
   #mock = false;
   #pending: HassEntities | null = null;
   #throttle: ReturnType<typeof setTimeout> | null = null;
+  // Batches concurrent history() / historyStates() calls sharing the same time
+  // window into ONE history_during_period WS request (many entity_ids). A view
+  // opening N charts becomes 1 round-trip to HA instead of N (Timeline ~27→1).
+  #histBatch = new Map<number, { ids: Set<string>; waiters: { id: string; kind: "num" | "str"; resolve: (v: unknown) => void }[] }>();
 
   // Coalesce HA state pushes: apply the first immediately (leading edge), then at
   // most once per 300ms, always applying the latest snapshot on the trailing edge.
@@ -148,52 +152,83 @@ class HAStore {
   }
 
   // ---- history ----
+  #parseNum(arr: Array<Record<string, unknown>>): { t: number; v: number }[] {
+    const out: { t: number; v: number }[] = [];
+    for (const p of arr) {
+      const v = Number((p.s ?? p.state) as string | number | undefined);
+      const lu = p.lu as number | undefined;
+      const lc = (p.last_changed ?? p.lc) as string | number | undefined;
+      const t = typeof lu === "number" ? lu * 1000 : typeof lc === "number" ? lc * 1000 : lc ? Date.parse(lc) : NaN;
+      if (Number.isFinite(v) && Number.isFinite(t)) out.push({ t, v });
+    }
+    return out;
+  }
+  #parseStr(arr: Array<Record<string, unknown>>): { t: number; s: string }[] {
+    const out: { t: number; s: string }[] = [];
+    let prev = "";
+    for (const p of arr) {
+      const s = String((p.s ?? p.state) ?? "").trim();
+      const lu = p.lu as number | undefined;
+      const lc = (p.last_changed ?? p.lc) as string | number | undefined;
+      const t = typeof lu === "number" ? lu * 1000 : typeof lc === "number" ? lc * 1000 : lc ? Date.parse(lc) : NaN;
+      if (!s || s === "None" || s === "unknown" || s === "unavailable" || s === prev || !Number.isFinite(t)) continue;
+      prev = s;
+      out.push({ t, s });
+    }
+    return out.reverse();
+  }
+  // Queue a per-entity history read; concurrent reads over the same window flush
+  // together as one WS request on the next microtask.
+  #enqueueHist(kind: "num" | "str", entityId: string, hours: number): Promise<unknown> {
+    let b = this.#histBatch.get(hours);
+    if (!b) {
+      b = { ids: new Set(), waiters: [] };
+      this.#histBatch.set(hours, b);
+      queueMicrotask(() => this.#flushHist(hours));
+    }
+    b.ids.add(entityId);
+    return new Promise((resolve) => b!.waiters.push({ id: entityId, kind, resolve }));
+  }
+  async #flushHist(hours: number) {
+    const b = this.#histBatch.get(hours);
+    if (!b) return;
+    this.#histBatch.delete(hours);
+    let res: Record<string, Array<Record<string, unknown>>> = {};
+    if (this.#conn) {
+      const end = new Date();
+      const start = new Date(end.getTime() - hours * 3_600_000);
+      try {
+        res = (await withTimeout(
+          this.#conn.sendMessagePromise({
+            type: "history/history_during_period",
+            start_time: start.toISOString(),
+            end_time: end.toISOString(),
+            entity_ids: [...b.ids],
+            minimal_response: true,
+            no_attributes: true,
+          }),
+          20_000,
+          {},
+        )) as Record<string, Array<Record<string, unknown>>>;
+      } catch {
+        res = {};
+      }
+    }
+    for (const w of b.waiters) {
+      const arr = res?.[w.id] ?? [];
+      w.resolve(w.kind === "num" ? this.#parseNum(arr) : this.#parseStr(arr));
+    }
+  }
+
   /**
    * Fetch a numeric history series for an entity over the last `hours`.
    * Returns [] on any failure so charts can degrade gracefully.
+   * Concurrent calls sharing `hours` are batched into one WS request.
    */
-  async history(
-    entityId: string,
-    hours = 24,
-  ): Promise<{ t: number; v: number }[]> {
+  async history(entityId: string, hours = 24): Promise<{ t: number; v: number }[]> {
     if (this.#mock) return this.#synth(entityId, hours);
     if (!this.#conn) return [];
-    const end = new Date();
-    const start = new Date(end.getTime() - hours * 3_600_000);
-    try {
-      const res = (await withTimeout(
-        this.#conn.sendMessagePromise({
-          type: "history/history_during_period",
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          entity_ids: [entityId],
-          minimal_response: true,
-          no_attributes: true,
-        }),
-        20_000,
-        {},
-      )) as Record<string, Array<Record<string, unknown>>>;
-      const arr = res?.[entityId] ?? [];
-      const out: { t: number; v: number }[] = [];
-      for (const p of arr) {
-        const raw = (p.s ?? p.state) as string | number | undefined;
-        const v = Number(raw);
-        const lu = p.lu as number | undefined;
-        const lc = (p.last_changed ?? p.lc) as string | number | undefined;
-        const t =
-          typeof lu === "number"
-            ? lu * 1000
-            : typeof lc === "number"
-              ? lc * 1000
-              : lc
-                ? Date.parse(lc)
-                : NaN;
-        if (Number.isFinite(v) && Number.isFinite(t)) out.push({ t, v });
-      }
-      return out;
-    } catch {
-      return [];
-    }
+    return this.#enqueueHist("num", entityId, hours) as Promise<{ t: number; v: number }[]>;
   }
 
   /**
@@ -230,37 +265,7 @@ class HAStore {
       ];
     }
     if (!this.#conn) return [];
-    const end = new Date();
-    const start = new Date(end.getTime() - hours * 3_600_000);
-    try {
-      const res = (await withTimeout(
-        this.#conn.sendMessagePromise({
-          type: "history/history_during_period",
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
-          entity_ids: [entityId],
-          minimal_response: true,
-          no_attributes: true,
-        }),
-        20_000,
-        {},
-      )) as Record<string, Array<Record<string, unknown>>>;
-      const arr = res?.[entityId] ?? [];
-      const out: { t: number; s: string }[] = [];
-      let prev = "";
-      for (const p of arr) {
-        const s = String((p.s ?? p.state) ?? "").trim();
-        const lu = p.lu as number | undefined;
-        const lc = (p.last_changed ?? p.lc) as string | number | undefined;
-        const t = typeof lu === "number" ? lu * 1000 : typeof lc === "number" ? lc * 1000 : lc ? Date.parse(lc) : NaN;
-        if (!s || s === "None" || s === "unknown" || s === "unavailable" || s === prev || !Number.isFinite(t)) continue;
-        prev = s;
-        out.push({ t, s });
-      }
-      return out.reverse();
-    } catch {
-      return [];
-    }
+    return this.#enqueueHist("str", entityId, hours) as Promise<{ t: number; s: string }[]>;
   }
 
   /**

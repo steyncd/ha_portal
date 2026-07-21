@@ -18,7 +18,9 @@
 
   // refresh snapshot stills periodically (cache-bust)
   let tick = $state(0);
-  onMount(() => { const i = setInterval(() => (tick += 1), 10000); return () => clearInterval(i); });
+  // Refresh snapshots only while visible — don't pull 8 full-res JPEGs every 10s
+  // when the tab is backgrounded or the wall display's screen is off.
+  onMount(() => { const i = setInterval(() => { if (!document.hidden) tick += 1; }, 10000); return () => clearInterval(i); });
   function snap(id: string): string | null {
     const ep = ha.attr(id, "entity_picture") as string | undefined;
     if (!ep) return null;

@@ -193,3 +193,18 @@ input[type="range"]::-moz-range-thumb {
 .reduce-motion * {
   animation: none !important;
 }
+/* Reduced motion (Settings "Motion & aurora" toggle OR the OS setting): drop the
+   always-on aurora orbs — two blurred, animated full-viewport layers are the
+   biggest steady-state GPU cost on low-power devices (wall TV / phone). The
+   static .bg gradient stays, so the look is preserved, just calmer. */
+.reduce-motion .orb {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+  }
+  .orb {
+    display: none;
+  }
+}
