@@ -27,9 +27,12 @@ type AuthStatus = "loading" | "signedout" | "denied" | "ready";
 class AuthStore {
   user = $state<User | null>(null);
   status = $state<AuthStatus>("loading");
-  role = $state<"owner" | "member" | null>(null);
+  role = $state<"owner" | "member" | "guest" | null>(null);
   members = $state<string[]>([]);
   owners = $state<string[]>([]);
+  guests = $state<string[]>([]);
+  guestViews = $state<string[]>([]); // allowed view ids for the signed-in guest
+  guestConfig = $state<{ e: string; v: string[] }[]>([]); // per-guest views (admin view)
   error = $state("");
   #unsub: (() => void) | null = null;
 
@@ -46,18 +49,23 @@ class AuthStore {
       this.#unsub = onSnapshot(
         doc(db, "settings", "access"),
         (snap) => {
-          const d = (snap.data() as { members?: string[]; owners?: string[] } | undefined) ?? {};
+          const d = (snap.data() as { members?: string[]; owners?: string[]; guests?: string[]; guestViews?: { e: string; v: string[] }[] } | undefined) ?? {};
           this.owners = d.owners ?? [];
           this.members = d.members ?? [];
+          this.guests = d.guests ?? [];
+          this.guestConfig = d.guestViews ?? [];
           const isOwner = boot.includes(email) || this.owners.map(lc).includes(email);
           const isMember = isOwner || this.members.map(lc).includes(email);
-          this.role = isOwner ? "owner" : isMember ? "member" : null;
-          this.status = isMember ? "ready" : "denied";
+          const isGuest = !isMember && this.guests.map(lc).includes(email);
+          this.role = isOwner ? "owner" : isMember ? "member" : isGuest ? "guest" : null;
+          this.guestViews = isGuest ? ((d.guestViews ?? []).find((g) => lc(g.e) === email)?.v ?? []) : [];
+          this.status = isMember || isGuest ? "ready" : "denied";
         },
         () => {
           // Can't read the doc yet (missing / rules) — fall back to bootstrap.
           const isOwner = boot.includes(email);
           this.role = isOwner ? "owner" : null;
+          this.guestViews = [];
           this.status = isOwner ? "ready" : "denied";
         },
       );
@@ -65,6 +73,7 @@ class AuthStore {
   }
 
   get isOwner() { return this.role === "owner"; }
+  get isGuest() { return this.role === "guest"; }
 
   async signIn() {
     this.error = "";

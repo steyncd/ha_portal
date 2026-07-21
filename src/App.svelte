@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { ha } from "./lib/store.svelte";
   import { authStore } from "./lib/auth.svelte";
+  import { logAccess } from "./lib/accessLog";
   import { prefs } from "./lib/prefs.svelte";
   import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
@@ -106,12 +107,25 @@
     if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
   });
 
-  const visible = (id: ViewId) =>
-    (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-    (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+  const visible = (id: ViewId) => {
+    // Guest ROLE (server-defined): only Overview + the views shared with them;
+    // never Settings. Not toggleable by the guest.
+    if (authStore.isGuest) return id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
+    // Members/owners: honour the per-device guest toggle + enabled-views prefs.
+    return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
+      (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+  };
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
-  // Leaving a now-hidden view (e.g. entering guest mode on Security) → Overview.
-  $effect(() => { if (prefs.guest && GUEST_HIDDEN.includes(view)) view = "overview"; });
+  // Never sit on a now-hidden view (entering guest mode, or a guest landing).
+  $effect(() => { if (!visible(view)) view = "overview"; });
+  // Access log: record sign-in once, then each distinct view opened (deduped).
+  let logged = false;
+  $effect(() => {
+    if (!mockMode && authStore.status === "ready") {
+      if (!logged) { logged = true; logAccess("signin"); }
+      logAccess("view", view);
+    }
+  });
   const active = $derived(NAV.find((nav) => nav.id === view)!);
 
   const groups = NAV_GROUPS;
@@ -207,7 +221,12 @@
         </div>
       </header>
 
-      {#if prefs.guest}
+      {#if authStore.isGuest}
+        <div class="guestbar">
+          <span class="gdot"></span>
+          <span>Guest access — you're seeing the views shared with you. Private security, camera, location &amp; health data is hidden.</span>
+        </div>
+      {:else if prefs.guest}
         <div class="guestbar">
           <span class="gdot"></span>
           <span>Guest view — private security, camera, location &amp; health data is hidden.</span>

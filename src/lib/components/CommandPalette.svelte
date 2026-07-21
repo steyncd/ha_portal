@@ -3,6 +3,7 @@
   import { E, ALL_LIGHTS } from "../entities";
   import { NAV, GUEST_HIDDEN, type ViewId } from "../nav";
   import { prefs } from "../prefs.svelte";
+  import { authStore } from "../auth.svelte";
   import { toast } from "../toast.svelte";
 
   let {
@@ -18,7 +19,11 @@
 
   const armTarget = "alarm_control_panel.helloliam_alarm_area_01_huis";
 
-  const all = $derived<Cmd[]>([
+  // Guests get navigation to their allowed views only — no control actions.
+  const all = $derived<Cmd[]>(
+    authStore.isGuest
+      ? NAV.filter((n) => n.id === "overview" || (n.id !== "settings" && authStore.guestViews.includes(n.id))).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) }))
+      : [
     ...NAV.filter((n) => !prefs.guest || !GUEST_HIDDEN.includes(n.id)).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
     { icon: prefs.guest ? "🔓" : "👋", label: prefs.guest ? "Exit guest view" : "Enter guest view", hint: "Mode", run: () => { prefs.guest = !prefs.guest; prefs.save(); toast.show(prefs.guest ? "Guest view on" : "Guest view off"); } },
     { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
