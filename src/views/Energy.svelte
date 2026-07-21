@@ -9,6 +9,7 @@
   import Overlay from "../lib/components/Overlay.svelte";
   import Sankey from "../lib/components/Sankey.svelte";
   import CrossLinks from "../lib/components/CrossLinks.svelte";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   let { onnav }: { onnav?: (id: string) => void } = $props();
 
@@ -287,8 +288,9 @@
     </div>
   {/if}
 
-  <div class="card pad">
-    <div class="rh"><span class="lb">Victron system · inverter &amp; chargers</span><span class="ok">● {ha.state(E.gridLostAlarm) === "0" ? "VE.Bus OK · grid connected" : "grid lost"}</span></div>
+  <div class="card card--hero pad">
+    <span class="glow" style="--gc:var(--battery)"></span>
+    <div class="rh"><span class="lb">Victron system · inverter &amp; chargers</span><StatusChip state={ha.state(E.gridLostAlarm) === "0" ? "ok" : "warn"} label={ha.state(E.gridLostAlarm) === "0" ? "VE.Bus OK · grid connected" : "Grid lost"} /></div>
     <!-- charge-state track -->
     <div class="charge">
       {#each CHARGE as c, i}
@@ -369,7 +371,6 @@
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
-  .ok { font-size: 11.5px; color: var(--success); font-weight: 600; }
   .seeall { font-size: 12px; color: var(--acc2); font-weight: 600; }
   .seeall:hover { color: var(--acc); }
   .tabs { display: flex; gap: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 11px; padding: 4px; }

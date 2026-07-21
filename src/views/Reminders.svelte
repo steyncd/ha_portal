@@ -169,7 +169,8 @@
 </script>
 
 <div class="col">
-  <div class="card head">
+  <div class="card card--hero head">
+    <span class="glow" style="--gc:var(--acc)"></span>
     <div><div class="lb">Reminders</div><div class="sub">Announce, push &amp; WhatsApp — once-off or on repeat.</div></div>
     <div class="hact">
       <label class="en"><span>Enabled</span><Toggle on={ha.isOn("input_boolean.reminders_enabled")} onchange={() => ha.toggleBoolean("input_boolean.reminders_enabled")} /></label>

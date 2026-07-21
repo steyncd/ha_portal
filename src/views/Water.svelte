@@ -64,7 +64,8 @@
 
 <div class="col">
   <!-- days-remaining hero -->
-  <div class="card hero" class:low>
+  <div class="card card--hero hero" class:low>
+    <span class="glow" style="--gc:var(--water)"></span>
     <div class="hleft">
       <div class="hbig" style="color:{daysColor}">{n(days)}<span class="hunit"> days</span></div>
       <div class="hlbl">of water left at current use</div>

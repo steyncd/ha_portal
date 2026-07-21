@@ -121,7 +121,8 @@
 
 <div class="col">
   <!-- status hero -->
-  <div class="card status">
+  <div class="card card--hero status">
+    <span class="glow" style="--gc:var(--security)"></span>
     <div class="left">
       <span class="orb" style="background:color-mix(in srgb,{meta.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{meta.color} 40%,transparent)">{meta.icon}</span>
       <div>

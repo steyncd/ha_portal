@@ -161,7 +161,8 @@
 </script>
 
 <div class="col">
-  <div class="card profile">
+  <div class="card card--hero profile">
+    <span class="glow" style="--gc:var(--health)"></span>
     <span class="av">C</span>
     <div class="pi"><div class="pn">Christo</div><div class="ps">Admin · <span style="color:var(--success)">Home now</span> · Readiness {n(readiness)}</div></div>
     <div class="ring-batt"><span>💍</span> Oura <span class="rb">{n(ha.num(E.ouraRingBatt))}%</span></div>

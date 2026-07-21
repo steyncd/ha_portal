@@ -1,35 +1,41 @@
-// Persisted per-user preferences + the derived Aurora-Glass theme.
+// Persisted per-user preferences + the derived "Aurora Command" theme.
 
-export type AccentId = "violet" | "emerald" | "cyan" | "amber" | "rose" | "mono" | "custom";
+export type PaletteId = "ti" | "3b" | "3c" | "3a" | "3d" | "3e";
 
-export const PALETTE: { id: AccentId; name: string; a: string; a2: string }[] = [
-  { id: "violet", name: "Aurora Violet", a: "#a78bfa", a2: "#818cf8" },
-  { id: "emerald", name: "Emerald Deep", a: "#34d399", a2: "#10b981" },
-  { id: "cyan", name: "Ice Cyan", a: "#38bdf8", a2: "#22d3ee" },
-  { id: "amber", name: "Sunset Amber", a: "#fbbf24", a2: "#fb923c" },
-  { id: "rose", name: "Rose Quartz", a: "#fb7185", a2: "#f472b6" },
-  { id: "mono", name: "Slate", a: "#cbd5e1", a2: "#94a3b8" },
+// The 6 palettes from the Aurora Command handoff. A theme = --base/--acc/--acc2;
+// --grad/--wash/--wash2 derive from the accents.
+export const PALETTES: { id: PaletteId; name: string; base: string; acc: string; acc2: string }[] = [
+  { id: "ti", name: "Teal · Indigo", base: "#13171a", acc: "#2dd4bf", acc2: "#818cf8" },
+  { id: "3b", name: "Indigo Nightfall", base: "#0f1422", acc: "#818cf8", acc2: "#6366f1" },
+  { id: "3c", name: "Teal Graphite", base: "#13171a", acc: "#2dd4bf", acc2: "#22d3ee" },
+  { id: "3a", name: "Aurora Violet", base: "#15171f", acc: "#a78bfa", acc2: "#818cf8" },
+  { id: "3d", name: "Rose Charcoal", base: "#181317", acc: "#fb7185", acc2: "#f472b6" },
+  { id: "3e", name: "Slate Mono", base: "#101216", acc: "#a3b2c7", acc2: "#cbd5e1" },
 ];
 
 const KEY = "ha_portal_prefs";
 
+type Density = "comfortable" | "wall";
+
 type Stored = {
-  accent: AccentId;
-  hue: number;
+  palette: PaletteId;
   motion: boolean;
-  density: "comfortable" | "compact";
+  density: Density;
   collapsed: boolean;
+  guest: boolean;
+  defaultView: string;
   settingsTab: string;
   viewsOn: Record<string, boolean>;
   widgets: Record<string, boolean>;
 };
 
 const DEFAULTS: Stored = {
-  accent: "violet",
-  hue: 265,
+  palette: "ti",
   motion: true,
   density: "comfortable",
   collapsed: false,
+  guest: false,
+  defaultView: "overview",
   settingsTab: "account",
   viewsOn: {
     energy: true, powertrends: true, water: true, irrigation: true, climate: true, appliances: true,
@@ -46,8 +52,10 @@ function load(): Stored {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULTS);
     const p = JSON.parse(raw);
+    const palette: PaletteId = PALETTES.some((x) => x.id === p.palette) ? p.palette : DEFAULTS.palette;
+    const density: Density = p.density === "wall" ? "wall" : "comfortable";
     return {
-      ...DEFAULTS, ...p,
+      ...DEFAULTS, ...p, palette, density,
       viewsOn: { ...DEFAULTS.viewsOn, ...(p.viewsOn ?? {}) },
       widgets: { ...DEFAULTS.widgets, ...(p.widgets ?? {}) },
     };
@@ -57,22 +65,24 @@ function load(): Stored {
 }
 
 class Prefs {
-  accent = $state<AccentId>(DEFAULTS.accent);
-  hue = $state(DEFAULTS.hue);
+  palette = $state<PaletteId>(DEFAULTS.palette);
   motion = $state(DEFAULTS.motion);
-  density = $state<"comfortable" | "compact">(DEFAULTS.density);
+  density = $state<Density>(DEFAULTS.density);
   collapsed = $state(DEFAULTS.collapsed);
+  guest = $state(DEFAULTS.guest);
+  defaultView = $state(DEFAULTS.defaultView);
   settingsTab = $state(DEFAULTS.settingsTab);
   viewsOn = $state<Record<string, boolean>>({ ...DEFAULTS.viewsOn });
   widgets = $state<Record<string, boolean>>({ ...DEFAULTS.widgets });
 
   constructor() {
     const s = load();
-    this.accent = s.accent;
-    this.hue = s.hue;
+    this.palette = s.palette;
     this.motion = s.motion;
     this.density = s.density;
     this.collapsed = s.collapsed;
+    this.guest = s.guest;
+    this.defaultView = s.defaultView;
     this.settingsTab = s.settingsTab;
     this.viewsOn = s.viewsOn;
     this.widgets = s.widgets;
@@ -80,32 +90,35 @@ class Prefs {
 
   save() {
     const data: Stored = {
-      accent: this.accent, hue: this.hue, motion: this.motion,
-      density: this.density, collapsed: this.collapsed,
-      settingsTab: this.settingsTab,
-      viewsOn: this.viewsOn, widgets: this.widgets,
+      palette: this.palette, motion: this.motion, density: this.density,
+      collapsed: this.collapsed, guest: this.guest, defaultView: this.defaultView,
+      settingsTab: this.settingsTab, viewsOn: this.viewsOn, widgets: this.widgets,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }
 
-  /** Current accent colours. */
-  get acc() {
-    if (this.accent === "custom") return `hsl(${this.hue} 80% 68%)`;
-    return (PALETTE.find((p) => p.id === this.accent) ?? PALETTE[0]).a;
+  /** The active palette record. */
+  get theme() {
+    return PALETTES.find((p) => p.id === this.palette) ?? PALETTES[0];
   }
-  get acc2() {
-    if (this.accent === "custom") return `hsl(${(this.hue + 28) % 360} 78% 64%)`;
-    return (PALETTE.find((p) => p.id === this.accent) ?? PALETTE[0]).a2;
+  get acc() { return this.theme.acc; }
+  get acc2() { return this.theme.acc2; }
+
+  /** Apply the theme + display flags to :root as CSS custom properties/classes. */
+  apply() {
+    const p = this.theme;
+    const r = document.documentElement.style;
+    r.setProperty("--base", p.base);
+    r.setProperty("--acc", p.acc);
+    r.setProperty("--acc2", p.acc2);
+    r.setProperty("--grad", `linear-gradient(135deg, ${p.acc2}, ${p.acc})`);
+    r.setProperty("--wash", `color-mix(in srgb, ${p.acc} 15%, transparent)`);
+    r.setProperty("--wash2", `color-mix(in srgb, ${p.acc2} 12%, transparent)`);
+    document.documentElement.classList.toggle("reduce-motion", !this.motion);
+    document.documentElement.classList.toggle("wall", this.density === "wall");
   }
 
-  /** Apply theme to :root as CSS custom properties. */
-  apply() {
-    const r = document.documentElement.style;
-    r.setProperty("--acc", this.acc);
-    r.setProperty("--acc2", this.acc2);
-    r.setProperty("--grad", `linear-gradient(135deg, ${this.acc2}, ${this.acc})`);
-    document.documentElement.classList.toggle("reduce-motion", !this.motion);
-  }
+  setPalette(id: PaletteId) { this.palette = id; this.apply(); this.save(); }
 
   resetWidgets() {
     this.widgets = { ...DEFAULTS.widgets };

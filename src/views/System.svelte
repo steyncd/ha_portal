@@ -53,7 +53,8 @@
 
 <div class="col">
   <!-- problems-first hero -->
-  <div class="card phero" class:ok={healthy}>
+  <div class="card card--hero phero" class:ok={healthy}>
+    <span class="glow" style="--gc:var(--acc)"></span>
     <span class="picon">{healthy ? "✅" : "⚠️"}</span>
     <div class="pinfo">
       <div class="pt">{healthy ? "All systems healthy" : problems.join(" · ")}</div>

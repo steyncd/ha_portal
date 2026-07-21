@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
-  import { prefs, PALETTE, type AccentId } from "../lib/prefs.svelte";
+  import { prefs, PALETTES, type PaletteId } from "../lib/prefs.svelte";
   import { NAV } from "../lib/nav";
   import { toast } from "../lib/toast.svelte";
   import { HASS_URL } from "../lib/config";
@@ -114,10 +114,11 @@
     const v = ha.attr(id, attr); return typeof v === "number" ? v : fallback;
   }
 
-  function setAccent(id: AccentId) { prefs.accent = id; prefs.apply(); prefs.save(); }
-  function setHue(e: Event) { prefs.hue = Number((e.target as HTMLInputElement).value); prefs.accent = "custom"; prefs.apply(); prefs.save(); }
-  function setDensity(d: "comfortable" | "compact") { prefs.density = d; prefs.save(); }
+  function setPalette(id: PaletteId) { prefs.setPalette(id); }
+  function setDensity(d: "comfortable" | "wall") { prefs.density = d; prefs.apply(); prefs.save(); }
   function toggleMotion() { prefs.motion = !prefs.motion; prefs.apply(); prefs.save(); }
+  function toggleGuest() { prefs.guest = !prefs.guest; prefs.save(); }
+  function setDefaultView(id: string) { prefs.defaultView = id; prefs.save(); }
   function toggleView(id: string) { prefs.viewsOn = { ...prefs.viewsOn, [id]: !prefs.viewsOn[id] }; prefs.save(); }
 
   const people = [
@@ -272,15 +273,17 @@
   <!-- appearance -->
   <h2 class="section">Appearance</h2>
   <div class="card pad">
-    <div class="lb" style="margin-bottom:14px">Accent colour</div>
-    <div class="swatches">
-      {#each PALETTE as p}
-        <button class="sw" style="background:linear-gradient(135deg,{p.a2},{p.a})" class:active={prefs.accent === p.id} onclick={() => setAccent(p.id)} title={p.name}></button>
+    <div class="lb" style="margin-bottom:14px">Theme</div>
+    <div class="palettes">
+      {#each PALETTES as p}
+        <button class="pal" class:active={prefs.palette === p.id} onclick={() => setPalette(p.id)}>
+          <span class="palsw" style="background:{p.base}">
+            <span class="paldot" style="background:{p.acc}"></span>
+            <span class="paldot" style="background:{p.acc2}"></span>
+          </span>
+          <span class="palname">{p.name}</span>
+        </button>
       {/each}
-      <div class="hue">
-        <span class="hl">Custom hue</span>
-        <input type="range" min="0" max="360" value={prefs.hue} oninput={setHue} class:active={prefs.accent === "custom"} />
-      </div>
     </div>
   </div>
   <div class="two">
@@ -288,14 +291,28 @@
       <div class="lb" style="margin-bottom:12px">Density</div>
       <div class="seg">
         <button class:active={prefs.density === "comfortable"} onclick={() => setDensity("comfortable")}>Comfortable</button>
-        <button class:active={prefs.density === "compact"} onclick={() => setDensity("compact")}>Compact</button>
+        <button class:active={prefs.density === "wall"} onclick={() => setDensity("wall")}>Wall / TV</button>
       </div>
+      <div class="note" style="margin-top:8px">Wall mode enlarges hero metrics and hides secondary detail for across-room glance.</div>
     </div>
-    <div class="card pad row"><div><div class="rn">Motion & aurora</div><div class="rs">Drifting glow + flows</div></div><Toggle on={prefs.motion} onchange={toggleMotion} /></div>
+    <div class="card pad row"><div><div class="rn">Motion & aurora</div><div class="rs">Ambient glow + flow animations</div></div><Toggle on={prefs.motion} onchange={toggleMotion} /></div>
   </div>
   <div class="card pad row">
     <div><div class="rn">🔔 Push notifications</div><div class="rs">Alarm, low balance, load-shedding — to this device</div></div>
     {#if pushOn}<span class="rolechip owner">Enabled</span>{:else}<button class="minibtn" onclick={turnOnPush}>Enable</button>{/if}
+  </div>
+  <div class="two">
+    <div class="card pad row">
+      <div><div class="rn">👋 Guest view</div><div class="rs">Hides Security, Cameras, Traffic, location &amp; health</div></div>
+      <Toggle on={prefs.guest} onchange={toggleGuest} />
+    </div>
+    <div class="card pad">
+      <div class="lb" style="margin-bottom:10px">Default view on open</div>
+      <select value={prefs.defaultView} onchange={(e) => setDefaultView((e.target as HTMLSelectElement).value)}>
+        <option value="overview">Overview</option>
+        {#each configurableViews as v}<option value={v.id}>{v.name}</option>{/each}
+      </select>
+    </div>
   </div>
   {/if}
 
@@ -513,12 +530,15 @@
   .goal input[type="range"] { width: 100%; accent-color: var(--acc); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
-  .swatches { display: flex; gap: 11px; flex-wrap: wrap; align-items: center; }
-  .sw { width: 36px; height: 36px; border-radius: 50%; }
-  .sw.active { box-shadow: 0 0 0 2px #fff; }
-  .hue { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 180px; }
-  .hl { font-size: 12px; color: var(--dim); }
-  .hue input { flex: 1; height: 6px; accent-color: hsl(var(--h, 265) 80% 68%); }
+  .palettes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .pal { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; text-align: left; background: rgba(255, 255, 255, 0.028); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: box-shadow var(--dur) var(--ease); }
+  .pal:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
+  .pal.active { box-shadow: inset 0 0 0 1.5px var(--acc); }
+  .palsw { position: relative; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
+  .paldot { position: absolute; width: 15px; height: 15px; border-radius: 50%; top: 50%; transform: translateY(-50%); }
+  .paldot:first-of-type { left: 4px; }
+  .paldot:last-of-type { right: 4px; }
+  .palname { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
   .row { display: flex; align-items: center; justify-content: space-between; }
   .rn { font-size: 13px; font-weight: 600; }
   .rs { font-size: 11px; color: var(--muted); }

@@ -97,7 +97,8 @@
 {:else}
   <div class="grid">
     <!-- HERO: tier ring -->
-    <section class="card hero">
+    <section class="card card--hero hero">
+      <span class="glow" style="--gc:var(--health)"></span>
       <div class="ring" style="--pct:{ringPct}; --c:{TIER_COLOR[currentTier] ?? '#7c5cff'}">
         <div class="ring-in">
           <span class="tier" style="color:{TIER_COLOR[currentTier] ?? '#fff'}">{currentTier}</span>

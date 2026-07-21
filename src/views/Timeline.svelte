@@ -277,7 +277,8 @@
     </div>
 
     <!-- your day hero -->
-    <div class="card hero">
+    <div class="card card--hero hero">
+      <span class="glow" style="--gc:var(--acc)"></span>
       <div class="hleft"><div class="lb" style="color:var(--acc)">Your day</div><div class="hsum">{hero.summary}</div><div class="hsub">{hero.sub}</div></div>
       <div class="hstats">
         <div><div class="hv">{hero.atHome}</div><div class="hk">At home</div></div>
