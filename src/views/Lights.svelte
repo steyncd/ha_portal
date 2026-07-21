@@ -1,6 +1,7 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
+  import StatusChip from "../lib/components/StatusChip.svelte";
   import { toast } from "../lib/toast.svelte";
   import { LIGHT_AREAS, ALL_LIGHTS, SCENES, type LightDef } from "../lib/entities";
 
@@ -88,9 +89,9 @@
                 {#if grp}
                   Controls {groupCount(l)} lights
                 {:else if !avail}
-                  Unavailable
+                  <StatusChip state="off" label="Unavailable" />
                 {:else}
-                  {ha.isOn(l.id) ? "On" : "Off"}
+                  <StatusChip state={ha.isOn(l.id) ? "ok" : "off"} label={ha.isOn(l.id) ? "On" : "Off"} />
                 {/if}
               </span>
             </div>

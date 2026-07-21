@@ -4,6 +4,7 @@
   import { E, ALARM_ZONES, ACCESS, type AlarmZone } from "../lib/entities";
   import { toast } from "../lib/toast.svelte";
   import { clock } from "../lib/format";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   // ---- areas ----
   const homeState = $derived(ha.state(E.alarmHome));
@@ -223,7 +224,7 @@
           <div class="zrow" class:bypassed>
             <span class="zd" class:active></span>
             <span class="zn">{z.label}</span>
-            <span class="zstate">{active ? "Active" : "Clear"}</span>
+            <StatusChip state={active ? "warn" : "ok"} label={active ? "Active" : "Clear"} />
             <button class="byp" class:on={bypassed} onclick={() => toggleBypass(z)}>{bypassed ? "Restore" : "Bypass"}</button>
           </div>
         {/each}
@@ -238,7 +239,7 @@
     <div class="access">
       {#each ACCESS as o}
         {@const open = ha.state(o.id) === "on"}
-        <div class="arow"><span class="aic">{o.icon}</span><div class="al"><div class="anm">{o.label}</div><div class="ast" style="color:{open ? 'var(--warning)' : 'var(--success)'}">{open ? "Open / active" : "Closed"}</div></div></div>
+        <div class="arow"><span class="aic">{o.icon}</span><div class="al"><div class="anm">{o.label}</div><div class="ast"><StatusChip state={open ? "warn" : "ok"} label={open ? "Open" : "Closed"} /></div></div></div>
       {/each}
     </div>
   </div>
@@ -300,7 +301,7 @@
   .zd { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 7px var(--success); flex-shrink: 0; }
   .zd.active { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
   .zn { font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .zstate { font-size: 10.5px; color: var(--muted-2); flex-shrink: 0; }
+  .zrow :global(.status) { flex-shrink: 0; }
   .byp { flex-shrink: 0; padding: 6px 11px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); font-size: 11px; font-weight: 700; color: var(--text-2); }
   @media (max-width: 640px) { .byp { min-height: 40px; padding: 8px 14px; } }
   .byp:hover { background: rgba(255, 255, 255, 0.15); color: var(--text); }

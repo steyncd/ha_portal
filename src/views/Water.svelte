@@ -5,6 +5,7 @@
   import { n, power, dailyMax } from "../lib/format";
   import AreaChart from "../lib/components/AreaChart.svelte";
   import BarChart from "../lib/components/BarChart.svelte";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   const tank = $derived(ha.num(E.tankLevel));
   const low = $derived(ha.state(E.tankLowAlert) === "on");
@@ -92,7 +93,7 @@
             <button class="ptile" class:on={ha.isOn(p.sw)} class:pumping={st.pumping} onclick={() => ha.toggle(p.sw)}>
               <span class="pi">{p.icon}</span><span class="pn">{p.label}</span>
               <span class="pw">{st.w != null ? `${power(st.w).val} ${power(st.w).unit}` : "—"}</span>
-              <span class="ps" class:go={st.pumping}>{st.label}</span>
+              <StatusChip state={st.pumping ? "ok" : st.label === "Idling" ? "idle" : "off"} label={st.label} />
             </button>
           {/each}
         </div>
@@ -188,8 +189,7 @@
   .pi { font-size: 18px; }
   .pn { font-size: 12.5px; font-weight: 600; }
   .pw { font-size: 15px; font-weight: 800; margin-top: 2px; }
-  .ps { font-size: 10.5px; color: var(--muted); }
-  .ps.go { color: var(--water); font-weight: 700; }
+  .ptile :global(.status) { margin-top: 2px; }
   .bh { position: relative; overflow: hidden; }
   .bh.go { box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 40px -24px rgba(0, 0, 0, 0.8), inset 0 0 0 1px color-mix(in srgb, var(--water) 40%, transparent); }
   .bhstate { font-size: 12px; font-weight: 700; color: var(--muted); }

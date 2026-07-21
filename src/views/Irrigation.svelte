@@ -4,6 +4,7 @@
   import { n, dateTime } from "../lib/format";
   import { toast } from "../lib/toast.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   const runtime = $derived(ha.num(E.irrRuntime) ?? 10);
   const smart = $derived(ha.isOn(E.irrIntelligence));
@@ -93,7 +94,7 @@
       {@const isRunning = rem > 0}
       {@const sm = soil(z.slug)}
       <div class="zone card" class:on={isRunning}>
-        <div class="zh"><span class="zn">{z.label}</span><span class="zst" style="color:{isRunning ? 'var(--success)' : 'var(--muted)'}">{isRunning ? `${n(rem)}m left` : "Idle"}</span></div>
+        <div class="zh"><span class="zn">{z.label}</span><StatusChip state={isRunning ? "ok" : "idle"} label={isRunning ? `${n(rem)}m left` : "Idle"} /></div>
         <div class="soilrow">
           <span class="sl">Soil</span>
           <div class="soiltrack"><div class="soilfill" style="width:{Math.min(100, sm ?? 0)}%;background:{soilColor(sm)}"></div></div>
@@ -139,7 +140,7 @@
   .zone.on { box-shadow: inset 0 0 0 1.5px var(--line), inset 0 1px 0 rgba(255, 255, 255, 0.1); background: linear-gradient(180deg, var(--soft), rgba(255, 255, 255, 0.028)); }
   .zh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .zn { font-size: 13.5px; font-weight: 600; }
-  .zst { font-size: 11px; font-weight: 700; }
+  .zh :global(.status) { font-size: 11px; }
   .soilrow { display: flex; align-items: center; gap: 9px; margin-bottom: 13px; }
   .sl { font-size: 11px; color: var(--muted); width: 30px; }
   .soiltrack { flex: 1; height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; }

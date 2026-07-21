@@ -2,6 +2,7 @@
   import { ha } from "../lib/store.svelte";
   import { APPLIANCE_AREAS, APPLIANCES, type Appliance } from "../lib/entities";
   import { power } from "../lib/format";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   // Three-state: ON (drawing power), IDLE (switched on but <1 W), OFF (standby).
   // Metering plugs (meter:true) have unreliable switch state — on/off from power only.
@@ -55,9 +56,9 @@
               <span class="aw">{!avail ? "Offline" : p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span>
             </span>
             {#if !avail}
-              <span class="apill">N/A</span>
+              <StatusChip state="off" label="Offline" />
             {:else}
-              <span class="apill" class:apon={st === "on"} class:apidle={st === "idle"}>{st === "on" ? "ON" : st === "idle" ? "IDLE" : "OFF"}</span>
+              <StatusChip state={st === "on" ? "ok" : st === "idle" ? "idle" : "off"} label={st === "on" ? "On" : st === "idle" ? "Idle" : "Off"} />
             {/if}
           </button>
         {/each}
@@ -92,9 +93,7 @@
   .al { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
   .anm { font-size: 13.5px; font-weight: 600; }
   .aw { font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums; }
-  .apill { flex-shrink: 0; padding: 4px 10px; border-radius: 999px; font-size: 10.5px; font-weight: 800; background: rgba(255, 255, 255, 0.08); color: var(--muted); }
-  .apill.apon { background: color-mix(in srgb, var(--warning) 30%, transparent); color: #fff; }
-  .apill.apidle { background: color-mix(in srgb, #fbbf24 16%, transparent); color: #fcd34d; }
+  .app :global(.status) { flex-shrink: 0; }
 
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
 </style>
