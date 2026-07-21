@@ -1,31 +1,56 @@
 :root {
-  /* Base */
-  --bg-base: #070b11;
-  --text: #eaf1ff;
-  --text-2: #c3d1e0;
-  --dim: #b6c5d6;
-  --muted: #aebccd;
-  --muted-2: #8ea3b8;
+  /* ===== "Aurora Command" design tokens =====
+     --base / --acc / --acc2 are set per-palette at runtime by prefs.apply();
+     values here are the Teal · Indigo default. Legacy names (--bg-base, --soft,
+     --dim, --success…) are kept as aliases so not-yet-reskinned views still
+     render during the phased rollout. */
 
-  /* Semantic */
-  --success: #34d399;
-  --warning: #fbbf24;
-  --error: #fb7185;
-  --water: #38bdf8;
-  --solar: #fbbf24;
-  --orange: #fb923c;
+  /* Base + text (dim, not black) */
+  --base: #13171a;
+  --bg-base: var(--base); /* legacy alias */
+  --text: #eef2f9;
+  --text-2: #c8d4e2;
+  --muted: #93a3b5;
+  --muted-2: #8ea3b8; /* legacy */
+  --dim: #c8d4e2; /* legacy → text-2 */
+  --faint: #7e8ea3;
+  --faint-2: #6d7d90;
 
-  /* Accent (themable — defaults to Aurora Violet; overridden at runtime) */
-  --acc: #a78bfa;
+  /* Brand accent (themable) — default Teal · Indigo */
+  --acc: #2dd4bf;
   --acc2: #818cf8;
-  --grad: linear-gradient(135deg, #818cf8, #a78bfa);
-  --soft: color-mix(in srgb, var(--acc) 15%, transparent);
+  --grad: linear-gradient(135deg, var(--acc2), var(--acc));
+  --wash: color-mix(in srgb, var(--acc) 15%, transparent);
+  --wash2: color-mix(in srgb, var(--acc2) 12%, transparent);
+  --soft: var(--wash); /* legacy alias */
   --line: color-mix(in srgb, var(--acc) 45%, transparent);
   --title-grad: linear-gradient(120deg, #fff 30%, var(--acc2) 78%, var(--acc) 100%);
-
-  /* Compatibility aliases so shared chart components theme with the accent */
   --brand: var(--acc);
   --brand-2: var(--acc2);
+  --glow: color-mix(in srgb, var(--acc) 50%, transparent);
+
+  /* Domain colours — SEMANTIC, never themed */
+  --energy: #fbbf24;
+  --solar: #fbbf24;
+  --battery: #a78bfa;
+  --water: #38bdf8;
+  --climate: #fb923c;
+  --orange: #fb923c; /* legacy alias of climate */
+  --security: #34d399;
+  --load: #818cf8;
+  --health: #fb7185;
+  --grid-alert: #fb923c; /* amber, not red — red-green CVD safe */
+
+  /* Status (always paired with a glyph + label, never colour alone) */
+  --ok: #6ee7b7;
+  --idle: #fcd34d;
+  --off: #93a3b5;
+  --warn: #fdba74;
+  --success: #34d399; /* legacy */
+  --warning: #fbbf24; /* legacy */
+  --error: #fb7185; /* legacy */
+
+  /* Surface helpers (kept for un-reskinned views) */
   --card-hover: rgba(255, 255, 255, 0.09);
   --border: rgba(255, 255, 255, 0.08);
   --border-strong: rgba(255, 255, 255, 0.16);
@@ -34,18 +59,21 @@
   --divider: rgba(255, 255, 255, 0.07);
   --glass-blur: blur(20px) saturate(140%);
   --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 40px -24px rgba(0, 0, 0, 0.8);
-  --glow: color-mix(in srgb, var(--acc) 50%, transparent);
-  --r-hero: 20px;
-  --r: 16px;
-  --r-tile: 14px;
-  --r-pill: 999px;
 
-  /* Aurora backdrop — static multi-point mesh gradient (themable), one paint. */
-  --aurora: radial-gradient(1200px 820px at 6% -12%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 56%),
-    radial-gradient(1060px 780px at 118% 2%, color-mix(in srgb, var(--acc2) 22%, transparent), transparent 52%),
-    radial-gradient(1000px 760px at 52% 122%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 60%),
-    radial-gradient(700px 520px at 88% 90%, color-mix(in srgb, var(--acc2) 12%, transparent), transparent 55%),
-    var(--bg-base);
+  /* Radii + motion */
+  --r-hero: 22px;
+  --r-card: 18px;
+  --r: 16px; /* legacy */
+  --r-tile: 12px;
+  --r-pill: 999px;
+  --dur: 180ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Aurora backdrop — static multi-point mesh (themable), one paint. */
+  --aurora: radial-gradient(1100px 760px at 4% -10%, var(--wash), transparent 55%),
+    radial-gradient(900px 680px at 116% 2%, var(--wash2), transparent 52%),
+    radial-gradient(950px 760px at 52% 122%, color-mix(in srgb, var(--acc) 12%, transparent), transparent 60%),
+    var(--base);
 
   color-scheme: dark;
 }

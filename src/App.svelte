@@ -3,7 +3,7 @@
   import { ha } from "./lib/store.svelte";
   import { authStore } from "./lib/auth.svelte";
   import { prefs } from "./lib/prefs.svelte";
-  import { NAV, type ViewId } from "./lib/nav";
+  import { NAV, NAV_GROUPS, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
@@ -108,9 +108,7 @@
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
   const active = $derived(NAV.find((nav) => nav.id === view)!);
 
-  const groups: { title: string; key: "Systems" | "Safety" | "House" }[] = [
-    { title: "Systems", key: "Systems" }, { title: "Safety", key: "Safety" }, { title: "House", key: "House" },
-  ];
+  const groups = NAV_GROUPS;
 
   // Alarm chip
   const alarm = $derived.by(() => {
@@ -179,6 +177,11 @@
             {/each}
           {/if}
         {/each}
+        <div class="navbottom">
+          {#each shown.filter((s) => s.group === "Bottom") as it}
+            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni">{it.icon}</span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+          {/each}
+        </div>
         <button class="user" onclick={() => authStore.signOut()} title="Sign out">
           <span class="uav">{(authStore.user?.displayName ?? authStore.user?.email ?? "C").charAt(0).toUpperCase()}</span>
           {#if !prefs.collapsed}<div class="ul"><span class="un">{authStore.user?.displayName ?? "Signed in"}</span><span class="ur">Sign out</span></div>{/if}
@@ -286,7 +289,8 @@
   .nn { font-size: 13.5px; font-weight: 600; color: #eef4fc; white-space: nowrap; }
   .grp { font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted-2); padding: 0 13px; margin: 13px 0 5px; }
   .grpline { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 10px 6px; }
-  .user { margin-top: auto; padding-top: 12px; display: flex; align-items: center; gap: 10px; }
+  .navbottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
+  .user { padding-top: 12px; display: flex; align-items: center; gap: 10px; }
   .uav { width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 13px; font-weight: 700; color: #07131c; }
   .ul { display: flex; flex-direction: column; line-height: 1.2; }
   .un { font-size: 12.5px; font-weight: 600; }
