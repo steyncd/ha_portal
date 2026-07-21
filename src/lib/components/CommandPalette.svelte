@@ -1,7 +1,8 @@
 <script lang="ts">
   import { ha } from "../store.svelte";
   import { E, ALL_LIGHTS } from "../entities";
-  import { NAV, type ViewId } from "../nav";
+  import { NAV, GUEST_HIDDEN, type ViewId } from "../nav";
+  import { prefs } from "../prefs.svelte";
   import { toast } from "../toast.svelte";
 
   let {
@@ -18,7 +19,8 @@
   const armTarget = "alarm_control_panel.helloliam_alarm_area_01_huis";
 
   const all = $derived<Cmd[]>([
-    ...NAV.map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
+    ...NAV.filter((n) => !prefs.guest || !GUEST_HIDDEN.includes(n.id)).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
+    { icon: prefs.guest ? "🔓" : "👋", label: prefs.guest ? "Exit guest view" : "Enter guest view", hint: "Mode", run: () => { prefs.guest = !prefs.guest; prefs.save(); toast.show(prefs.guest ? "Guest view on" : "Guest view off"); } },
     { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
     { icon: "🎬", label: "Movie mode", hint: "Scene", run: () => { ha.script(E.scMovie); toast.show("Movie mode"); } },
     { icon: "🚪", label: "Away mode", hint: "Scene", run: () => { ha.script(E.scAway); toast.show("Away mode"); } },

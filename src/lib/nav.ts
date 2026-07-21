@@ -35,6 +35,9 @@ export const NAV: NavItem[] = [
   { id: "settings", name: "Settings", icon: "⚙️", group: "Bottom", color: "var(--muted)" },
 ];
 
+// Views hidden in guest mode (recc 5j) — security, cameras, location & health.
+export const GUEST_HIDDEN: ViewId[] = ["security", "cameras", "traffic", "me", "vitality", "timeline"];
+
 // The domain groups rendered between Overview (top) and Insights/Settings (bottom).
 export const NAV_GROUPS: { key: NavGroup; title: string }[] = [
   { key: "Energy", title: "Energy" },

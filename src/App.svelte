@@ -3,7 +3,7 @@
   import { ha } from "./lib/store.svelte";
   import { authStore } from "./lib/auth.svelte";
   import { prefs } from "./lib/prefs.svelte";
-  import { NAV, NAV_GROUPS, type ViewId } from "./lib/nav";
+  import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
@@ -41,7 +41,8 @@
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
 
-  let view = $state<ViewId>("overview");
+  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "overview") as ViewId;
+  let view = $state<ViewId>(initialView);
   let palette = $state(false);
   // ?tv=1 (or #tv) boots straight into the always-on TV Overview — for wall displays.
   let tv = $state(
@@ -104,8 +105,12 @@
     if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
   });
 
-  const visible = (id: ViewId) => ["overview", "security", "settings"].includes(id) || prefs.viewsOn[id];
+  const visible = (id: ViewId) =>
+    (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
+    (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
+  // Leaving a now-hidden view (e.g. entering guest mode on Security) → Overview.
+  $effect(() => { if (prefs.guest && GUEST_HIDDEN.includes(view)) view = "overview"; });
   const active = $derived(NAV.find((nav) => nav.id === view)!);
 
   const groups = NAV_GROUPS;
@@ -200,6 +205,14 @@
           <div class="clockcol"><span class="ck">{clock}</span><span class="cd">{dateStr}</span></div>
         </div>
       </header>
+
+      {#if prefs.guest}
+        <div class="guestbar">
+          <span class="gdot"></span>
+          <span>Guest view — private security, camera, location &amp; health data is hidden.</span>
+          <button onclick={() => { prefs.guest = false; prefs.save(); }}>Exit</button>
+        </div>
+      {/if}
 
       <div class="body">
         {#key view}
@@ -316,6 +329,9 @@
   .ad { width: 7px; height: 7px; border-radius: 50%; background: var(--c); box-shadow: 0 0 8px var(--c); }
   .body { flex: 1; padding: 20px; padding-bottom: 40px; }
   .vload { min-height: 60dvh; display: grid; place-items: center; }
+  .guestbar { display: flex; align-items: center; gap: 10px; margin: 0 20px; padding: 9px 14px; border-radius: 11px; background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 30%, transparent); font-size: 12.5px; color: var(--text-2); }
+  .guestbar .gdot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); flex-shrink: 0; }
+  .guestbar button { margin-left: auto; padding: 5px 12px; border-radius: 8px; background: var(--grad); color: #05070c; font-size: 11px; font-weight: 800; }
 
   .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: rgba(7, 11, 17, 0.92); backdrop-filter: blur(18px); border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; min-height: 46px; color: var(--muted-2); }

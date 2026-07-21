@@ -117,6 +117,8 @@
   function setPalette(id: PaletteId) { prefs.setPalette(id); }
   function setDensity(d: "comfortable" | "wall") { prefs.density = d; prefs.apply(); prefs.save(); }
   function toggleMotion() { prefs.motion = !prefs.motion; prefs.apply(); prefs.save(); }
+  function toggleGuest() { prefs.guest = !prefs.guest; prefs.save(); }
+  function setDefaultView(id: string) { prefs.defaultView = id; prefs.save(); }
   function toggleView(id: string) { prefs.viewsOn = { ...prefs.viewsOn, [id]: !prefs.viewsOn[id] }; prefs.save(); }
 
   const people = [
@@ -298,6 +300,19 @@
   <div class="card pad row">
     <div><div class="rn">🔔 Push notifications</div><div class="rs">Alarm, low balance, load-shedding — to this device</div></div>
     {#if pushOn}<span class="rolechip owner">Enabled</span>{:else}<button class="minibtn" onclick={turnOnPush}>Enable</button>{/if}
+  </div>
+  <div class="two">
+    <div class="card pad row">
+      <div><div class="rn">👋 Guest view</div><div class="rs">Hides Security, Cameras, Traffic, location &amp; health</div></div>
+      <Toggle on={prefs.guest} onchange={toggleGuest} />
+    </div>
+    <div class="card pad">
+      <div class="lb" style="margin-bottom:10px">Default view on open</div>
+      <select value={prefs.defaultView} onchange={(e) => setDefaultView((e.target as HTMLSelectElement).value)}>
+        <option value="overview">Overview</option>
+        {#each configurableViews as v}<option value={v.id}>{v.name}</option>{/each}
+      </select>
+    </div>
   </div>
   {/if}
 

@@ -339,3 +339,12 @@ input[type="range"]::-moz-range-thumb {
     animation: none !important;
   }
 }
+
+/* Wall / TV density (recc 5g): enlarge hero metrics, drop secondary affordances
+   for across-room glance. Toggled via the .wall class on <html> by prefs.apply. */
+.wall .big {
+  font-size: 1.28em;
+}
+.wall .drill {
+  display: none;
+}
