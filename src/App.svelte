@@ -312,6 +312,10 @@
 
   main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: rgba(7, 11, 17, 0.72); backdrop-filter: var(--glass-blur); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  /* Centre content at a comfortable max-width on wide monitors so cards/rows
+     don't stretch edge-to-edge. Wall/TV density opts back into full width. */
+  header, .body { width: 100%; max-width: 1440px; margin-inline: auto; }
+  :global(.wall) header, :global(.wall) .body { max-width: none; }
   .htitle { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
   .hi { display: inline-flex; align-items: center; }
   .hn { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
