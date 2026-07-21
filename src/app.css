@@ -194,20 +194,140 @@ input[type="range"]::-moz-range-thumb {
 }
 
 /* ---- Shared surface + label (the prototype's SC / LB) ---- */
+/* ===== Aurora Command surfaces & primitives (global; class names map 1:1 to the
+   handoff §2). Two tiers: .card = glass (hero/controls), .cell = hairline (data). */
 .card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.065), rgba(255, 255, 255, 0.028));
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 16px 40px -24px rgba(0, 0, 0, 0.8);
-  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 18px 40px -28px #000;
+  border-radius: var(--r-card);
 }
-.lb {
+.card--hero {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 44px -32px #000;
+  border-radius: var(--r-hero);
+  position: relative;
+  overflow: hidden;
+}
+.cell {
+  background: rgba(255, 255, 255, 0.028);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: var(--r-tile);
+}
+/* Domain corner glow — set --gc to a domain colour on the parent .card--hero. */
+.glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(130% 130% at 100% 0%, color-mix(in srgb, var(--gc, var(--acc)) 22%, transparent), transparent 56%);
+}
+
+.lb,
+.micro {
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.4px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--muted);
 }
+.micro {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10.5px;
+}
 .num {
   font-variant-numeric: tabular-nums;
+}
+.big {
+  font-weight: 800;
+  letter-spacing: -1.5px;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.big .unit {
+  font-size: 0.44em;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--text-2);
+}
+.sub {
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.drill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: color var(--dur) var(--ease);
+}
+.drill:hover {
+  color: var(--acc);
+}
+
+/* Accessible status — glyph + label + colour, NEVER colour alone (§2.2, recc 5a). */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.status svg {
+  width: 1em;
+  height: 1em;
+}
+.status--ok {
+  color: var(--ok);
+}
+.status--idle {
+  color: var(--idle);
+}
+.status--off {
+  color: var(--off);
+}
+.status--warn {
+  color: var(--warn);
+}
+
+/* Needs-attention item (§2.5, recc 5d/5e) */
+.attn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 12px;
+  border-radius: 11px;
+}
+.attn--warn {
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 30%, transparent);
+}
+.attn__badge {
+  width: 19px;
+  height: 19px;
+  border-radius: 5px;
+  background: var(--warn);
+  color: #05070c;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+.attn__text {
+  flex: 1;
+  font-size: 12.5px;
+}
+.btn-primary {
+  padding: 6px 12px;
+  border-radius: 9px;
+  background: var(--grad);
+  color: #05070c;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
 }
 
 .reduce-motion * {

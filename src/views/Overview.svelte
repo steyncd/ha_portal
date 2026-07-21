@@ -10,6 +10,7 @@
   import PowerFlow from "../lib/components/PowerFlow.svelte";
   import Spark from "../lib/components/Spark.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
+  import StatusChip from "../lib/components/StatusChip.svelte";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -91,15 +92,20 @@
       .slice(0, 5),
   );
 
-  // attention items — only shown when something actually needs attention
+  const armed = $derived((ha.state(E.alarmMain) ?? "").startsWith("armed"));
+
+  // attention items — only shown when something needs attention; some carry a
+  // one-tap contextual fix (Aurora recc 5d/5e).
+  type Attn = { text: string; action?: { label: string; run: () => void } };
   const attention = $derived.by(() => {
-    const items: string[] = [];
+    const items: Attn[] = [];
+    if (ha.state(E.alarmMain) === "triggered") items.push({ text: "Alarm triggered" });
+    if (ha.state(E.tankLowAlert) === "on")
+      items.push({ text: "Water tank low", action: { label: "Start borehole", run: () => { ha.turnOn(E.boreholePump); toast.show("Starting borehole"); } } });
     const lb = ha.num(E.lowBatteryDevices) ?? 0;
-    if (lb > 0) items.push(`${lb} device${lb === 1 ? "" : "s"} low on battery`);
-    if ((ha.num(E.pvPower) ?? 999) < 40) items.push("PV asleep — hold heavy appliances");
-    if (ha.state(E.tankLowAlert) === "on") items.push("Water tank low");
-    if (ha.state(E.alarmMain) === "triggered") items.push("⚠ Alarm triggered");
-    if (ha.state(E.alarmAcPower) === "off") items.push("Alarm on backup power");
+    if (lb > 0) items.push({ text: `${lb} device${lb === 1 ? "" : "s"} low on battery` });
+    if ((ha.num(E.pvPower) ?? 999) < 40) items.push({ text: "PV asleep — hold heavy appliances" });
+    if (ha.state(E.alarmAcPower) === "off") items.push({ text: "Alarm on backup power" });
     return items;
   });
 
@@ -129,18 +135,19 @@
 </div>
 
 {#if attention.length}
-  <div class="attention">
-    <span class="atag">⚡ Attention</span>
-    {#each attention as a, i}
-      {#if i > 0}<span class="dot">·</span>{/if}
-      <span class="d2">{a}</span>
+  <div class="attnstrip">
+    {#each attention as a}
+      <div class="attn attn--warn">
+        <span class="attn__badge">!</span>
+        <div class="attn__text">{a.text}</div>
+        {#if a.action}<button class="btn-primary" onclick={a.action.run}>{a.action.label}</button>{/if}
+      </div>
     {/each}
   </div>
 {:else}
-  <div class="attention calm">
-    <span class="atag ok">✓ All clear</span>
-    <span class="d2">Everything's running smoothly</span><span class="dot">·</span>
-    <span class="ok">{ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak 🎉</span>
+  <div class="attn calm">
+    <StatusChip state="ok" label="All clear" />
+    <div class="attn__text">Everything's running smoothly · {ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak</div>
   </div>
 {/if}
 
@@ -153,7 +160,8 @@
   </div>
 
   <!-- battery -->
-  <div class="w card">
+  <div class="w card card--hero">
+    <span class="glow" style="--gc:var(--battery)"></span>
     <div class="brow">
       <div class="ring" style="background:conic-gradient(var(--acc) {soc ?? 0}%,rgba(255,255,255,.10) 0)"><div class="ringc">{n(soc)}%</div></div>
       <div><div class="lb">Battery</div><div class="sub2">{n(ha.num(E.batteryPower))} W · {ha.state(E.batteryState) ?? ""}<br>{n(ha.num(E.batteryVoltage), 1)} V · {n(ha.num(E.batteryTemp))}°C</div></div>
@@ -192,11 +200,16 @@
   {/if}
 
   <!-- solar -->
-  <div class="w card">
-    <div class="lb">Solar</div>
+  <div class="w card card--hero tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
+    <span class="glow" style="--gc:var(--solar)"></span>
+    <div class="row-top">
+      <span class="micro" style="color:var(--solar)">Solar</span>
+      <StatusChip state={(ha.num(E.pvPower) ?? 0) > 40 ? "ok" : "idle"} label={(ha.num(E.pvPower) ?? 0) > 40 ? "Generating" : "Asleep"} />
+    </div>
     <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u"> {power(ha.num(E.pvPower)).unit}</span></div>
     <div class="sub2">{n(ha.num(E.pvYieldToday), 1)} kWh today</div>
     <div style="margin-top:12px"><Spark data={solarHist} color="var(--solar)" height={54} /></div>
+    <span class="drill">Open Energy →</span>
   </div>
 
   <!-- pumps & heater -->
@@ -246,10 +259,10 @@
     <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("security")} onkeydown={(e) => e.key === "Enter" && onnav("security")}>
       <div class="lb" style="margin-bottom:12px">Security & presence →</div>
       <div class="clist">
-        <div class="sprow"><span>✅</span>{ha.state(E.alarmMain) ?? "—"} · zones clear</div>
-        <div class="sprow"><span>🏠</span>{ha.state(E.occupancy) ?? "Home"}</div>
-        <div class="sprow"><span>📷</span>Gate · {n(ha.num(E.gateDetections))} detections</div>
-        <div class="sprow"><span>📶</span>{n(ha.num(E.routerDevices))} devices online</div>
+        <div class="sprow"><StatusChip state={ha.state(E.alarmMain) === "triggered" ? "warn" : armed ? "ok" : "idle"} label={ha.state(E.alarmMain) ?? "—"} /><span class="spx">· zones clear</span></div>
+        <div class="sprow"><StatusChip state={/(home|occupied)/i.test(ha.state(E.occupancy) ?? "home") ? "ok" : "off"} label={ha.state(E.occupancy) ?? "Home"} /></div>
+        <div class="sprow"><span class="spd" style="background:var(--security)"></span>Gate · {n(ha.num(E.gateDetections))} detections</div>
+        <div class="sprow"><span class="spd" style="background:var(--acc)"></span>{n(ha.num(E.routerDevices))} devices online</div>
       </div>
     </div>
   {/if}
@@ -300,13 +313,12 @@
   .crow:hover { background: rgba(255, 255, 255, 0.05); }
   .ci { font-size: 15px; width: 20px; text-align: center; }
   .cn { flex: 1; font-size: 12.5px; }
-  .attention { padding: 15px 18px; border-radius: 16px; background: linear-gradient(180deg, color-mix(in srgb, var(--warning) 12%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 26%, transparent); margin-bottom: 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; font-size: 13px; }
-  .attention.calm { background: linear-gradient(180deg, color-mix(in srgb, var(--success) 9%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 22%, transparent); }
-  .atag { font-size: 12px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: var(--warning); }
-  .atag.ok { color: var(--success); }
-  .dot { color: var(--muted-2); }
-  .d2 { color: var(--dim); }
-  .ok { color: var(--success); font-weight: 600; font-size: 12px; }
+  .attnstrip { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .attn.calm { margin-bottom: 16px; background: color-mix(in srgb, var(--ok) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 22%, transparent); }
+  .ok { color: var(--ok); font-weight: 600; font-size: 12px; }
+  .spx { color: var(--muted); font-size: 12px; }
+  .spd { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
 
   .masonry { column-count: 3; column-gap: 14px; }
   @media (max-width: 1000px) { .masonry { column-count: 2; } }
