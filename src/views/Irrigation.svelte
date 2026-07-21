@@ -47,8 +47,9 @@
 </script>
 
 <div class="col">
-  <div class="card header">
-    <div><div class="ttl">🌿 Wyze Irrigation · {IRR_ZONES.length} zones</div><div class="sub">Fed from borehole & tank · watered {n(ha.num(E.irrTimeToday))} min today · {n(ha.num(E.irrActiveSchedules))} schedules</div></div>
+  <div class="card card--hero header">
+    <span class="glow" style="--gc:var(--water)"></span>
+    <div><div class="ttl">Wyze Irrigation · {IRR_ZONES.length} zones</div><div class="sub">Fed from borehole & tank · watered {n(ha.num(E.irrTimeToday))} min today · {n(ha.num(E.irrActiveSchedules))} schedules</div></div>
     <button class="stopall" onclick={stopAll}>Stop all</button>
   </div>
 

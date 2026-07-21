@@ -35,7 +35,8 @@
 </script>
 
 <div class="col">
-  <div class="card top">
+  <div class="card card--hero top">
+    <span class="glow" style="--gc:var(--solar)"></span>
     <div>
       <div class="lb">Lights</div>
       <div class="big">{onCount}<span class="u"> / {total} on</span></div>
