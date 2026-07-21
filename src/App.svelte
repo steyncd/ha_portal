@@ -40,6 +40,7 @@
   import CommandPalette from "./lib/components/CommandPalette.svelte";
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
+  import Icon from "./lib/components/Icon.svelte";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "overview") as ViewId;
   let view = $state<ViewId>(initialView);
@@ -172,19 +173,19 @@
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
           <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")}><span class="ni">🏠</span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
+        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")}><span class="ni" style="color:var(--acc)"><Icon name="home" size={17} /></span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
         {#each groups as g}
           {@const items = shown.filter((s) => s.group === g.key)}
           {#if items.length}
             {#if !prefs.collapsed}<div class="grp">{g.title}</div>{:else}<div class="grpline"></div>{/if}
             {#each items as it}
-              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni">{it.icon}</span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
             {/each}
           {/if}
         {/each}
         <div class="navbottom">
           {#each shown.filter((s) => s.group === "Bottom") as it}
-            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni">{it.icon}</span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
           {/each}
         </div>
         <button class="user" onclick={() => authStore.signOut()} title="Sign out">
@@ -196,7 +197,7 @@
 
     <main>
       <header>
-        <div class="htitle"><span class="hi">{active.icon}</span><span class="hn">{active.name}</span></div>
+        <div class="htitle"><span class="hi" style="color:{active.color}"><Icon name={active.ic} size={20} /></span><span class="hn">{active.name}</span></div>
         <div class="hchips">
           <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">⌘K</span></button>
           {#if hAct}<button class="chip hact" onclick={hAct.run}>{hAct.icon} {hAct.label}</button>{/if}
@@ -298,7 +299,7 @@
   aside.collapsed .nav { justify-content: center; padding: 11px 0; }
   .nav:hover { background: rgba(255, 255, 255, 0.04); }
   .nav.active { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
-  .ni { font-size: 17px; width: 20px; text-align: center; }
+  .ni { width: 20px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.95; }
   .nn { font-size: 13.5px; font-weight: 600; color: #eef4fc; white-space: nowrap; }
   .grp { font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted-2); padding: 0 13px; margin: 13px 0 5px; }
   .grpline { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 10px 6px; }
@@ -312,7 +313,7 @@
   main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
   header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: rgba(7, 11, 17, 0.72); backdrop-filter: var(--glass-blur); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .htitle { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
-  .hi { font-size: 20px; }
+  .hi { display: inline-flex; align-items: center; }
   .hn { font-size: 17px; font-weight: 700; letter-spacing: -0.3px; }
   .hchips { display: flex; align-items: center; gap: 12px 10px; flex-wrap: wrap; justify-content: flex-end; }
   .chip.srch, .chip.hact { border: none; cursor: pointer; }
