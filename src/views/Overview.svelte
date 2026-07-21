@@ -11,6 +11,7 @@
   import Spark from "../lib/components/Spark.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
   import StatusChip from "../lib/components/StatusChip.svelte";
+  import Icon from "../lib/components/Icon.svelte";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -41,10 +42,10 @@
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
 
   const quick = [
-    { id: E.poolPump, icon: "🏊", name: "Pool Pump" },
-    { id: E.boreholePump, icon: "🕳️", name: "Borehole" },
-    { id: E.heater, icon: "🔥", name: "Heater" },
-    { id: E.waterPump, icon: "💧", name: "Water Pump" },
+    { id: E.poolPump, ic: "waves", name: "Pool Pump" },
+    { id: E.boreholePump, ic: "well", name: "Borehole" },
+    { id: E.heater, ic: "flame", name: "Heater" },
+    { id: E.waterPump, ic: "droplet", name: "Water Pump" },
   ];
 
   const WIDGETS = [
@@ -218,7 +219,7 @@
     <div class="grid2">
       {#each quick as q}
         <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id)}>
-          <span class="mi">{q.icon}</span><span class="mn">{q.name}</span><span class="qs">{ha.isOn(q.id) ? "On" : "Off"}</span>
+          <span class="mi"><Icon name={q.ic} size={16} /></span><span class="mn">{q.name}</span><StatusChip state={ha.isOn(q.id) ? "ok" : "off"} label={ha.isOn(q.id) ? "On" : "Off"} />
         </button>
       {/each}
     </div>

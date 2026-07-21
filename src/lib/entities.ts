@@ -204,12 +204,12 @@ export const E = {
 } as const;
 
 export type SceneDef = { id: string; label: string; icon: string };
-export type Pump = { sw: string; power: string; flow: string | null; label: string; icon: string; threshold: number };
+export type Pump = { sw: string; power: string; flow: string | null; label: string; icon: string; ic: string; threshold: number };
 // threshold W above which the pump is actually moving water (vs just idling)
 export const PUMPS: Pump[] = [
-  { sw: "switch.water_pump", power: "sensor.water_pump_power", flow: null, label: "Water Pump", icon: "💧", threshold: 20 },
-  { sw: "switch.borehole_pump", power: "sensor.borehole_pump_power_now", flow: "sensor.borehole_pump_actual_flow_rate", label: "Borehole", icon: "🕳️", threshold: 40 },
-  { sw: "switch.pool_pump", power: "sensor.pool_pump_power_now", flow: null, label: "Pool Pump", icon: "🏊", threshold: 40 },
+  { sw: "switch.water_pump", power: "sensor.water_pump_power", flow: null, label: "Water Pump", icon: "💧", ic: "droplet", threshold: 20 },
+  { sw: "switch.borehole_pump", power: "sensor.borehole_pump_power_now", flow: "sensor.borehole_pump_actual_flow_rate", label: "Borehole", icon: "🕳️", ic: "well", threshold: 40 },
+  { sw: "switch.pool_pump", power: "sensor.pool_pump_power_now", flow: null, label: "Pool Pump", icon: "🏊", ic: "waves", threshold: 40 },
 ];
 
 export const SCENES: SceneDef[] = [
@@ -337,42 +337,43 @@ export const ALL_LIGHTS = LIGHT_AREAS.flatMap((a) =>
 
 // `meter: true` = a metering plug whose relay/switch state is unreliable (or it's
 // measure-only), so on/off + draw are derived from the POWER sensor, not the switch.
-export type Appliance = { sw: string; power: string; label: string; icon: string; threshold?: number; meter?: boolean };
-export type ApplianceArea = { name: string; icon: string; items: Appliance[] };
+export type Appliance = { sw: string; power: string; label: string; icon: string; ic: string; threshold?: number; meter?: boolean };
+export type ApplianceArea = { name: string; icon: string; ic: string; items: Appliance[] };
 
 // Appliances grouped into logical areas — source of truth for the Appliances page.
+// `ic` = Aurora line-icon name (Icon.svelte); `icon` (emoji) kept as fallback.
 export const APPLIANCE_AREAS: ApplianceArea[] = [
-  { name: "Kitchen", icon: "🍳", items: [
-    { sw: "switch.main_fridge", power: "sensor.main_fridge_current_consumption", label: "Main Fridge", icon: "🧊" },
-    { sw: "switch.dishwasher", power: "sensor.dishwasher_current_consumption", label: "Dishwasher", icon: "🍽️" },
-    { sw: "switch.kettle", power: "sensor.kettle_current_consumption", label: "Kettle", icon: "☕" },
-    { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲" },
-    { sw: "switch.air_fryer", power: "sensor.air_fryer_current_consumption", label: "Air Fryer", icon: "🍟" },
-    { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕" },
+  { name: "Kitchen", icon: "🍳", ic: "pot", items: [
+    { sw: "switch.main_fridge", power: "sensor.main_fridge_current_consumption", label: "Main Fridge", icon: "🧊", ic: "fridge" },
+    { sw: "switch.dishwasher", power: "sensor.dishwasher_current_consumption", label: "Dishwasher", icon: "🍽️", ic: "washer" },
+    { sw: "switch.kettle", power: "sensor.kettle_current_consumption", label: "Kettle", icon: "☕", ic: "cup" },
+    { sw: "switch.microwave", power: "sensor.microwave_current_consumption", label: "Microwave", icon: "🍲", ic: "microwave" },
+    { sw: "switch.air_fryer", power: "sensor.air_fryer_current_consumption", label: "Air Fryer", icon: "🍟", ic: "pot" },
+    { sw: "switch.nespresso", power: "sensor.nespresso_current_consumption", label: "Nespresso", icon: "☕", ic: "cup" },
   ] },
-  { name: "Laundry", icon: "🧺", items: [
-    { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Front Loader", icon: "🧺" },
-    { sw: "switch.top_loader", power: "sensor.top_loader_current_consumption", label: "Top Loader", icon: "🧺" },
-    { sw: "switch.tumble_dryer", power: "sensor.tumble_dryer_energy_power", label: "Tumble Dryer", icon: "🌀" },
+  { name: "Laundry", icon: "🧺", ic: "washer", items: [
+    { sw: "switch.washing_machine", power: "sensor.washing_machine_energy_power", label: "Front Loader", icon: "🧺", ic: "washer" },
+    { sw: "switch.top_loader", power: "sensor.top_loader_current_consumption", label: "Top Loader", icon: "🧺", ic: "washer" },
+    { sw: "switch.tumble_dryer", power: "sensor.tumble_dryer_energy_power", label: "Tumble Dryer", icon: "🌀", ic: "washer" },
   ] },
-  { name: "Study & Office", icon: "💻", items: [
-    { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻" },
-    { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥" },
-    { sw: "switch.study_router_and_ha", power: "sensor.study_router_and_ha_power", label: "Router & HA", icon: "📶" },
+  { name: "Study & Office", icon: "💻", ic: "cpu", items: [
+    { sw: "switch.work_pc", power: "sensor.work_pc_current_consumption", label: "Work PC", icon: "💻", ic: "cpu" },
+    { sw: "switch.study_heater", power: "sensor.study_heater_current_consumption", label: "Study Heater", icon: "🔥", ic: "flame" },
+    { sw: "switch.study_router_and_ha", power: "sensor.study_router_and_ha_power", label: "Router & HA", icon: "📶", ic: "wifi" },
   ] },
-  { name: "Security & Systems", icon: "🛡️", items: [
-    { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️" },
+  { name: "Security & Systems", icon: "🛡️", ic: "shield", items: [
+    { sw: "switch.dining_room_alarm_cctv_power_monitor", power: "sensor.dining_room_alarm_cctv_power_monitor_power", label: "Alarm & CCTV", icon: "🛡️", ic: "shield" },
   ] },
-  { name: "Living & Media", icon: "📺", items: [
-    { sw: "switch.living_room_main_tv_plug", power: "sensor.living_room_main_tv_plug_power", label: "Main TV Plug", icon: "📺", meter: true, threshold: 5 },
+  { name: "Living & Media", icon: "📺", ic: "monitor", items: [
+    { sw: "switch.living_room_main_tv_plug", power: "sensor.living_room_main_tv_plug_power", label: "Main TV Plug", icon: "📺", ic: "monitor", meter: true, threshold: 5 },
   ] },
-  { name: "Bedrooms", icon: "🛏️", items: [
-    { sw: "switch.main_bedroom_plugs", power: "sensor.main_bedroom_plugs_current_consumption", label: "Main Bedroom Plugs", icon: "🔌" },
+  { name: "Bedrooms", icon: "🛏️", ic: "plug", items: [
+    { sw: "switch.main_bedroom_plugs", power: "sensor.main_bedroom_plugs_current_consumption", label: "Main Bedroom Plugs", icon: "🔌", ic: "plug" },
   ] },
-  { name: "Lighting", icon: "💡", items: [
+  { name: "Lighting", icon: "💡", ic: "bulb", items: [
     // Metered lighting circuits (DB-board Tuya breaker + the street-lights ESPHome relay).
-    { sw: "switch.hallway_bedroom_and_living_room_lights", power: "sensor.hallway_bedroom_and_living_room_lights_power", label: "Bedroom & Living Lights", icon: "💡" },
-    { sw: "light.street_lights", power: "sensor.street_lights_street_lights_power", label: "Street Lights", icon: "🏮" },
+    { sw: "switch.hallway_bedroom_and_living_room_lights", power: "sensor.hallway_bedroom_and_living_room_lights_power", label: "Bedroom & Living Lights", icon: "💡", ic: "bulb" },
+    { sw: "light.street_lights", power: "sensor.street_lights_street_lights_power", label: "Street Lights", icon: "🏮", ic: "bulb" },
   ] },
 ];
 

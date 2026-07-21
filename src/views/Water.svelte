@@ -6,6 +6,7 @@
   import AreaChart from "../lib/components/AreaChart.svelte";
   import BarChart from "../lib/components/BarChart.svelte";
   import StatusChip from "../lib/components/StatusChip.svelte";
+  import Icon from "../lib/components/Icon.svelte";
 
   const tank = $derived(ha.num(E.tankLevel));
   const low = $derived(ha.state(E.tankLowAlert) === "on");
@@ -91,7 +92,7 @@
           {#each PUMPS as p}
             {@const st = pumpState(p)}
             <button class="ptile" class:on={ha.isOn(p.sw)} class:pumping={st.pumping} onclick={() => ha.toggle(p.sw)}>
-              <span class="pi">{p.icon}</span><span class="pn">{p.label}</span>
+              <span class="pi"><Icon name={p.ic} size={18} /></span><span class="pn">{p.label}</span>
               <span class="pw">{st.w != null ? `${power(st.w).val} ${power(st.w).unit}` : "—"}</span>
               <StatusChip state={st.pumping ? "ok" : st.label === "Idling" ? "idle" : "off"} label={st.label} />
             </button>

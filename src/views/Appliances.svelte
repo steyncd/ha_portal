@@ -3,6 +3,7 @@
   import { APPLIANCE_AREAS, APPLIANCES, type Appliance } from "../lib/entities";
   import { power } from "../lib/format";
   import StatusChip from "../lib/components/StatusChip.svelte";
+  import Icon from "../lib/components/Icon.svelte";
 
   // Three-state: ON (drawing power), IDLE (switched on but <1 W), OFF (standby).
   // Metering plugs (meter:true) have unreliable switch state — on/off from power only.
@@ -39,7 +40,7 @@
     <div class="card pad">
       <div class="ah">
         <div class="at">
-          <span class="aic">{area.icon}</span>
+          <span class="aic"><Icon name={area.ic} size={17} /></span>
           <span class="an">{area.name}</span>
         </div>
         <span class="adraw" class:live={d > 0}>{power(d).val} {power(d).unit}</span>
@@ -50,7 +51,7 @@
           {@const st = appState(a)}
           {@const avail = ha.available(a.sw)}
           <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw)} disabled={!avail}>
-            <span class="aicn">{a.icon}</span>
+            <span class="aicn"><Icon name={a.ic} size={18} /></span>
             <span class="al">
               <span class="anm">{a.label}</span>
               <span class="aw">{!avail ? "Offline" : p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span>
