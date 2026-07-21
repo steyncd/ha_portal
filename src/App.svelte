@@ -131,7 +131,7 @@
   <div class="center"><div class="spinner"></div><p class="dim">Signing in…</p></div>
 {:else if !mockMode && authStore.status === "signedout"}
   <div class="center">
-    <div class="bg"></div><div class="orb o1"></div><div class="orb o2"></div>
+    <div class="bg"></div>
     <div class="login">
       <span class="llogo">🏠</span>
       <h1>Steyn Home</h1>
@@ -153,10 +153,8 @@
 {:else if ha.status === "connecting"}
   <div class="center"><div class="spinner"></div><p class="dim">Connecting to Home Assistant…</p></div>
 {:else}
-  <!-- aurora backdrop -->
+  <!-- aurora backdrop (static mesh gradient — no animated blur layers) -->
   <div class="bg"></div>
-  <div class="orb o1"></div>
-  <div class="orb o2"></div>
 
   <div class="shell">
     {#if !isMobile}
@@ -263,9 +261,15 @@
   .gbtn:hover { transform: translateY(-1px); }
 
   .bg { position: fixed; inset: 0; z-index: 0; background: var(--aurora); pointer-events: none; }
-  .orb { position: fixed; z-index: 0; border-radius: 50%; filter: blur(90px); pointer-events: none; }
-  .o1 { width: 44vw; height: 44vw; top: -14vw; left: -8vw; opacity: 0.5; background: radial-gradient(circle, var(--acc), transparent 70%); animation: drift1 26s ease-in-out infinite alternate; }
-  .o2 { width: 38vw; height: 38vw; bottom: -14vw; right: -6vw; opacity: 0.4; background: radial-gradient(circle, var(--acc2), transparent 70%); animation: drift2 32s ease-in-out infinite alternate; }
+  /* Whisper of static grain for depth — one tiled paint, cached, no animation. */
+  .bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.035;
+    mix-blend-mode: soft-light;
+  }
 
   .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
   aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.02); backdrop-filter: var(--glass-blur); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }

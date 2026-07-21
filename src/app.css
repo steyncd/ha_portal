@@ -40,9 +40,11 @@
   --r-tile: 14px;
   --r-pill: 999px;
 
-  /* Aurora backdrop (themable) */
-  --aurora: radial-gradient(900px 620px at 8% -10%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 60%),
-    radial-gradient(820px 640px at 116% 0%, color-mix(in srgb, var(--acc2) 22%, transparent), transparent 55%),
+  /* Aurora backdrop — static multi-point mesh gradient (themable), one paint. */
+  --aurora: radial-gradient(1200px 820px at 6% -12%, color-mix(in srgb, var(--acc) 26%, transparent), transparent 56%),
+    radial-gradient(1060px 780px at 118% 2%, color-mix(in srgb, var(--acc2) 22%, transparent), transparent 52%),
+    radial-gradient(1000px 760px at 52% 122%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 60%),
+    radial-gradient(700px 520px at 88% 90%, color-mix(in srgb, var(--acc2) 12%, transparent), transparent 55%),
     var(--bg-base);
 
   color-scheme: dark;
@@ -125,16 +127,6 @@ input[type="range"]::-moz-range-thumb {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
 }
 
-@keyframes drift1 {
-  to {
-    transform: translate(60px, 44px) scale(1.15);
-  }
-}
-@keyframes drift2 {
-  to {
-    transform: translate(-52px, -38px) scale(1.1);
-  }
-}
 @keyframes dashmove {
   to {
     stroke-dashoffset: -24;
@@ -193,18 +185,9 @@ input[type="range"]::-moz-range-thumb {
 .reduce-motion * {
   animation: none !important;
 }
-/* Reduced motion (Settings "Motion & aurora" toggle OR the OS setting): drop the
-   always-on aurora orbs — two blurred, animated full-viewport layers are the
-   biggest steady-state GPU cost on low-power devices (wall TV / phone). The
-   static .bg gradient stays, so the look is preserved, just calmer. */
-.reduce-motion .orb {
-  display: none;
-}
+/* Also honour the OS reduced-motion setting, not just the in-app toggle. */
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
-  }
-  .orb {
-    display: none;
   }
 }
