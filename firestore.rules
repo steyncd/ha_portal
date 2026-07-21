@@ -29,20 +29,45 @@ service cloud.firestore {
         (request.auth != null && accessExists()
          && request.auth.token.email in accessData().members);
     }
+    // Guests: signed in + listed in access.guests, but NOT a member. They get a
+    // forced, restricted view (client-enforced by role) and read-only Firestore
+    // limited to what the app needs to boot (access doc + HA connection).
+    function isGuest() {
+      return request.auth != null && accessExists()
+        && !isMember()
+        && request.auth.token.email in accessData().guests;
+    }
+    function isAllowed() { return isMember() || isGuest(); }
 
-    // Access list: members read, owners manage.
+    // Access list: members + guests read (guests need it to learn their role +
+    // allowed views); owners manage.
     match /settings/access {
-      allow read: if isMember();
+      allow read: if isAllowed();
       allow write: if isOwner();
     }
 
-    // Per-user profile: any member can read; only the owner of the doc writes.
+    // HA connection token: guests need it to open the live WebSocket; members write.
+    match /settings/haConnection {
+      allow read: if isAllowed();
+      allow write: if isMember();
+    }
+
+    // Per-user profile: any allowed user reads; only the doc's owner writes.
     match /profiles/{uid} {
-      allow read: if isMember();
+      allow read: if isAllowed();
       allow write: if request.auth != null && request.auth.uid == uid;
     }
 
-    // Everything else (settings/haConnection, logged data): household members.
+    // Access log: allowed users append their own events; owners read + prune.
+    match /access_log/{id} {
+      allow read: if isOwner();
+      allow create: if isAllowed()
+        && request.resource.data.email == request.auth.token.email.lower();
+      allow update, delete: if isOwner();
+    }
+
+    // Everything else (logged data, messages, etc.): household members only.
+    // Guests are intentionally excluded here — they get no broad Firestore read.
     match /{document=**} {
       allow read, write: if isMember();
     }

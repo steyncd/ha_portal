@@ -5,7 +5,9 @@
   import { toast } from "../lib/toast.svelte";
   import { HASS_URL } from "../lib/config";
   import { authStore, BOOTSTRAP_OWNERS } from "../lib/auth.svelte";
-  import { addMember, removeMember, promote, demote } from "../lib/access";
+  import { addMember, removeMember, promote, demote, addGuest, setGuestViews } from "../lib/access";
+  import { subscribeAccessLog, type AccessEvent } from "../lib/accessLog";
+  import { NAV as NAV_ALL } from "../lib/nav";
   import { enablePush, pushGranted } from "../lib/push";
   import { parseDocument, type ParseKind } from "../lib/documents";
   import { watchParcels, addParcel, removeParcel, refreshParcels, type Parcel } from "../lib/parcels";
@@ -84,6 +86,42 @@
   async function toggleOwner(email: string, isOwner: boolean) {
     try { isOwner ? await demote(email) : await promote(email); toast.show("Role updated"); }
     catch { toast.show("Couldn't change role"); }
+  }
+
+  // ---- guests (restricted, per-person views) ----
+  // Views an owner may share with a guest (everything except Overview, which is
+  // always shown, and Settings, which guests never get).
+  const GRANTABLE = NAV_ALL.filter((v) => !["overview", "settings"].includes(v.id));
+  const DEFAULT_GUEST_VIEWS = ["energy", "water", "lights"];
+  let newGuest = $state("");
+  const guestList = $derived(authStore.guests.map(lc).sort());
+  const viewsFor = (email: string) => authStore.guestConfig.find((g) => lc(g.e) === lc(email))?.v ?? [];
+  async function addGuestUser() {
+    const e = newGuest.trim();
+    if (!e || !e.includes("@")) { toast.show("Enter a valid email"); return; }
+    try { await addGuest(e, DEFAULT_GUEST_VIEWS); toast.show(`${e} added as guest`); newGuest = ""; }
+    catch { toast.show("Couldn't add — owners only"); }
+  }
+  async function toggleGuestView(email: string, viewId: string) {
+    const cur = viewsFor(email);
+    const next = cur.includes(viewId) ? cur.filter((v) => v !== viewId) : [...cur, viewId];
+    try { await setGuestViews(email, next); } catch { toast.show("Couldn't update — owners only"); }
+  }
+
+  // ---- access log (owners only) ----
+  let accessEvents = $state<AccessEvent[]>([]);
+  onMount(() => {
+    if (!authStore.isOwner) return;
+    return subscribeAccessLog((e) => (accessEvents = e));
+  });
+  const viewName = (id: string | null) => (id ? (NAV_ALL.find((n) => n.id === id)?.name ?? id) : "");
+  function agoTs(ms: number) {
+    if (!ms) return "";
+    const m = Math.round((Date.now() - ms) / 60000);
+    if (m < 1) return "just now";
+    if (m < 60) return `${m}m ago`;
+    const h = Math.round(m / 60);
+    return h < 24 ? `${h}h ago` : `${Math.round(h / 24)}d ago`;
   }
 
   // ---- WhatsApp inbound (allow-list + enable), stored in HA ----
@@ -243,6 +281,49 @@
         <button class="send" onclick={addUser}>Add</button>
       </div>
       <div class="note">Owners can manage access and branding. Members get full use of the portal. Built-in owners are set in code and can't be removed here.</div>
+    </div>
+
+    <!-- guests: restricted, per-person views -->
+    <div class="card pad">
+      <div class="lb" style="margin-bottom:6px">Guest access ({guestList.length})</div>
+      <div class="note" style="margin-bottom:12px">Guests are locked to a restricted view — only the pages you tick below (plus Overview). They can't reach Settings, and can't switch it off.</div>
+      {#each guestList as g}
+        {@const gv = viewsFor(g)}
+        <div class="guestrow">
+          <div class="grtop">
+            <span class="uav2">{g.charAt(0).toUpperCase()}</span>
+            <div class="uem" style="flex:1">{g}</div>
+            <button class="rmbtn" onclick={() => removeUser(g)} title="Remove guest">✕</button>
+          </div>
+          <div class="gviews">
+            {#each GRANTABLE as v}
+              <button class="vchip" class:on={gv.includes(v.id)} onclick={() => toggleGuestView(g, v.id)}>{v.name}</button>
+            {/each}
+          </div>
+        </div>
+      {/each}
+      <div class="composer" style="margin-top:14px">
+        <input bind:value={newGuest} placeholder="Add guest by Google email…" onkeydown={(e) => e.key === "Enter" && addGuestUser()} />
+        <button class="send" onclick={addGuestUser}>Add guest</button>
+      </div>
+      <div class="note" style="margin-top:8px">Note: a guest still connects through the household's Home Assistant, so treat guest access as "trusted visitor", not a security sandbox.</div>
+    </div>
+
+    <!-- access log -->
+    <div class="card pad">
+      <div class="rh"><span class="lb">Access log</span><span class="sub">recent sign-ins &amp; views</span></div>
+      {#if accessEvents.length}
+        <div class="loglist">
+          {#each accessEvents as e}
+            <div class="logrow">
+              <span class="lgwho">{e.name || e.email}</span>
+              <span class="lgev">{e.event === "signin" ? "signed in" : `opened ${viewName(e.view)}`}</span>
+              <span class="lgrole" class:guest={e.role === "guest"}>{e.role}</span>
+              <span class="lgt">{agoTs(e.ts)}</span>
+            </div>
+          {/each}
+        </div>
+      {:else}<div class="note">No access events logged yet.</div>{/if}
     </div>
   {/if}
 
@@ -571,6 +652,17 @@
   .views { display: flex; gap: 9px; flex-wrap: wrap; }
   .vchip { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.045); font-size: 12px; font-weight: 600; }
   .vchip.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .guestrow { padding: 12px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  .grtop { display: flex; align-items: center; gap: 11px; margin-bottom: 10px; }
+  .gviews { display: flex; gap: 7px; flex-wrap: wrap; }
+  .gviews .vchip { padding: 6px 11px; font-size: 11px; border-radius: 9px; }
+  .loglist { display: flex; flex-direction: column; }
+  .logrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12.5px; }
+  .lgwho { font-weight: 600; min-width: 120px; }
+  .lgev { flex: 1; color: var(--text-2); }
+  .lgrole { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .lgrole.guest { color: var(--acc); }
+  .lgt { font-size: 11px; color: var(--muted-2); white-space: nowrap; }
   .tvlink { padding: 16px 20px; font-size: 12.5px; color: var(--text-2); }
   .tvbtn { color: var(--water); font-weight: 600; }
 </style>
