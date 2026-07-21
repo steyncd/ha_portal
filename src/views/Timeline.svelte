@@ -3,17 +3,11 @@
   import { APPLIANCES } from "../lib/entities";
   import { n, clock, sastHour } from "../lib/format";
 
-  type Tab = "me" | "kids";
   type Range = "today" | "yesterday" | "history";
-  let tab = $state<Tab>("me");
   let meRange = $state<Range>("today");
-  let kidRange = $state<Range>("today");
 
   const PERSON = "person.christo_steyn";
   const MY_GEO = "sensor.hello_geocoded_location";
-  const KID = "person.hello_liam_en_eben";
-  const KID_GEO = "sensor.kid_s_phone_geocoded_location";
-  const KID_BATT = "sensor.kid_s_phone_battery_level";
 
   const ROOMS = [
     { label: "Main", id: "binary_sensor.main_room_pir", color: "#a78bfa" },
@@ -74,8 +68,6 @@
   type PSort = "recent" | "long" | "name";
   let meFilter = $state<PFilter>("all");
   let meSort = $state<PSort>("recent");
-  let kidFilter = $state<PFilter>("all");
-  let kidSort = $state<PSort>("recent");
   function applyPF(list: Place[], filter: PFilter, sort: PSort) {
     const f = list.filter((p) => (filter === "all" ? true : filter === "zone" ? p.zone : !p.zone));
     const cmp =
@@ -229,42 +221,9 @@
     }));
   }
 
-  // ---------- Kids data ----------
-  let kidPlaces = $state<Place[]>([]);
-  let kidEvents = $state<{ icon: string; txt: string; sub: string; t: string }[]>([]);
   const placesView = $derived(applyPF(places, meFilter, meSort));
-  const kidPlacesView = $derived(applyPF(kidPlaces, kidFilter, kidSort));
-  const kidState = $derived(ha.state(KID));
-  const kidBattN = $derived(ha.num(KID_BATT));
-  const kidNow = $derived({
-    icon: kidState === "home" ? "🏠" : kidState === "not_home" ? "🗺️" : "📍",
-    loc: kidState === "home" ? "Home" : kidState === "not_home" ? (ha.state(KID_GEO) ?? "Out") : placeName(kidState ?? "—"),
-    battery: kidBattN != null ? n(kidBattN) : "—",
-  });
-  const kidBattColor = $derived(kidBattN == null ? "var(--muted)" : kidBattN < 20 ? "var(--error)" : kidBattN < 40 ? "var(--warning)" : "var(--success)");
 
-  async function loadKids(r: Range) {
-    const { start, end } = windowFor(r);
-    const hrs = Math.ceil((Date.now() - start) / 3_600_000) + 1;
-    const [hist, geoHist] = await Promise.all([ha.historyStates(KID, hrs), ha.historyStates(KID_GEO, hrs)]);
-    const ps = personSegs(hist, start, end);
-    kidPlaces = r === "history" ? dedupePlaces(ps, geoHist) : ps.map((p) => placeRow(p, geoHist));
-    // phone-activity feed from zone transitions + battery
-    const evs: { icon: string; txt: string; sub: string; t: string }[] = [];
-    for (let i = 1; i < ps.length; i++) {
-      const to = ps[i];
-      evs.push(to.s === "home"
-        ? { icon: "🏡", txt: "Arrived home", sub: "geofence", t: clk(to.start) }
-        : to.s === "not_home"
-          ? { icon: "🚶", txt: `Left ${placeName(ps[i - 1].s)}`, sub: "geofence", t: clk(to.start) }
-          : { icon: "📍", txt: `Arrived ${placeName(to.s)}`, sub: "geofence", t: clk(to.start) });
-    }
-    if (kidBattN != null) evs.unshift({ icon: kidBattN < 20 ? "🪫" : "🔋", txt: `Phone battery ${n(kidBattN)}%`, sub: kidBattN < 20 ? "low" : "ok", t: "now" });
-    kidEvents = evs.slice(0, 6);
-  }
-
-  $effect(() => { if (tab === "me") loadMe(meRange); });
-  $effect(() => { if (tab === "kids") loadKids(kidRange); });
+  $effect(() => { loadMe(meRange); });
 
   // ---------- phone / device details ----------
   const MEP = {
@@ -274,28 +233,12 @@
     floors: "sensor.hello_floors_ascended", activity: "sensor.hello_activity",
     storage: "sensor.hello_storage",
   };
-  // Kids' phone is an Android device — sensor names differ from iOS, and it has no
-  // heart-rate / daily-distance / daily-floors / battery-temperature sensors.
-  const KDP = {
-    batt: "sensor.kid_s_phone_battery_level", state: "sensor.kid_s_phone_battery_state",
-    health: "sensor.kid_s_phone_battery_health",
-    charge: "sensor.kid_s_phone_remaining_charge_time", charger: "sensor.kid_s_phone_charger_type",
-    ssid: "sensor.kid_s_phone_wi_fi_connection", net: "sensor.kid_s_phone_data_network_type_sim_1",
-    steps: "sensor.kid_s_phone_steps_sensor",
-    activity: "sensor.kid_s_phone_detected_activity", ringer: "sensor.kid_s_phone_ringer_mode",
-    lastApp: "sensor.kid_s_phone_last_used_app", alarm: "sensor.kid_s_phone_next_alarm",
-  };
   const bad = (v: string | undefined) => !v || /^(unknown|unavailable|<not connected>|not connected)$/i.test(v);
   function stat(id: string, label: string, digits = 0) {
     const num = ha.num(id);
     if (num != null) { const u = ha.unit(id); return { k: label, v: `${n(num, digits)}${u ? " " + u : ""}` }; }
     const s = ha.state(id);
     return { k: label, v: bad(s) ? "—" : (s as string) };
-  }
-  function netLabel(m: { ssid: string; net: string }) {
-    const ssid = ha.state(m.ssid);
-    if (!bad(ssid)) return { k: "Wi-Fi", v: ssid as string };
-    return { k: "Network", v: bad(ha.state(m.net)) ? "—" : (ha.state(m.net) as string) };
   }
   const chargeState = (s: string | undefined) => s === "Charging" || s === "charging" ? "⚡ charging" : s === "Full" || s === "full" ? "fully charged" : "on battery";
 
@@ -307,16 +250,6 @@
   ].filter((c) => c.v !== "—"));
   const meBatt = $derived(ha.num(MEP.batt));
   const meBattState = $derived(ha.state(MEP.state));
-
-  const kidStats = $derived([
-    stat(KDP.steps, "Steps"),
-    { k: "Activity", v: bad(ha.state(KDP.activity)) ? "—" : (ha.state(KDP.activity) as string) },
-    netLabel(KDP),
-    { k: "Ringer", v: bad(ha.state(KDP.ringer)) ? "—" : (ha.state(KDP.ringer) as string) },
-    { k: "Last app", v: bad(ha.state(KDP.lastApp)) ? "—" : (ha.state(KDP.lastApp) as string) },
-    stat(KDP.health, "Battery health"),
-  ].filter((c) => c.v !== "—"));
-  const kidCharging = $derived(/charg/i.test(ha.state(KDP.state) ?? ""));
 
   const RANGES: { id: Range; label: string }[] = [
     { id: "today", label: "Today" }, { id: "yesterday", label: "Yesterday" }, { id: "history", label: "History" },
@@ -339,13 +272,6 @@
 {/snippet}
 
 <div class="col">
-  <!-- tab switch -->
-  <div class="tabs big">
-    <button class:active={tab === "me"} onclick={() => (tab = "me")}>Me</button>
-    <button class:active={tab === "kids"} onclick={() => (tab = "kids")}>Liam & Eben</button>
-  </div>
-
-  {#if tab === "me"}
     <div class="tabs">
       {#each RANGES as r}<button class:active={meRange === r.id} onclick={() => (meRange = r.id)}>{r.label}</button>{/each}
     </div>
@@ -432,59 +358,12 @@
         </div>
       </div>
     </div>
-  {:else}
-    <!-- kids -->
-    <div class="card pad kidhead">
-      <span class="kav">L·E</span>
-      <div class="kinfo"><div class="kn">Liam & Eben</div><div class="kloc">{kidNow.icon} {kidNow.loc}</div></div>
-      <div class="kbatt"><div class="kbv" style="color:{kidBattColor}">{kidNow.battery}%</div><div class="kbk">shared phone</div></div>
-    </div>
-    <div class="tabs">
-      {#each RANGES as r}<button class:active={kidRange === r.id} onclick={() => (kidRange = r.id)}>{r.label}</button>{/each}
-    </div>
-    <div class="two">
-      <div class="card pad">
-        <div class="rh"><span class="lb">Places</span><span class="sub">{kidPlacesView.length} of {kidPlaces.length}</span></div>
-        {@render pctl(kidFilter, (v) => (kidFilter = v), kidSort, (v) => (kidSort = v))}
-        {#if kidPlacesView.length}
-          {#each kidPlacesView as p}
-            <div class="place">
-              <span class="pic" style="background:{p.zone ? 'color-mix(in srgb,var(--success) 16%,transparent)' : 'color-mix(in srgb,var(--water) 16%,transparent)'}">{p.icon}</span>
-              <div class="pinfo"><div class="ptop"><span class="pn">{p.name}</span><span class="ptag" class:geo={!p.zone}>{p.tag}</span></div><div class="psub">{p.sub}</div></div>
-              <div class="pright"><div class="pwin num">{p.window}</div><div class="pdur">{p.dur}</div></div>
-            </div>
-          {/each}
-        {:else}<div class="note">{kidPlaces.length ? "No places match this filter." : "No location history for this range."}</div>{/if}
-      </div>
-      <div class="card pad">
-        <div class="lb" style="margin-bottom:6px">Phone activity</div>
-        {#if kidEvents.length}
-          {#each kidEvents as e}
-            <div class="row2"><span class="ri">{e.icon}</span><div class="rt2"><span class="rn">{e.txt}</span><span class="rd"> · {e.sub}</span></div><span class="rtm num">{e.t}</span></div>
-          {/each}
-        {:else}<div class="note">No phone activity for this range.</div>{/if}
-      </div>
-    </div>
-    <!-- device details -->
-    <div class="card pad">
-      <div class="rh"><span class="lb">Device details</span><span class="sub">{kidCharging ? "⚡ charging" : "on battery"}</span></div>
-      <div class="phone">
-        <div class="pbatt"><div class="pbv" style="color:{kidBattColor}">{kidNow.battery}%</div><div class="pbk">{kidCharging && !bad(ha.state(KDP.charge)) ? `${ha.state(KDP.charge)} left` : chargeState(ha.state(KDP.state))}</div></div>
-        <div class="chips">
-          {#each kidStats as c}<div class="chip"><span class="ck">{c.k}</span><span class="cv">{c.v}</span></div>{/each}
-        </div>
-      </div>
-    </div>
-    <div class="foot">One shared phone for Liam &amp; Eben. Location from its <b>device_tracker</b> (GPS) — HA zone name inside a known zone, otherwise the reverse-geocoded address. Phone events from battery &amp; geofence sensors.</div>
-  {/if}
 </div>
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
   .tabs { display: flex; gap: 6px; padding: 5px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); align-self: flex-start; }
-  .tabs.big { border-radius: 14px; }
   .tabs button { padding: 8px 16px; border-radius: 9px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
-  .tabs.big button { padding: 9px 20px; border-radius: 10px; font-size: 13px; }
   .tabs button.active { background: var(--grad); color: #07131c; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
@@ -546,16 +425,6 @@
   .pwin { font-size: 12px; font-weight: 700; }
   .pdur { font-size: 11px; color: var(--muted-2); }
 
-  .kidhead { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-  .kav { width: 46px; height: 46px; flex-shrink: 0; border-radius: 14px; background: linear-gradient(135deg, var(--water), var(--success)); display: grid; place-items: center; font-size: 14px; font-weight: 800; color: #0b1017; }
-  .kinfo { flex: 1; min-width: 160px; }
-  .kn { font-size: 16px; font-weight: 800; }
-  .kloc { font-size: 12px; color: var(--success); margin-top: 2px; }
-  .kbatt { text-align: right; flex-shrink: 0; }
-  .kbv { font-size: 13px; font-weight: 700; }
-  .kbk { font-size: 10px; color: var(--muted-2); }
-  .foot { font-size: 11.5px; color: var(--muted-2); }
-  .foot b { color: var(--text-2); }
 
   .phone { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .pbatt { flex-shrink: 0; }
