@@ -14,7 +14,7 @@
   import type { Component } from "svelte";
   const VIEWS: Record<string, () => Promise<{ default: Component<any> }>> = {
     overview: () => import("./views/Overview.svelte"),
-    energy: () => import("./views/Energy.svelte"),
+    energy: () => import("./views/EnergyHub.svelte"),
     powertrends: () => import("./views/PowerTrends.svelte"),
     solar: () => import("./views/Solar.svelte"),
     water: () => import("./views/Water.svelte"),
@@ -27,7 +27,7 @@
     lights: () => import("./views/Lights.svelte"),
     reminders: () => import("./views/Reminders.svelte"),
     system: () => import("./views/System.svelte"),
-    me: () => import("./views/Me.svelte"),
+    me: () => import("./views/MeHub.svelte"),
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
     insights: () => import("./views/Insights.svelte"),

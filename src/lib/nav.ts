@@ -12,8 +12,6 @@ export const NAV: NavItem[] = [
   { id: "overview", name: "Overview", icon: "🏠", ic: "home", group: "", color: "var(--acc)" },
 
   { id: "energy", name: "Energy", icon: "⚡", ic: "bolt", group: "Energy", color: "var(--energy)" },
-  { id: "powertrends", name: "Power Trends", icon: "📊", ic: "chart", group: "Energy", color: "var(--energy)" },
-  { id: "solar", name: "Solar", icon: "☀️", ic: "sun", group: "Energy", color: "var(--solar)" },
 
   { id: "water", name: "Water", icon: "💧", ic: "droplet", group: "Water", color: "var(--water)" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", ic: "leaf", group: "Water", color: "var(--water)" },
@@ -30,7 +28,6 @@ export const NAV: NavItem[] = [
   { id: "system", name: "System", icon: "🖥️", ic: "monitor", group: "Home", color: "var(--muted)" },
 
   { id: "me", name: "Me", icon: "👤", ic: "user", group: "You", color: "var(--health)" },
-  { id: "vitality", name: "Vitality", icon: "🏅", ic: "award", group: "You", color: "var(--health)" },
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "You", color: "var(--acc)" },
 
   { id: "insights", name: "Insights", icon: "📈", ic: "trending", group: "Bottom", color: "var(--acc)" },
