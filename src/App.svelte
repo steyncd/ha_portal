@@ -27,6 +27,7 @@
     lights: () => import("./views/Lights.svelte"),
     reminders: () => import("./views/Reminders.svelte"),
     system: () => import("./views/System.svelte"),
+    control: () => import("./views/ControlHub.svelte"),
     me: () => import("./views/MeHub.svelte"),
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),

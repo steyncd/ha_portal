@@ -541,6 +541,23 @@ const ROWS: Row[] = [
   ["sensor.kid_s_phone_detected_activity", "Still"],
   ["sensor.kid_s_phone_ringer_mode", "Vibrate"],
   ["sensor.kid_s_phone_last_used_app", "YouTube Kids"],
+
+  // Portal-coverage tiles (Overview status strip)
+  ["binary_sensor.severe_weather_active", "on"],
+  ["sensor.severe_weather_warning", "Strong wind 45–60 km/h expected until 18:00"],
+  ["sensor.waze_commute_to_work", "27", { unit_of_measurement: "min", distance: 31.2, route: "N1 South via Brakfontein" }],
+  ["sensor.dns_blocked_percent", "18.4", { unit_of_measurement: "%" }],
+  ["sensor.printer_lowest_ink", "42", { unit_of_measurement: "%", cartridge: "Magenta" }],
+  ["binary_sensor.internet_up", "on"],
+
+  // Control centre demo entities (automations + a few controllable devices)
+  ["automation.wa_inbound_router", "on", { friendly_name: "WhatsApp inbound router", last_triggered: new Date(Date.now() - 900_000).toISOString() }],
+  ["automation.morning_braai_scene", "on", { friendly_name: "Morning routine", last_triggered: new Date(Date.now() - 6 * 3600_000).toISOString() }],
+  ["automation.severe_weather_alert", "off", { friendly_name: "Severe weather alert", last_triggered: new Date(Date.now() - 3 * 86400_000).toISOString() }],
+  ["automation.load_shedding_prep", "on", { friendly_name: "Load-shedding prep", last_triggered: null }],
+  ["fan.study_fan", "off", { friendly_name: "Study fan" }],
+  ["cover.garage_door", "closed", { friendly_name: "Garage door" }],
+  ["lock.front_door", "locked", { friendly_name: "Front door" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(

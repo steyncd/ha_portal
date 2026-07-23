@@ -486,6 +486,65 @@ class HAStore {
     return this.#svc("notify", "notify", { message });
   }
 
+  // ---- HA server / control ----
+  /** Restart Home Assistant core. */
+  restart() {
+    if (this.#mock) return;
+    return this.#svc("homeassistant", "restart", {});
+  }
+  /** Reload all reloadable YAML config (automations, scripts, scenes, templates…). */
+  reloadAll() {
+    if (this.#mock) return;
+    return this.#svc("homeassistant", "reload_all", {});
+  }
+  /** Reload one config domain, e.g. "automation", "script", "template", "scene". */
+  reloadDomain(domain: string) {
+    if (this.#mock) return;
+    return this.#svc(domain, "reload", {});
+  }
+  /** Run an automation now, ignoring its current on/off state. */
+  triggerAutomation(entity_id: string) {
+    if (this.#mock) return;
+    return this.#svc("automation", "trigger", { entity_id });
+  }
+  /** Enable or disable an automation. */
+  setAutomation(entity_id: string, on: boolean) {
+    if (this.#mock) return this.#setMock(entity_id, on ? "on" : "off");
+    return this.#svc("automation", on ? "turn_on" : "turn_off", { entity_id });
+  }
+  /** Open/close a cover. */
+  cover(entity_id: string, open: boolean) {
+    if (this.#mock) return this.#setMock(entity_id, open ? "open" : "closed");
+    return this.#svc("cover", open ? "open_cover" : "close_cover", { entity_id });
+  }
+  /** Lock/unlock a lock. */
+  lock(entity_id: string, locked: boolean) {
+    if (this.#mock) return this.#setMock(entity_id, locked ? "locked" : "unlocked");
+    return this.#svc("lock", locked ? "lock" : "unlock", { entity_id });
+  }
+
+  /** Send a line to HA's conversation agent (Assist) and return the spoken reply. */
+  async assist(text: string, conversationId?: string | null): Promise<{ reply: string; conversationId: string | null }> {
+    if (this.#mock) {
+      await new Promise((r) => setTimeout(r, 400));
+      return { reply: `Demo mode — connected to Home Assistant I'd act on "${text}". Try it on the live portal.`, conversationId: conversationId ?? "mock" };
+    }
+    try {
+      const res = await fetch(`${HASS_URL}/api/conversation/process`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${await this.#token()}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: "en", conversation_id: conversationId ?? undefined }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!res.ok) return { reply: `Assist error (${res.status})`, conversationId: conversationId ?? null };
+      const j = (await res.json()) as { response?: { speech?: { plain?: { speech?: string } } }; conversation_id?: string };
+      const reply = j?.response?.speech?.plain?.speech ?? "(no response)";
+      return { reply, conversationId: j?.conversation_id ?? conversationId ?? null };
+    } catch (e) {
+      return { reply: e instanceof Error ? e.message : "Assist failed", conversationId: conversationId ?? null };
+    }
+  }
+
   // ---- reminders (calendar.reminders) ----
   async #token(): Promise<string> {
     if (this.#auth?.expired) { try { await this.#auth.refreshAccessToken(); } catch { /* use stale */ } }

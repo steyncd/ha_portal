@@ -12,6 +12,7 @@
   import Toggle from "../lib/components/Toggle.svelte";
   import StatusChip from "../lib/components/StatusChip.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import HomeStatusStrip from "../lib/components/HomeStatusStrip.svelte";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -151,6 +152,8 @@
     <div class="attn__text">Everything's running smoothly · {ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak</div>
   </div>
 {/if}
+
+<HomeStatusStrip />
 
 <div class="masonry">
   <!-- power flow -->
