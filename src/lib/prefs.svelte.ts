@@ -38,8 +38,8 @@ const DEFAULTS: Stored = {
   defaultView: "overview",
   settingsTab: "account",
   viewsOn: {
-    energy: true, powertrends: true, water: true, irrigation: true, climate: true, appliances: true,
-    cameras: true, traffic: true, lights: true, reminders: true, system: true, me: true, vitality: true, timeline: true, insights: true,
+    energy: true, powertrends: true, solar: true, water: true, irrigation: true, climate: true, appliances: true,
+    cameras: true, traffic: true, lights: true, reminders: true, system: true, me: true, vitality: true, timeline: true, insights: true, markets: true,
   },
   widgets: {
     scenes: true, lights: true, energyToday: true,

@@ -16,6 +16,7 @@
     overview: () => import("./views/Overview.svelte"),
     energy: () => import("./views/Energy.svelte"),
     powertrends: () => import("./views/PowerTrends.svelte"),
+    solar: () => import("./views/Solar.svelte"),
     water: () => import("./views/Water.svelte"),
     irrigation: () => import("./views/Irrigation.svelte"),
     climate: () => import("./views/Rooms.svelte"),
@@ -30,6 +31,7 @@
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
     insights: () => import("./views/Insights.svelte"),
+    markets: () => import("./views/Markets.svelte"),
     settings: () => import("./views/Settings.svelte"),
   };
   // Per-view props (most take none).

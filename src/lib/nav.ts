@@ -1,6 +1,6 @@
 export type ViewId =
   | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "me" | "vitality" | "timeline" | "insights" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -13,6 +13,7 @@ export const NAV: NavItem[] = [
 
   { id: "energy", name: "Energy", icon: "⚡", ic: "bolt", group: "Energy", color: "var(--energy)" },
   { id: "powertrends", name: "Power Trends", icon: "📊", ic: "chart", group: "Energy", color: "var(--energy)" },
+  { id: "solar", name: "Solar", icon: "☀️", ic: "sun", group: "Energy", color: "var(--solar)" },
 
   { id: "water", name: "Water", icon: "💧", ic: "droplet", group: "Water", color: "var(--water)" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", ic: "leaf", group: "Water", color: "var(--water)" },
@@ -33,6 +34,7 @@ export const NAV: NavItem[] = [
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "You", color: "var(--acc)" },
 
   { id: "insights", name: "Insights", icon: "📈", ic: "trending", group: "Bottom", color: "var(--acc)" },
+  { id: "markets", name: "Markets & Rates", icon: "💹", ic: "trending", group: "Bottom", color: "var(--acc)" },
   { id: "settings", name: "Settings", icon: "⚙️", ic: "gear", group: "Bottom", color: "var(--muted)" },
 ];
 
