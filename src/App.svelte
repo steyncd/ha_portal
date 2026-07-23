@@ -40,7 +40,6 @@
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
-  import CommandPalette from "./lib/components/CommandPalette.svelte";
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
@@ -272,7 +271,12 @@
     </nav>
   {/if}
 
-  <CommandPalette open={palette} onnav={go} onclose={() => (palette = false)} />
+  {#if palette}
+    {#await import("./lib/components/CommandPalette.svelte") then mod}
+      {@const CommandPalette = mod.default}
+      <CommandPalette open={true} onnav={go} onclose={() => (palette = false)} />
+    {/await}
+  {/if}
   <LightSheet />
   <Toast />
   {#if tv}
