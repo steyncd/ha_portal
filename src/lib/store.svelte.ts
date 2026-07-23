@@ -106,12 +106,22 @@ class HAStore {
       return;
     }
     try {
-      // Prefer a stored long-lived token (set in Settings); fall back to the
-      // interactive HA OAuth flow if none is configured.
+      // Prefer a stored long-lived token (set in Settings → System); fall back
+      // to the interactive HA OAuth flow if none is configured. If the stored
+      // direct connection is unreachable (home offline, bad token), fall back to
+      // the built-in (Nabu Casa) URL so the portal still works from anywhere.
       const stored = await loadHaConnection();
-      const { auth, connection } = stored
-        ? await connectWithToken(stored.url, stored.token)
-        : await connect();
+      let auth: Awaited<ReturnType<typeof connect>>["auth"];
+      let connection: Awaited<ReturnType<typeof connect>>["connection"];
+      if (stored) {
+        try {
+          ({ auth, connection } = await connectWithToken(stored.url, stored.token));
+        } catch {
+          ({ auth, connection } = await connect());
+        }
+      } else {
+        ({ auth, connection } = await connect());
+      }
       this.#conn = connection;
       this.#auth = auth;
       subscribeEntities(connection, (ents) => this.#applyEntities(ents));

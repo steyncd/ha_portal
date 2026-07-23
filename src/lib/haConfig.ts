@@ -10,7 +10,7 @@
 // signed-in user (the live WebSocket is necessarily client-side). Acceptable
 // for a personal/family dashboard behind Google login.
 import { db } from "./firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, deleteDoc } from "firebase/firestore";
 
 export type HaConnConfig = { url: string; token: string };
 
@@ -31,4 +31,10 @@ export async function loadHaConnection(): Promise<HaConnConfig | null> {
 /** Persist the HA connection for future sessions / other devices. */
 export async function saveHaConnection(cfg: HaConnConfig): Promise<void> {
   await setDoc(doc(db, "settings", "haConnection"), cfg);
+}
+
+/** Remove the stored direct connection — the portal reverts to the built-in
+ *  (Nabu Casa) URL via the interactive OAuth flow on the next load. */
+export async function clearHaConnection(): Promise<void> {
+  await deleteDoc(doc(db, "settings", "haConnection"));
 }

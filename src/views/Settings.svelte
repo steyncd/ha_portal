@@ -11,8 +11,45 @@
   import { enablePush, pushGranted } from "../lib/push";
   import { parseDocument, type ParseKind } from "../lib/documents";
   import { watchParcels, addParcel, removeParcel, refreshParcels, type Parcel } from "../lib/parcels";
+  import { loadHaConnection, saveHaConnection, clearHaConnection } from "../lib/haConfig";
   import Toggle from "../lib/components/Toggle.svelte";
   import { onMount } from "svelte";
+
+  // ---- Home Assistant connection (direct vs built-in Nabu Casa) ----
+  let haUrl = $state("");
+  let haToken = $state("");
+  let haConfigured = $state(false);
+  let haBusy = $state(false);
+  onMount(async () => {
+    const c = await loadHaConnection();
+    if (c) { haUrl = c.url; haConfigured = true; }
+  });
+  async function saveHa() {
+    const url = haUrl.trim().replace(/\/+$/, "");
+    if (!/^https:\/\//.test(url)) { toast.show("URL must start with https://"); return; }
+    if (!haToken.trim()) { toast.show("Paste a long-lived access token"); return; }
+    haBusy = true;
+    try {
+      await saveHaConnection({ url, token: haToken.trim() });
+      toast.show("Saved — reconnecting…");
+      setTimeout(() => location.reload(), 900);
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : String(e));
+      haBusy = false;
+    }
+  }
+  async function clearHa() {
+    haBusy = true;
+    try {
+      await clearHaConnection();
+      haConfigured = false; haUrl = ""; haToken = "";
+      toast.show("Reverted to built-in connection — reloading…");
+      setTimeout(() => location.reload(), 900);
+    } catch (e) {
+      toast.show(e instanceof Error ? e.message : String(e));
+      haBusy = false;
+    }
+  }
 
   // ---- parcels (Ship24) ----
   let parcels = $state<Parcel[]>([]);
@@ -460,7 +497,30 @@
       {/each}
     </div>
   </div>
+  {/if}
 
+  {#if tab === "system" && authStore.isOwner}
+  <h2 class="section">Home Assistant connection</h2>
+  <div class="card pad">
+    <div class="note" style="margin-bottom:12px">
+      {#if haConfigured}
+        Connecting <strong>directly</strong> to <code>{haUrl}</code>. This is faster than the built-in relay. If it ever becomes unreachable the portal automatically falls back to the built-in connection.
+      {:else}
+        Currently using the built-in connection (<code>{HASS_URL.replace('https://','')}</code>) via Nabu Casa. Enter a direct HTTPS URL + a long-lived token to connect straight to your instance for lower latency.
+      {/if}
+    </div>
+    <label class="fld"><span>Direct URL</span>
+      <input bind:value={haUrl} placeholder="https://ha.helloliam.co.za" autocomplete="off" spellcheck="false" />
+    </label>
+    <label class="fld"><span>Long-lived access token</span>
+      <input bind:value={haToken} type="password" placeholder={haConfigured ? "•••••••• (stored — paste again to change)" : "Paste token from HA → Profile → Security"} autocomplete="off" spellcheck="false" />
+    </label>
+    <div class="btnrow">
+      <button class="save" onclick={saveHa} disabled={haBusy}>{haBusy ? "Saving…" : haConfigured ? "Update connection" : "Connect directly"}</button>
+      {#if haConfigured}<button class="ghost" onclick={clearHa} disabled={haBusy}>Revert to built-in</button>{/if}
+    </div>
+    <div class="note" style="margin-top:10px">Create a token in Home Assistant → your profile → <em>Security</em> → “Long-lived access tokens”. Your HA must be reachable over HTTPS and allow this portal's origin in <code>cors_allowed_origins</code>.</div>
+  </div>
   {/if}
 
   <!-- health goals -->
@@ -643,6 +703,14 @@
   input[type="time"] { background: rgba(255, 255, 255, 0.06); border: none; border-radius: 9px; color: var(--text); font-size: 12.5px; padding: 7px 10px; color-scheme: dark; }
   select { width: 100%; background: rgba(255, 255, 255, 0.06); border: none; border-radius: 11px; color: var(--text); font-size: 13px; padding: 12px; color-scheme: dark; }
   .note { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+  .note code { background: rgba(255, 255, 255, 0.08); padding: 1px 5px; border-radius: 5px; font-size: 11px; }
+  .fld { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+  .fld span { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+  .fld input { background: rgba(255, 255, 255, 0.06); border: none; border-radius: 11px; color: var(--text); font-size: 13.5px; padding: 12px 14px; outline: none; }
+  .btnrow { display: flex; gap: 9px; flex-wrap: wrap; }
+  .btnrow .save { padding: 12px 22px; border-radius: 12px; background: var(--grad); color: #0b1017; font-size: 13px; font-weight: 800; }
+  .btnrow .ghost { padding: 12px 18px; border-radius: 12px; background: rgba(255, 255, 255, 0.08); color: var(--text); font-size: 13px; font-weight: 600; }
+  .btnrow button:disabled { opacity: 0.55; }
   .presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 9px; margin-bottom: 14px; }
   .preset { padding: 12px 14px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; font-size: 12.5px; font-weight: 600; }
   .preset:hover { background: rgba(255, 255, 255, 0.09); }
