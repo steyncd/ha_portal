@@ -21,7 +21,9 @@ export async function enablePush(): Promise<{ ok: boolean; msg: string }> {
     const perm = await Notification.requestPermission();
     if (perm !== "granted") return { ok: false, msg: "Notification permission was denied" };
 
-    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+    // Scope the FCM SW to its own path so it doesn't fight the PWA (Workbox) SW
+    // that owns "/". getToken() binds the push subscription to THIS registration.
+    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/firebase-cloud-messaging-push-scope" });
     const messaging = getMessaging(app);
     const token = await getToken(messaging, { vapidKey: VAPID, serviceWorkerRegistration: reg });
     if (!token) return { ok: false, msg: "Couldn't get a push token" };

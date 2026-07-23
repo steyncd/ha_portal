@@ -60,7 +60,10 @@ export type Reminder = {
  * Components read `ha.entities` / the helpers and re-render automatically.
  */
 class HAStore {
-  entities = $state<HassEntities>({});
+  // $state.raw: the entities map is always REPLACED wholesale (never deep-mutated),
+  // so raw state skips deep-proxying ~5000 entities on every WS tick — a big runtime
+  // win. Reassignment still triggers reactivity for all readers.
+  entities = $state.raw<HassEntities>({});
   status = $state<Status>("connecting");
   error = $state("");
   #conn: Connection | undefined;
