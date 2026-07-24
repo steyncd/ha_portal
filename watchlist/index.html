@@ -258,6 +258,7 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+window.__auth = auth; // debug: inspect __auth.currentUser in the console
 const db = getFirestore(app);
 const fns = getFunctions(app, "us-central1");
 const analyzeMovieFn = httpsCallable(fns, "analyzeMovie");
@@ -385,9 +386,11 @@ provider.setCustomParameters({ prompt: 'select_account' });
 document.getElementById('signinBtn').onclick = async () => {
   document.getElementById('gateErr').textContent = 'Opening Google sign-in…';
   try {
-    await signInWithPopup(auth, provider);
+    const cred = await signInWithPopup(auth, provider);
+    console.log('[watchlist] signInWithPopup resolved →', cred && cred.user && cred.user.email);
     document.getElementById('gateErr').textContent = '';
   } catch (e) {
+    console.error('[watchlist] signInWithPopup error →', e.code, e.message);
     if (e.code === 'auth/popup-blocked') {
       showGateErr({ message: 'Your browser blocked the sign-in window — allow pop-ups for this site, then tap Sign in again.' });
     } else {
@@ -399,31 +402,40 @@ document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
 
 onAuthStateChanged(auth, async (user) => {
+  console.log('[watchlist] onAuthStateChanged →', user ? user.email : 'null');
   me = user;
   if (!user) { showGate('Sign in to view the family watchlist.', true); return; }
   await bootApp();
 });
 
+const withTimeout = (p, ms) => Promise.race([p,
+  new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout', message: 'database timed out' }), ms))]);
+
 async function bootApp(){
   try {
     const email = (me.email||'').toLowerCase();
     const isBoot = BOOTSTRAP_ADMINS.map(x=>x.toLowerCase()).includes(email);
+    let isAdmin, allowed;
 
-    // Read the access doc (best-effort). Bootstrap admins do NOT depend on it,
-    // so a blocked/failed Firestore read still lets an owner in.
-    try {
-      const snap = await getDoc(ACCESS);
-      accessDoc = snap.exists()
-        ? { admins: snap.data().admins || [], allowed: snap.data().allowed || [] }
-        : { admins: [], allowed: [] };
-    } catch(e){ accessDoc = { admins: [], allowed: [] }; }
+    if (isBoot) {
+      // Bootstrap owner: admit immediately. NEVER wait on Firestore here — a
+      // slow/blocked read must not strand an owner on the gate (the bug we hit).
+      isAdmin = true; allowed = true;
+    } else {
+      // Everyone else needs the access doc to learn their role. Time-box it so a
+      // hanging Firestore surfaces an error instead of a frozen gate.
+      try {
+        const snap = await withTimeout(getDoc(ACCESS), 8000);
+        accessDoc = snap.exists()
+          ? { admins: snap.data().admins || [], allowed: snap.data().allowed || [] }
+          : { admins: [], allowed: [] };
+      } catch(e){ showGateErr({ message: "Couldn't reach the database (" + (e.code||e.message) + "). Please try again." }); return; }
+      isAdmin = accessDoc.admins.map(x=>x.toLowerCase()).includes(email);
+      allowed = isAdmin || accessDoc.allowed.map(x=>x.toLowerCase()).includes(email);
+      if (!allowed) { showGate("You're signed in as "+me.email+", but you don't have access yet. Ask Christo or Mandri to add you.", false); return; }
+    }
 
-    const isAdmin = isBoot || accessDoc.admins.map(x=>x.toLowerCase()).includes(email);
-    const allowed = isAdmin || accessDoc.allowed.map(x=>x.toLowerCase()).includes(email);
-
-    if (!allowed) { showGate("You're signed in as "+me.email+", but you don't have access yet. Ask Christo or Mandri to add you.", false); return; }
-
-    // Reveal the app IMMEDIATELY — never block on writes/seeding.
+    // Reveal the app.
     role = isAdmin ? 'admin' : 'viewer';
     document.getElementById('gate').hidden = true;
     document.getElementById('app').hidden = false;
@@ -434,15 +446,19 @@ async function bootApp(){
     subscribeMovies();
     subscribeWatched();
 
-    // First run for a bootstrap admin: create the access doc + auto-seed the
-    // pre-analysed list, in the background so it can never block getting in.
-    if (isBoot && !accessDoc.admins.length) {
+    // Bootstrap owner: ensure the access doc exists + auto-seed the pre-analysed
+    // list, all in the background so nothing blocks entry.
+    if (isBoot) {
       (async () => {
         try {
-          accessDoc = { admins: [me.email], allowed: [me.email] };
-          await setDoc(ACCESS, accessDoc);
-          await seedList();
-        } catch(e){ console.warn('watchlist first-run seed failed:', e); }
+          const snap = await getDoc(ACCESS);
+          if (snap.exists()) {
+            accessDoc = { admins: snap.data().admins || [], allowed: snap.data().allowed || [] };
+          } else {
+            accessDoc = { admins: [me.email], allowed: [me.email] };
+            await setDoc(ACCESS, accessDoc);
+          }
+        } catch(e){ console.warn('watchlist access-doc bootstrap failed:', e); }
       })();
     }
   } catch (e) {
@@ -468,13 +484,17 @@ function showGate(msg, canSignIn){
 }
 
 /* ---------- data ---------- */
+let autoSeedTried = false;
 function subscribeMovies(){
   onSnapshot(MOVIES_COL, (qs) => {
     movies = qs.docs.map(d => ({ id: d.id, ...d.data() }));
-    // seed if empty and admin
     const seedBtn = document.getElementById('seedBtn');
-    if (!movies.length && role === 'admin') { seedBtn.hidden = false; }
-    else { seedBtn.hidden = true; }
+    if (!movies.length && role === 'admin') {
+      seedBtn.hidden = false;
+      // Auto-seed the pre-analysed list on first empty load (once), so an admin
+      // never has to hunt for the button. Guard prevents double-seeding.
+      if (!autoSeedTried) { autoSeedTried = true; seedList().catch(e => console.warn('auto-seed failed:', e)); }
+    } else { seedBtn.hidden = true; }
     render();
   }, (e)=>{ document.getElementById('list').innerHTML = `<div class="empty">Couldn't load the list (${esc(e.code||e.message)}).</div>`; });
 }
