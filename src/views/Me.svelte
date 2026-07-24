@@ -167,6 +167,18 @@
   ];
   const battC = (v: number | null) => (v == null ? "var(--muted)" : v <= 15 ? "var(--error)" : v <= 35 ? "var(--warning)" : "var(--success)");
   const isCharging = (s: string | undefined) => (s ? /charg/i.test(s) && !/not|dis/i.test(s) : false);
+
+  // Apple Health (Health Auto Export → hae.*) — metrics Oura doesn't cover.
+  const AH = [
+    { k: "VO₂ max", id: "hae.hahealthsync_vo2_max", d: 1, u: "" },
+    { k: "HRV", id: "hae.hahealthsync_heart_rate_variability", d: 0, u: "ms" },
+    { k: "Blood O₂", id: "hae.hahealthsync_blood_oxygen_saturation", d: 0, u: "%" },
+    { k: "Respiratory", id: "hae.hahealthsync_respiratory_rate", d: 0, u: "/min" },
+    { k: "Daylight", id: "hae.hahealthsync_time_in_daylight", d: 0, u: "m" },
+    { k: "Audio exp.", id: "hae.hahealthsync_environmental_audio_exposure", d: 0, u: "dB" },
+  ];
+  const ahRows = $derived(AH.map((m) => ({ ...m, v: ha.num(m.id) })));
+  const hasAH = $derived(ahRows.some((r) => r.v != null));
 </script>
 
 <div class="col">
@@ -249,6 +261,17 @@
       </div>
     {/each}
   </div>
+
+  {#if hasAH}
+    <div class="card pad">
+      <div class="rh"><span class="lb">🍎 Apple Health · today</span><span class="sub">from HealthKit</span></div>
+      <div class="ahgrid">
+        {#each ahRows as r}
+          <div class="ah"><div class="ahv">{r.v != null ? n(r.v, r.d) : "—"}<span class="ahu">{r.u}</span></div><div class="ahk">{r.k}</div></div>
+        {/each}
+      </div>
+    </div>
+  {/if}
 
   <div class="two">
     <div class="card pad">
@@ -360,6 +383,13 @@
   .dbn { font-size: 13px; font-weight: 700; }
   .dbs { font-size: 11px; color: var(--muted); margin-top: 1px; text-transform: capitalize; }
   .dbp { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ahgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .ahgrid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 440px) { .ahgrid { grid-template-columns: repeat(2, 1fr); } }
+  .ah { text-align: center; padding: 13px 6px; border-radius: 13px; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+  .ahv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .ahu { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 1px; }
+  .ahk { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
   .insight { display: flex; align-items: center; gap: 13px; padding: 15px 20px; }
   .ii { font-size: 22px; }
   .it { font-size: 13.5px; color: var(--text); font-weight: 500; }
