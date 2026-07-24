@@ -244,11 +244,13 @@ import { getFunctions, httpsCallable }
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5v9wFlVM9SrNGlTau-d19ctKEL2A_xMc",
-  // Use the project's canonical auth handler (same as the HA Portal, which
-  // signs in reliably in Safari). A secondary Hosting site's own /__/auth
-  // handler does NOT serve the right config, so same-origin authDomain breaks
-  // the redirect/popup handshake — this canonical one always works.
-  authDomain: "helloliam-ha-dashboard.firebaseapp.com",
+  // Same-origin auth handler + popup. Browsers now block the cross-site handoff
+  // of the credential from firebaseapp.com back to this app (fails in Chrome and
+  // incognito too), so keep the whole popup handshake on THIS origin — its
+  // /__/auth/handler is a registered redirect URI + JS origin. Works on the
+  // future custom domain too since authDomain follows the served hostname.
+  authDomain: (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "helloliam-ha-dashboard.firebaseapp.com" : location.hostname,
   projectId: "helloliam-ha-dashboard",
   storageBucket: "helloliam-ha-dashboard.firebasestorage.app",
   messagingSenderId: "797371865602",
