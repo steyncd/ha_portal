@@ -490,10 +490,15 @@ class HAStore {
     if (this.#mock) return this.#setMock(entity_id, time);
     return this.#svc("input_datetime", "set_datetime", { entity_id, time });
   }
-  /** Broadcast a message to a media/notify target (best-effort). */
-  notify(message: string) {
-    if (this.#mock) return;
-    return this.#svc("notify", "notify", { message });
+  /**
+   * Speak a household announcement via script.speaker_announce (TTS to the
+   * study speaker). `force` bypasses the quiet-hours / focus gate for an
+   * explicit manual broadcast. Returns the service promise so callers can
+   * await success/failure. (There is no notify.notify service on this HA.)
+   */
+  announce(message: string) {
+    if (this.#mock) return Promise.resolve();
+    return this.#svc("script", "speaker_announce", { message, force: true });
   }
 
   // ---- HA server / control ----

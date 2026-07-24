@@ -240,7 +240,12 @@
 
   const msgPresets = ["Dinner's ready! 🍽️", "Time to leave 🚗", "Goodnight all 🌙", "I'm home 🏠", "Load-shedding soon ⚡", "Movie starting 🎬"];
   let msgText = $state("");
-  function send(text: string) { if (!text.trim()) return; ha.notify(text); toast.show(`"${text}" sent`); msgText = ""; }
+  async function send(text: string) {
+    const m = text.trim();
+    if (!m) return;
+    try { await ha.announce(m); toast.show(`Announced: "${m}"`); msgText = ""; }
+    catch { toast.show("Couldn't announce — check the HA connection"); }
+  }
 
   const configurableViews = NAV.filter((v) => !["overview", "security", "settings"].includes(v.id));
   function timeVal(id: string) { return (ha.state(id) ?? "").slice(0, 5); }
