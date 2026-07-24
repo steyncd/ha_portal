@@ -22,6 +22,9 @@
     --shadow:0 12px 34px rgba(0,0,0,0.45);
   }
   *{box-sizing:border-box;margin:0;padding:0}
+  /* The `hidden` attribute must always win — otherwise a class's `display`
+     (e.g. .gate{display:grid}) overrides it and hidden elements stay visible. */
+  [hidden]{display:none!important}
   body{
     font-family:'Inter',system-ui,sans-serif; color:var(--text); line-height:1.5; min-height:100vh;
     background:
@@ -258,7 +261,6 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-window.__auth = auth; // debug: inspect __auth.currentUser in the console
 const db = getFirestore(app);
 const fns = getFunctions(app, "us-central1");
 const analyzeMovieFn = httpsCallable(fns, "analyzeMovie");
@@ -386,11 +388,9 @@ provider.setCustomParameters({ prompt: 'select_account' });
 document.getElementById('signinBtn').onclick = async () => {
   document.getElementById('gateErr').textContent = 'Opening Google sign-in…';
   try {
-    const cred = await signInWithPopup(auth, provider);
-    console.log('[watchlist] signInWithPopup resolved →', cred && cred.user && cred.user.email);
+    await signInWithPopup(auth, provider);
     document.getElementById('gateErr').textContent = '';
   } catch (e) {
-    console.error('[watchlist] signInWithPopup error →', e.code, e.message);
     if (e.code === 'auth/popup-blocked') {
       showGateErr({ message: 'Your browser blocked the sign-in window — allow pop-ups for this site, then tap Sign in again.' });
     } else {
@@ -402,7 +402,6 @@ document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
 
 onAuthStateChanged(auth, async (user) => {
-  console.log('[watchlist] onAuthStateChanged →', user ? user.email : 'null');
   me = user;
   if (!user) { showGate('Sign in to view the family watchlist.', true); return; }
   await bootApp();
@@ -462,6 +461,7 @@ async function bootApp(){
       })();
     }
   } catch (e) {
+    console.error('[watchlist] bootApp error →', e);
     showGateErr(e); // surface anything unexpected instead of silently stalling
   }
 }
