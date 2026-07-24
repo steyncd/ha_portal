@@ -90,7 +90,10 @@ service cloud.firestore {
     // watched doc: allowed users read + write (shared marks across accounts).
     match /watchlist/{doc} {
       allow read: if waAllowed();
-      allow write: if doc == 'watched' ? waAllowed() : waAdmin();
+      // Shared per-household lists (watched/shortlist/watch-again) are writable by
+      // any allowed user; other docs (access, etc.) are admin-only.
+      allow write: if (doc == 'watched' || doc == 'shortlist' || doc == 'watchAgain')
+        ? waAllowed() : waAdmin();
     }
     match /watchlist_movies/{id} {
       allow read: if waAllowed();

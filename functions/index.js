@@ -259,16 +259,16 @@ exports.analyzeMovie = onCall(
     const kind = String((request.data && request.data.type) || "movie").trim() === "series" ? "series" : "film";
     if (!title) throw new HttpsError("invalid-argument", "Title required.");
 
-    const prompt = `You are screening ${kind === "series" ? "TV series" : "films"} for a Reformed Christian family in South Africa. Their #1 filter: they want to AVOID occult, demonic, witchcraft and mystical "power/sorcery" content. A dark or serious TONE is fine — that is NOT the filter. They have two sons, Liam & Eben (older kids), plus the adults.
+    const prompt = `You are screening ${kind === "series" ? "TV series" : "films"} for a **Reformed Christian family in South Africa with a biblical-creationist worldview**. Their #1 filter: AVOID occult, demonic, witchcraft and mystical "power/sorcery" content. A dark or serious TONE is fine — that is NOT the filter. The household is two parents and two sons, **Liam (11) and Eben (8)**.
 
 Analyse the ${kind} "${title}"${year ? " (" + year + ")" : ""}${kind === "series" ? " (assess the series overall across its seasons)" : ""} and return STRICT JSON only.
 
 Rating rules:
 - "green" = clean of occult/demonic/sorcery content.
-- "amber" = a mythic/magic/spiritual element that is a discernment call (e.g. Norse 'gods' framed as aliens, 'the Force', Greek mythology, Christian allegory involving magic).
-- "red" = contains real occult/demonic/witchcraft/sorcery content (spells, demons, hell-pacts, mediums, curses, etc.).
+- "amber" = a mythic/magic/spiritual element that is a discernment call (e.g. Norse 'gods' framed as aliens, 'the Force', Greek mythology, Christian allegory involving magic, Eastern 'chi'/spirit content). ALSO treat a strongly naturalistic/evolutionary "millions of years"/molecules-to-man origins message as a worldview discernment point (note it in 'spiritual'), given the family's biblical-creationist beliefs.
+- "red" = contains real occult/demonic/witchcraft/sorcery content (spells, demons, hell-pacts, mediums, séances, curses, etc.).
 
-suits: "all" (whole family incl. younger kids), "boys" (fine for the older sons), "alone" (mature/intense — parents only).
+suits (judge for boys aged 8 and 11): "all" (fine for the whole family including the 8-year-old), "boys" (fine for the boys — comic-book/adventure action and tension are OK for them, but not for very young kids), "alone" (too mature/intense/graphic for an 8-11 year old — parents only, e.g. R-rated, heavy gore, sexual content, real horror). Comic-book superhero and sci-fi action (e.g. Transformers, Captain America) is generally fine for these boys.
 languageFlag: "filter" if there is notable strong language OR ANY blasphemy / misuse of God's or Jesus' name; otherwise "clean".
 
 For each field give ONE concise, specific sentence (write "None." if genuinely none):
