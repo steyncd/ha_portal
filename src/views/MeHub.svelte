@@ -5,6 +5,7 @@
     { id: "me", label: "Health", load: () => import("./Me.svelte") },
     { id: "vitality", label: "Vitality", load: () => import("./Vitality.svelte") },
     { id: "batteries", label: "Batteries", load: () => import("./Batteries.svelte") },
+    { id: "focus", label: "Focus", load: () => import("./FocusWork.svelte") },
   ];
   let tab = $state("me");
   const active = $derived(TABS.find((t) => t.id === tab)!);

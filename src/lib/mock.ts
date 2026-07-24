@@ -567,6 +567,20 @@ const ROWS: Row[] = [
   ["sensor.christos_macbook_internal_battery_level", "88", { unit_of_measurement: "%" }],
   ["sensor.christos_macbook_internal_battery_state", "Charging"],
   ["sensor.kid_s_phone_battery_health", "good"],
+
+  // Focus / Work tab (MacBook + phone analytics)
+  ["sensor.macbook_active_today", "4.2", { unit_of_measurement: "h" }],
+  ["sensor.macbook_meeting_time_today", "1.5", { unit_of_measurement: "h" }],
+  ["sensor.phone_away_today", "3.1", { unit_of_measurement: "h" }],
+  ["binary_sensor.macbook_in_meeting", "off"],
+  ["sensor.christos_macbook_frontmost_app", "Claude"],
+  ["binary_sensor.christos_macbook_active", "on"],
+  ["binary_sensor.christos_macbook_camera_in_use", "off"],
+  ["binary_sensor.christos_macbook_audio_input_in_use", "off"],
+  ["sensor.christos_macbook_displays", "2"],
+  ["sensor.christos_macbook_storage", "67.1", { unit_of_measurement: "GB" }],
+  ["sensor.christos_macbook_geocoded_location", "302 Wyoming Street, Pretoria"],
+  ["binary_sensor.hello_focus", "off"],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
