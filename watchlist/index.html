@@ -235,7 +235,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, onSnapshot, addDoc, deleteDoc, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -244,7 +244,12 @@ import { getFunctions, httpsCallable }
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5v9wFlVM9SrNGlTau-d19ctKEL2A_xMc",
-  authDomain: "helloliam-ha-dashboard.firebaseapp.com",
+  // Serve the auth handler from the SAME origin the app is on, so the Google
+  // sign-in popup isn't a cross-domain round-trip (which browsers now break via
+  // storage partitioning — popup opens blank, closes, no sign-in). Firebase
+  // Hosting serves /__/auth on every project domain, incl. the custom one.
+  authDomain: (location.hostname === "localhost" || location.hostname === "127.0.0.1")
+    ? "helloliam-ha-dashboard.firebaseapp.com" : location.hostname,
   projectId: "helloliam-ha-dashboard",
   storageBucket: "helloliam-ha-dashboard.firebasestorage.app",
   messagingSenderId: "797371865602",
@@ -380,6 +385,8 @@ document.getElementById('signinBtn').onclick = async () => {
 };
 document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
+// Complete a redirect-based sign-in (fallback path) and surface any error.
+getRedirectResult(auth).catch(showGateErr);
 
 onAuthStateChanged(auth, async (user) => {
   me = user;
