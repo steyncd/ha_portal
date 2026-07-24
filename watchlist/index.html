@@ -235,7 +235,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, browserLocalPersistence, setPersistence, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, onSnapshot, addDoc, deleteDoc, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -244,12 +244,11 @@ import { getFunctions, httpsCallable }
 
 const firebaseConfig = {
   apiKey: "AIzaSyB5v9wFlVM9SrNGlTau-d19ctKEL2A_xMc",
-  // Serve the auth handler from the SAME origin the app is on, so the Google
-  // sign-in popup isn't a cross-domain round-trip (which browsers now break via
-  // storage partitioning — popup opens blank, closes, no sign-in). Firebase
-  // Hosting serves /__/auth on every project domain, incl. the custom one.
-  authDomain: (location.hostname === "localhost" || location.hostname === "127.0.0.1")
-    ? "helloliam-ha-dashboard.firebaseapp.com" : location.hostname,
+  // Use the project's canonical auth handler (same as the HA Portal, which
+  // signs in reliably in Safari). A secondary Hosting site's own /__/auth
+  // handler does NOT serve the right config, so same-origin authDomain breaks
+  // the redirect/popup handshake — this canonical one always works.
+  authDomain: "helloliam-ha-dashboard.firebaseapp.com",
   projectId: "helloliam-ha-dashboard",
   storageBucket: "helloliam-ha-dashboard.firebasestorage.app",
   messagingSenderId: "797371865602",
@@ -373,24 +372,25 @@ let activeFilter = 'all', typeFilter = 'all', hideWatched = false, showAvoid = f
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- auth ---------- */
-// Full-page redirect (not popup). Safari kills the auth popup's link back to
-// the app, so signInWithPopup closes silently without signing in. Redirect is
-// reliable here because authDomain is same-origin (so the SDK's pending-redirect
-// state is stored first-party and survives the round-trip).
+// Popup + canonical firebaseapp.com authDomain — identical to the HA Portal,
+// which signs in reliably in this browser. Every error is surfaced (including
+// popup-closed) so a failure is visible instead of silently doing nothing.
 const provider = new GoogleAuthProvider();
-setPersistence(auth, browserLocalPersistence).catch(()=>{});
 document.getElementById('signinBtn').onclick = async () => {
-  document.getElementById('gateErr').textContent = 'Redirecting to Google…';
+  document.getElementById('gateErr').textContent = 'Opening Google sign-in…';
   try {
-    await signInWithRedirect(auth, provider);
+    await signInWithPopup(auth, provider);
+    document.getElementById('gateErr').textContent = '';
   } catch (e) {
-    showGateErr(e);
+    if (e.code === 'auth/popup-blocked') {
+      showGateErr({ message: 'Your browser blocked the sign-in window — allow pop-ups for this site, then tap Sign in again.' });
+    } else {
+      showGateErr(e); // includes popup-closed-by-user so we can see it if it fails
+    }
   }
 };
 document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
-// Complete the redirect sign-in when Google sends the user back; surface errors.
-getRedirectResult(auth).catch(showGateErr);
 
 onAuthStateChanged(auth, async (user) => {
   me = user;
@@ -399,44 +399,49 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 async function bootApp(){
-  // Determine role by reading the access doc (rules enforce this too).
-  let allowed = false;
   try {
-    const snap = await getDoc(ACCESS);
-    if (snap.exists()) {
-      accessDoc = { admins: snap.data().admins || [], allowed: snap.data().allowed || [] };
-    } else {
-      accessDoc = { admins: [], allowed: [] };
-    }
-  } catch(e){ /* permission denied → not allowed */ }
+    const email = (me.email||'').toLowerCase();
+    const isBoot = BOOTSTRAP_ADMINS.map(x=>x.toLowerCase()).includes(email);
 
-  const email = (me.email||'').toLowerCase();
-  const isBoot = BOOTSTRAP_ADMINS.map(x=>x.toLowerCase()).includes(email);
-  const isAdmin = isBoot || accessDoc.admins.map(x=>x.toLowerCase()).includes(email);
-  allowed = isAdmin || accessDoc.allowed.map(x=>x.toLowerCase()).includes(email);
-
-  // First run: a bootstrap admin with no access doc → create it + auto-seed
-  // the pre-analysed starter list so it's ready with zero manual steps.
-  if (isBoot && !accessDoc.admins.length) {
+    // Read the access doc (best-effort). Bootstrap admins do NOT depend on it,
+    // so a blocked/failed Firestore read still lets an owner in.
     try {
-      accessDoc = { admins: [me.email], allowed: [me.email] };
-      await setDoc(ACCESS, accessDoc);
-      isAdminNow(); allowed = true;
-      await seedList().catch(()=>{});
-    } catch(e){ /* ignore */ }
+      const snap = await getDoc(ACCESS);
+      accessDoc = snap.exists()
+        ? { admins: snap.data().admins || [], allowed: snap.data().allowed || [] }
+        : { admins: [], allowed: [] };
+    } catch(e){ accessDoc = { admins: [], allowed: [] }; }
+
+    const isAdmin = isBoot || accessDoc.admins.map(x=>x.toLowerCase()).includes(email);
+    const allowed = isAdmin || accessDoc.allowed.map(x=>x.toLowerCase()).includes(email);
+
+    if (!allowed) { showGate("You're signed in as "+me.email+", but you don't have access yet. Ask Christo or Mandri to add you.", false); return; }
+
+    // Reveal the app IMMEDIATELY — never block on writes/seeding.
+    role = isAdmin ? 'admin' : 'viewer';
+    document.getElementById('gate').hidden = true;
+    document.getElementById('app').hidden = false;
+    document.getElementById('whoEmail').textContent = me.email;
+    const rc = document.getElementById('roleChip'); rc.hidden = false; rc.textContent = role;
+    document.getElementById('adminbar').hidden = role !== 'admin';
+
+    subscribeMovies();
+    subscribeWatched();
+
+    // First run for a bootstrap admin: create the access doc + auto-seed the
+    // pre-analysed list, in the background so it can never block getting in.
+    if (isBoot && !accessDoc.admins.length) {
+      (async () => {
+        try {
+          accessDoc = { admins: [me.email], allowed: [me.email] };
+          await setDoc(ACCESS, accessDoc);
+          await seedList();
+        } catch(e){ console.warn('watchlist first-run seed failed:', e); }
+      })();
+    }
+  } catch (e) {
+    showGateErr(e); // surface anything unexpected instead of silently stalling
   }
-
-  if (!allowed) { showGate("You're signed in as "+me.email+", but you don't have access yet. Ask Christo or Mandri to add you.", false); return; }
-
-  role = isAdmin ? 'admin' : 'viewer';
-  document.getElementById('gate').hidden = true;
-  document.getElementById('app').hidden = false;
-  document.getElementById('whoEmail').textContent = me.email;
-  const rc = document.getElementById('roleChip'); rc.hidden = false; rc.textContent = role;
-  document.getElementById('adminbar').hidden = role !== 'admin';
-
-  subscribeMovies();
-  subscribeWatched();
 }
 function isAdminNow(){ role='admin'; }
 
