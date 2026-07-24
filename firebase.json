@@ -39,22 +39,6 @@
           ]
         }
       ]
-    },
-    {
-      "site": "steyn-watchlist",
-      "public": "watchlist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-      "headers": [
-        {
-          "source": "**",
-          "headers": [
-            {
-              "key": "Cross-Origin-Opener-Policy",
-              "value": "same-origin-allow-popups"
-            }
-          ]
-        }
-      ]
     }
   ]
 }
