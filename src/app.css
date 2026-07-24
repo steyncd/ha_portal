@@ -78,6 +78,36 @@
   color-scheme: dark;
 }
 
+/* ===== Selectable themes (Steyn handoff) — retint ONLY brand/accent tokens via
+   a data-theme attribute on <html>. Domain colours (--water/--solar/--success/
+   --warning/--error/--climate) stay fixed; they encode meaning, not brand.
+   The whole app follows because components read --acc/--acc2/--grad/--glow and
+   the derived --brand/--wash/--soft/--line/--aurora chain off them. */
+[data-theme="tide"] {
+  --acc: #38bdf8;
+  --acc2: #818cf8;
+  --grad: linear-gradient(135deg, #38bdf8, #818cf8);
+  --glow: rgba(56, 189, 248, 0.5);
+}
+[data-theme="meadow"] {
+  --acc: #34d399;
+  --acc2: #38bdf8;
+  --grad: linear-gradient(135deg, #34d399, #38bdf8);
+  --glow: rgba(52, 211, 153, 0.45);
+}
+[data-theme="spectrum"] {
+  --acc: #818cf8;
+  --acc2: #a855f7;
+  --grad: linear-gradient(135deg, #38bdf8, #818cf8, #a855f7);
+  --glow: rgba(129, 140, 248, 0.5);
+}
+[data-theme="aurora"] {
+  --acc: #a78bfa;
+  --acc2: #818cf8;
+  --grad: linear-gradient(135deg, #818cf8, #a855f7);
+  --glow: rgba(129, 140, 248, 0.5);
+}
+
 * {
   box-sizing: border-box;
 }

@@ -7,6 +7,13 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
     <title>Steyn Home</title>
+    <script>
+      // No-flash theme: set data-theme before first paint (reads the persisted prefs blob).
+      try {
+        var t = (JSON.parse(localStorage.getItem("ha_portal_prefs") || "{}").theme) || "tide";
+        document.documentElement.dataset.theme = ["aurora", "tide", "meadow", "spectrum"].indexOf(t) >= 0 ? t : "tide";
+      } catch (e) { document.documentElement.dataset.theme = "tide"; }
+    </script>
   </head>
   <body>
     <div id="app"></div>

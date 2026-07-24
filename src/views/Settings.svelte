@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
-  import { prefs, PALETTES, type PaletteId } from "../lib/prefs.svelte";
+  import { prefs, THEMES, type Theme } from "../lib/prefs.svelte";
   import { NAV } from "../lib/nav";
   import { toast } from "../lib/toast.svelte";
   import { HASS_URL } from "../lib/config";
@@ -189,7 +189,7 @@
     const v = ha.attr(id, attr); return typeof v === "number" ? v : fallback;
   }
 
-  function setPalette(id: PaletteId) { prefs.setPalette(id); }
+  function setTheme(t: Theme) { prefs.setTheme(t); }
   function setDensity(d: "comfortable" | "wall") { prefs.density = d; prefs.apply(); prefs.save(); }
   function toggleMotion() { prefs.motion = !prefs.motion; prefs.apply(); prefs.save(); }
   function toggleGuest() { prefs.guest = !prefs.guest; prefs.save(); }
@@ -398,13 +398,10 @@
   <div class="card pad">
     <div class="lb" style="margin-bottom:14px">Theme</div>
     <div class="palettes">
-      {#each PALETTES as p}
-        <button class="pal" class:active={prefs.palette === p.id} onclick={() => setPalette(p.id)}>
-          <span class="palsw" style="background:{p.base}">
-            <span class="paldot" style="background:{p.acc}"></span>
-            <span class="paldot" style="background:{p.acc2}"></span>
-          </span>
-          <span class="palname">{p.name}</span>
+      {#each THEMES as t}
+        <button class="pal" class:active={prefs.theme === t.key} onclick={() => setTheme(t.key)} aria-pressed={prefs.theme === t.key}>
+          <span class="palbar" style="background:{t.grad}"></span>
+          <span class="palname">{t.name}</span>
         </button>
       {/each}
     </div>
@@ -677,13 +674,10 @@
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
   .palettes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-  .pal { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 12px; text-align: left; background: rgba(255, 255, 255, 0.028); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: box-shadow var(--dur) var(--ease); }
+  .pal { display: flex; flex-direction: column; gap: 9px; padding: 12px; border-radius: 12px; text-align: left; background: rgba(255, 255, 255, 0.028); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); transition: box-shadow var(--dur) var(--ease); }
   .pal:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18); }
-  .pal.active { box-shadow: inset 0 0 0 1.5px var(--acc); }
-  .palsw { position: relative; width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0; overflow: hidden; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12); }
-  .paldot { position: absolute; width: 15px; height: 15px; border-radius: 50%; top: 50%; transform: translateY(-50%); }
-  .paldot:first-of-type { left: 4px; }
-  .paldot:last-of-type { right: 4px; }
+  .pal.active { box-shadow: inset 0 0 0 2px var(--acc), 0 0 0 4px var(--glow); }
+  .palbar { height: 12px; border-radius: 999px; }
   .palname { font-size: 12.5px; font-weight: 600; color: var(--text-2); }
   .row { display: flex; align-items: center; justify-content: space-between; }
   .rn { font-size: 13px; font-weight: 600; }

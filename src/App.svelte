@@ -155,10 +155,11 @@
     <div class="login">
       <span class="llogo" aria-label="Steyn Home">
         <svg viewBox="0 0 96 96" width="64" height="64" aria-hidden="true">
-          <defs><linearGradient id="steynLoginG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8" /><stop offset="1" stop-color="#a855f7" /></linearGradient></defs>
+          <defs><linearGradient id="steynLoginG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--acc)" /><stop offset="1" stop-color="var(--acc2)" /></linearGradient></defs>
           <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLoginG)" />
-          <path d="M35 41 L48 31 L61 41" fill="none" stroke="#0b0d12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-          <text x="49" y="73" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-size="42" font-weight="700" fill="#0b0d12">S</text>
+          <path d="M30 47 L48 30 L66 47" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M35 46 V67 H61 V46" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M44 67 V57 a4 4 0 0 1 8 0 V67" fill="none" stroke="#0b0d12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </span>
       <h1>Steyn Home</h1>
@@ -189,10 +190,11 @@
         <div class="brand">
           <span class="logo" aria-label="Steyn Home">
             <svg viewBox="0 0 96 96" width="100%" height="100%" aria-hidden="true">
-              <defs><linearGradient id="steynLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8" /><stop offset="1" stop-color="#a855f7" /></linearGradient></defs>
+              <defs><linearGradient id="steynLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--acc)" /><stop offset="1" stop-color="var(--acc2)" /></linearGradient></defs>
               <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLogoG)" />
-              <path d="M35 41 L48 31 L61 41" fill="none" stroke="#0b0d12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-              <text x="49" y="73" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-size="42" font-weight="700" fill="#0b0d12">S</text>
+              <path d="M30 47 L48 30 L66 47" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M35 46 V67 H61 V46" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M44 67 V57 a4 4 0 0 1 8 0 V67" fill="none" stroke="#0b0d12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
