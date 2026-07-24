@@ -29,6 +29,7 @@ const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const SHIP24_KEY = defineSecret("SHIP24_KEY");
+const TMDB_KEY = defineSecret("TMDB_KEY");
 
 const RATE_LIMIT = 30; // max messages per sender per rolling minute
 const WINDOW_MS = 60_000;
@@ -312,6 +313,56 @@ summary: one plain-language sentence for the parents.`;
     let out;
     try { out = JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
     return out;
+  },
+);
+
+// ---- Watchlist: on-demand "where to watch" in South Africa (TMDB / JustWatch) ----
+// Any allowed watchlist user can query. Returns ZA streaming/rent/buy providers.
+exports.whereToWatch = onCall(
+  { secrets: [TMDB_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+    let allowed = WA_BOOTSTRAP_ADMINS.includes(email);
+    if (!allowed) {
+      try {
+        const snap = await db.doc("watchlist/access").get();
+        const d = (snap.exists && snap.data()) || {};
+        const all = [...(d.admins || []), ...(d.allowed || [])].map((x) => String(x).toLowerCase());
+        allowed = all.includes(email);
+      } catch { /* deny below */ }
+    }
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+
+    const rawTitle = String((request.data && request.data.title) || "").trim();
+    const year = String((request.data && request.data.year) || "").trim();
+    const kind = String((request.data && request.data.type) || "movie") === "series" ? "tv" : "movie";
+    if (!rawTitle) throw new HttpsError("invalid-argument", "Title required.");
+    // Strip our "(trilogy)"/"(series)" suffixes for a cleaner TMDB search.
+    const title = rawTitle.replace(/\s*\((series|trilogy)\)\s*$/i, "").trim();
+
+    // TMDB v4 read access token → Bearer auth on the v3 REST API.
+    const headers = { Authorization: `Bearer ${TMDB_KEY.value()}`, "Content-Type": "application/json;charset=utf-8" };
+    const q = encodeURIComponent(title);
+    const searchUrl = `https://api.themoviedb.org/3/search/${kind}?query=${q}` + (year && kind === "movie" ? `&year=${year}` : "") + `&include_adult=false`;
+    const sres = await fetch(searchUrl, { headers });
+    const sj = await sres.json();
+    if (!sres.ok) { logger.error("tmdb search error", sj); throw new HttpsError("internal", (sj && sj.status_message) || `tmdb ${sres.status}`); }
+    const first = (sj.results || [])[0];
+    if (!first) return { found: false };
+
+    const pres = await fetch(`https://api.themoviedb.org/3/${kind}/${first.id}/watch/providers`, { headers });
+    const pj = await pres.json();
+    const za = (pj && pj.results && pj.results.ZA) || null;
+    const names = (arr) => (arr || []).map((p) => p.provider_name);
+    return {
+      found: true,
+      matched: first.title || first.name || title,
+      link: (za && za.link) || null,
+      flatrate: za ? names(za.flatrate) : [],
+      rent: za ? names(za.rent) : [],
+      buy: za ? names(za.buy) : [],
+    };
   },
 );
 
