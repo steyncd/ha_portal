@@ -2,7 +2,7 @@
   import { ha } from "../store.svelte";
   import { E, ALL_LIGHTS } from "../entities";
   import { NAV, GUEST_HIDDEN, type ViewId } from "../nav";
-  import { prefs } from "../prefs.svelte";
+  import { prefs, THEMES } from "../prefs.svelte";
   import { authStore } from "../auth.svelte";
   import { toast } from "../toast.svelte";
 
@@ -26,6 +26,7 @@
       : [
     ...NAV.filter((n) => !prefs.guest || !GUEST_HIDDEN.includes(n.id)).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
     { icon: prefs.guest ? "🔓" : "👋", label: prefs.guest ? "Exit guest view" : "Enter guest view", hint: "Mode", run: () => { prefs.guest = !prefs.guest; prefs.save(); toast.show(prefs.guest ? "Guest view on" : "Guest view off"); } },
+    ...THEMES.map((t) => ({ icon: "🎨", label: "Theme: " + t.name, hint: "Theme", run: () => { prefs.setTheme(t.key); toast.show(t.name + " theme"); } })),
     { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
     { icon: "🎬", label: "Movie mode", hint: "Scene", run: () => { ha.script(E.scMovie); toast.show("Movie mode"); } },
     { icon: "🚪", label: "Away mode", hint: "Scene", run: () => { ha.script(E.scAway); toast.show("Away mode"); } },

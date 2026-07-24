@@ -1,16 +1,14 @@
-// Persisted per-user preferences + the derived "Aurora Command" theme.
+// Persisted per-user preferences + the selectable theme.
 
-export type PaletteId = "ti" | "3b" | "3c" | "3a" | "3d" | "3e";
+export type Theme = "aurora" | "tide" | "meadow" | "spectrum";
 
-// The 6 palettes from the Aurora Command handoff. A theme = --base/--acc/--acc2;
-// --grad/--wash/--wash2 derive from the accents.
-export const PALETTES: { id: PaletteId; name: string; base: string; acc: string; acc2: string }[] = [
-  { id: "ti", name: "Teal · Indigo", base: "#13171a", acc: "#2dd4bf", acc2: "#818cf8" },
-  { id: "3b", name: "Indigo Nightfall", base: "#0f1422", acc: "#818cf8", acc2: "#6366f1" },
-  { id: "3c", name: "Teal Graphite", base: "#13171a", acc: "#2dd4bf", acc2: "#22d3ee" },
-  { id: "3a", name: "Aurora Violet", base: "#15171f", acc: "#a78bfa", acc2: "#818cf8" },
-  { id: "3d", name: "Rose Charcoal", base: "#181317", acc: "#fb7185", acc2: "#f472b6" },
-  { id: "3e", name: "Slate Mono", base: "#101216", acc: "#a3b2c7", acc2: "#cbd5e1" },
+// Selectable themes (Steyn handoff). The gradient is only for the Settings/palette
+// swatch preview; the live retint is driven by [data-theme] blocks in app.css.
+export const THEMES: { key: Theme; name: string; grad: string }[] = [
+  { key: "tide", name: "Tide", grad: "linear-gradient(135deg,#38bdf8,#818cf8)" },
+  { key: "meadow", name: "Meadow", grad: "linear-gradient(135deg,#34d399,#38bdf8)" },
+  { key: "spectrum", name: "Spectrum", grad: "linear-gradient(135deg,#38bdf8,#818cf8,#a855f7)" },
+  { key: "aurora", name: "Classic", grad: "linear-gradient(135deg,#818cf8,#a855f7)" },
 ];
 
 const KEY = "ha_portal_prefs";
@@ -18,7 +16,7 @@ const KEY = "ha_portal_prefs";
 type Density = "comfortable" | "wall";
 
 type Stored = {
-  palette: PaletteId;
+  theme: Theme;
   motion: boolean;
   density: Density;
   collapsed: boolean;
@@ -30,7 +28,7 @@ type Stored = {
 };
 
 const DEFAULTS: Stored = {
-  palette: "ti",
+  theme: "tide",
   motion: true,
   density: "comfortable",
   collapsed: false,
@@ -47,15 +45,17 @@ const DEFAULTS: Stored = {
   },
 };
 
+const isTheme = (t: unknown): t is Theme => t === "aurora" || t === "tide" || t === "meadow" || t === "spectrum";
+
 function load(): Stored {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULTS);
     const p = JSON.parse(raw);
-    const palette: PaletteId = PALETTES.some((x) => x.id === p.palette) ? p.palette : DEFAULTS.palette;
-    const density: Density = p.density === "wall" ? "wall" : "comfortable";
     return {
-      ...DEFAULTS, ...p, palette, density,
+      ...DEFAULTS, ...p,
+      theme: isTheme(p.theme) ? p.theme : DEFAULTS.theme,
+      density: p.density === "wall" ? "wall" : "comfortable",
       viewsOn: { ...DEFAULTS.viewsOn, ...(p.viewsOn ?? {}) },
       widgets: { ...DEFAULTS.widgets, ...(p.widgets ?? {}) },
     };
@@ -65,7 +65,7 @@ function load(): Stored {
 }
 
 class Prefs {
-  palette = $state<PaletteId>(DEFAULTS.palette);
+  theme = $state<Theme>(DEFAULTS.theme);
   motion = $state(DEFAULTS.motion);
   density = $state<Density>(DEFAULTS.density);
   collapsed = $state(DEFAULTS.collapsed);
@@ -77,7 +77,7 @@ class Prefs {
 
   constructor() {
     const s = load();
-    this.palette = s.palette;
+    this.theme = s.theme;
     this.motion = s.motion;
     this.density = s.density;
     this.collapsed = s.collapsed;
@@ -90,35 +90,21 @@ class Prefs {
 
   save() {
     const data: Stored = {
-      palette: this.palette, motion: this.motion, density: this.density,
+      theme: this.theme, motion: this.motion, density: this.density,
       collapsed: this.collapsed, guest: this.guest, defaultView: this.defaultView,
       settingsTab: this.settingsTab, viewsOn: this.viewsOn, widgets: this.widgets,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore */ }
   }
 
-  /** The active palette record. */
-  get theme() {
-    return PALETTES.find((p) => p.id === this.palette) ?? PALETTES[0];
-  }
-  get acc() { return this.theme.acc; }
-  get acc2() { return this.theme.acc2; }
-
-  /** Apply the theme + display flags to :root as CSS custom properties/classes. */
+  /** Apply theme + display flags to <html> (data-theme drives the CSS retint). */
   apply() {
-    const p = this.theme;
-    const r = document.documentElement.style;
-    r.setProperty("--base", p.base);
-    r.setProperty("--acc", p.acc);
-    r.setProperty("--acc2", p.acc2);
-    r.setProperty("--grad", `linear-gradient(135deg, ${p.acc2}, ${p.acc})`);
-    r.setProperty("--wash", `color-mix(in srgb, ${p.acc} 15%, transparent)`);
-    r.setProperty("--wash2", `color-mix(in srgb, ${p.acc2} 12%, transparent)`);
+    document.documentElement.dataset.theme = this.theme;
     document.documentElement.classList.toggle("reduce-motion", !this.motion);
     document.documentElement.classList.toggle("wall", this.density === "wall");
   }
 
-  setPalette(id: PaletteId) { this.palette = id; this.apply(); this.save(); }
+  setTheme(t: Theme) { this.theme = t; this.apply(); this.save(); }
 
   resetWidgets() {
     this.widgets = { ...DEFAULTS.widgets };
