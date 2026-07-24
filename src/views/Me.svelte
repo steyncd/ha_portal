@@ -158,6 +158,15 @@
     { id: SCENES[0].id, icon: "🌙", name: "Goodnight", scene: true },
     { id: SCENES[3].id, icon: "☀️", name: "Morning", scene: true },
   ];
+
+  // Personal device batteries (detail lives in the Batteries tab).
+  const DEVICE_BATTS = [
+    { icon: "📱", name: "iPhone", level: "sensor.hello_battery_level", state: "sensor.hello_battery_state" },
+    { icon: "⌚", name: "Watch", level: "sensor.hello_watch_battery_level", state: "sensor.hello_watch_battery_state" },
+    { icon: "💻", name: "MacBook", level: "sensor.christos_macbook_internal_battery_level", state: "sensor.christos_macbook_internal_battery_state" },
+  ];
+  const battC = (v: number | null) => (v == null ? "var(--muted)" : v <= 15 ? "var(--error)" : v <= 35 ? "var(--warning)" : "var(--success)");
+  const isCharging = (s: string | undefined) => (s ? /charg/i.test(s) && !/not|dis/i.test(s) : false);
 </script>
 
 <div class="col">
@@ -166,6 +175,26 @@
     <span class="av">C</span>
     <div class="pi"><div class="pn">Christo</div><div class="ps">Admin · <span style="color:var(--success)">Home now</span> · Readiness {n(readiness)}</div></div>
     <div class="ring-batt"><span>💍</span> Oura <span class="rb">{n(ha.num(E.ouraRingBatt))}%</span></div>
+  </div>
+
+  <!-- my device batteries -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">🔋 My devices</span><span class="sub">detail in Batteries tab</span></div>
+    <div class="dbgrid">
+      {#each DEVICE_BATTS as b}
+        {@const lvl = ha.num(b.level)}
+        {@const avail = ha.available(b.level)}
+        {@const st = ha.state(b.state)}
+        <div class="db">
+          <span class="dbi">{b.icon}</span>
+          <div class="dbm">
+            <div class="dbn">{b.name}</div>
+            <div class="dbs">{avail ? (isCharging(st) ? "⚡ charging" : (st ?? "")) : "asleep"}</div>
+          </div>
+          <div class="dbp" style="color:{battC(lvl)}">{avail ? `${n(lvl)}%` : "—"}</div>
+        </div>
+      {/each}
+    </div>
   </div>
 
   <!-- headline insight -->
@@ -323,6 +352,14 @@
   .pi { flex: 1; min-width: 0; }
   .ring-batt { display: flex; align-items: center; gap: 9px; padding: 9px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); font-size: 12.5px; color: var(--text-2); }
   .rb { font-weight: 700; color: var(--success); }
+  .dbgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  @media (max-width: 560px) { .dbgrid { grid-template-columns: 1fr; } }
+  .db { display: flex; align-items: center; gap: 11px; padding: 12px 14px; border-radius: 13px; background: rgba(255, 255, 255, 0.04); }
+  .dbi { font-size: 19px; }
+  .dbm { flex: 1; min-width: 0; }
+  .dbn { font-size: 13px; font-weight: 700; }
+  .dbs { font-size: 11px; color: var(--muted); margin-top: 1px; text-transform: capitalize; }
+  .dbp { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .insight { display: flex; align-items: center; gap: 13px; padding: 15px 20px; }
   .ii { font-size: 22px; }
   .it { font-size: 13.5px; color: var(--text); font-weight: 500; }

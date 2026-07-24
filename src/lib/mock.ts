@@ -558,6 +558,15 @@ const ROWS: Row[] = [
   ["fan.study_fan", "off", { friendly_name: "Study fan" }],
   ["cover.garage_door", "closed", { friendly_name: "Garage door" }],
   ["lock.front_door", "locked", { friendly_name: "Front door" }],
+
+  // Personal device batteries (Me → Batteries tab)
+  ["sensor.hello_watch_battery_level", "52", { unit_of_measurement: "%" }],
+  ["sensor.hello_watch_battery_state", "Not Charging"],
+  ["sensor.oura_ring_battery_level", "63", { unit_of_measurement: "%" }],
+  ["sensor.oura_battery_analysis", "4.8d"],
+  ["sensor.christos_macbook_internal_battery_level", "88", { unit_of_measurement: "%" }],
+  ["sensor.christos_macbook_internal_battery_state", "Charging"],
+  ["sensor.kid_s_phone_battery_health", "good"],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(
