@@ -90,12 +90,18 @@ service cloud.firestore {
     // watched doc: allowed users read + write (shared marks across accounts).
     match /watchlist/{doc} {
       allow read: if waAllowed();
-      // Shared per-household lists (watched/shortlist/watch-again) are writable by
-      // any allowed user; other docs (access, etc.) are admin-only.
-      allow write: if (doc == 'watched' || doc == 'shortlist' || doc == 'watchAgain')
+      // Shared per-household lists (watched/shortlist/watch-again/reactions/votes/
+      // watchedAt) are writable by any allowed user; other docs are admin-only.
+      allow write: if (doc == 'watched' || doc == 'shortlist' || doc == 'watchAgain'
+                       || doc == 'reactions' || doc == 'votes' || doc == 'watchedAt')
         ? waAllowed() : waAdmin();
     }
     match /watchlist_movies/{id} {
+      allow read: if waAllowed();
+      allow write: if waAdmin();
+    }
+    // Listening Room (Christian music) — same access model as the movie list.
+    match /music_items/{id} {
       allow read: if waAllowed();
       allow write: if waAdmin();
     }

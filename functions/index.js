@@ -239,6 +239,18 @@ exports.parseDocument = onRequest(
 // Callable by watchlist admins only. Returns a structured discernment breakdown
 // so every title is screened before it's added to the list.
 const WA_BOOTSTRAP_ADMINS = ["christosteyn@cloudbadger.com", "steyncd@gmail.com"];
+// Shared access helpers for the watchlist/screening-room callables.
+async function waRoles(email) {
+  if (!email) return { allowed: false, admin: false };
+  if (WA_BOOTSTRAP_ADMINS.includes(email)) return { allowed: true, admin: true };
+  try {
+    const s = await db.doc("watchlist/access").get();
+    const d = (s.exists && s.data()) || {};
+    const admins = (d.admins || []).map((x) => String(x).toLowerCase());
+    const all = [...admins, ...((d.allowed || []).map((x) => String(x).toLowerCase()))];
+    return { allowed: all.includes(email), admin: admins.includes(email) };
+  } catch { return { allowed: false, admin: false }; }
+}
 exports.analyzeMovie = onCall(
   { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
   async (request) => {
@@ -425,6 +437,155 @@ exports.tmdbSearch = onCall(
       })
       .filter((x) => x.title);
     return { results };
+  },
+);
+
+// ---- Screening Room: "Talk about it" worldview/discussion companion ----
+exports.discussTitle = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { allowed } = await waRoles(email);
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+    const title = String((request.data && request.data.title) || "").trim();
+    const year = String((request.data && request.data.year) || "").trim();
+    const kind = String((request.data && request.data.type) || "movie") === "series" ? "series" : "film";
+    if (!title) throw new HttpsError("invalid-argument", "Title required.");
+    const prompt = `A Reformed Christian family (biblical-creationist worldview; parents + boys aged 8 and 11) is about to watch the ${kind} "${title}"${year ? " (" + year + ")" : ""}. Help them watch with discernment. Return STRICT JSON only:
+{"worldview":"<one sentence: the worldview/values the story is told through>","questions":["<3-4 age-appropriate discussion questions to ask the boys afterward>"],"verse":"<one fitting Bible reference + very short phrase, e.g. 'Philippians 4:8 — dwell on what is true and lovely'>","aligns":"<one sentence: where it aligns with a biblical worldview>","conflicts":"<one sentence: where it conflicts or needs care, or 'Little to flag.'>"}`;
+    const schema = { type: "object", properties: { worldview: { type: "string" }, questions: { type: "array", items: { type: "string" } }, verse: { type: "string" }, aligns: { type: "string" }, conflicts: { type: "string" } }, required: ["worldview", "questions", "verse", "aligns", "conflicts"] };
+    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.4 } });
+    let data = null, lastErr = "";
+    for (const model of models) {
+      for (let a = 0; a < 3 && !data; a++) {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+        const jr = await r.json();
+        if (r.ok) { data = jr; break; }
+        lastErr = (jr && jr.error && jr.error.message) || `gemini ${r.status}`;
+        if (r.status === 503 || r.status === 429) { await sleep(700 * (a + 1)); continue; }
+        break;
+      }
+      if (data) break;
+    }
+    if (!data) throw new HttpsError("unavailable", "The AI is busy (" + lastErr + "). Try again shortly.");
+    const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "{}";
+    try { return JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
+  },
+);
+
+// ---- Screening Room: TMDB "similar titles" ----
+exports.similarTitles = onCall(
+  { secrets: [TMDB_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { allowed } = await waRoles(email);
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+    const rawTitle = String((request.data && request.data.title) || "").trim();
+    const year = String((request.data && request.data.year) || "").trim();
+    const kind = String((request.data && request.data.type) || "movie") === "series" ? "tv" : "movie";
+    if (!rawTitle) throw new HttpsError("invalid-argument", "Title required.");
+    const title = rawTitle.replace(/\s*\((series|trilogy)\)\s*$/i, "").trim();
+    const headers = { Authorization: `Bearer ${TMDB_KEY.value()}`, "Content-Type": "application/json;charset=utf-8" };
+    const sres = await fetch(`https://api.themoviedb.org/3/search/${kind}?query=${encodeURIComponent(title)}` + (kind === "movie" && year ? `&year=${year}` : "") + "&include_adult=false", { headers });
+    const sj = await sres.json();
+    const first = (sj.results || [])[0];
+    if (!first) return { results: [] };
+    const rres = await fetch(`https://api.themoviedb.org/3/${kind}/${first.id}/recommendations?page=1`, { headers });
+    const rj = await rres.json();
+    const results = (rj.results || []).slice(0, 8).map((x) => {
+      const isTv = kind === "tv";
+      const date = (isTv ? x.first_air_date : x.release_date) || "";
+      return { title: isTv ? (x.name || "") : (x.title || ""), year: date ? Number(date.slice(0, 4)) : null, type: isTv ? "series" : "movie", poster: x.poster_path ? `https://image.tmdb.org/t/p/w92${x.poster_path}` : null, overview: x.overview || "" };
+    }).filter((x) => x.title);
+    return { results };
+  },
+);
+
+// ---- Screening Room: TMDB trailer (YouTube key) ----
+exports.getTrailer = onCall(
+  { secrets: [TMDB_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { allowed } = await waRoles(email);
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+    const rawTitle = String((request.data && request.data.title) || "").trim();
+    const year = String((request.data && request.data.year) || "").trim();
+    const kind = String((request.data && request.data.type) || "movie") === "series" ? "tv" : "movie";
+    if (!rawTitle) throw new HttpsError("invalid-argument", "Title required.");
+    const title = rawTitle.replace(/\s*\((series|trilogy)\)\s*$/i, "").trim();
+    const headers = { Authorization: `Bearer ${TMDB_KEY.value()}`, "Content-Type": "application/json;charset=utf-8" };
+    const sres = await fetch(`https://api.themoviedb.org/3/search/${kind}?query=${encodeURIComponent(title)}` + (kind === "movie" && year ? `&year=${year}` : "") + "&include_adult=false", { headers });
+    const sj = await sres.json();
+    const first = (sj.results || [])[0];
+    if (!first) return { key: null };
+    const vres = await fetch(`https://api.themoviedb.org/3/${kind}/${first.id}/videos`, { headers });
+    const vj = await vres.json();
+    const vids = (vj.results || []).filter((v) => v.site === "YouTube");
+    const pick = vids.find((v) => v.type === "Trailer" && v.official) || vids.find((v) => v.type === "Trailer") || vids.find((v) => v.type === "Teaser") || vids[0];
+    return pick ? { key: pick.key, name: pick.name || "Trailer" } : { key: null };
+  },
+);
+
+// ---- Listening Room: iTunes Search (free, no auth) for music discovery ----
+exports.musicSearch = onCall(
+  { region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { allowed } = await waRoles(email);
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+    const q = String((request.data && request.data.query) || "").trim();
+    const entity = String((request.data && request.data.entity) || "musicArtist"); // musicArtist | song | album
+    if (q.length < 2) return { results: [] };
+    const url = `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=${encodeURIComponent(entity)}&limit=12&country=ZA`;
+    const r = await fetch(url);
+    const j = await r.json();
+    const results = (j.results || []).map((x) => ({
+      kind: x.wrapperType === "artist" ? "artist" : (x.kind || x.wrapperType || "song"),
+      name: x.artistName || "",
+      title: x.trackName || x.collectionName || x.artistName || "",
+      artwork: (x.artworkUrl100 || "").replace("100x100", "200x200") || null,
+      genre: x.primaryGenreName || "",
+      preview: x.previewUrl || null,
+      itunesUrl: x.trackViewUrl || x.collectionViewUrl || x.artistLinkUrl || null,
+    })).filter((x) => x.title);
+    return { results };
+  },
+);
+
+// ---- Listening Room: Gemini discernment for a Christian-music item ----
+exports.analyzeMusic = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { admin } = await waRoles(email);
+    if (!admin) throw new HttpsError("permission-denied", "Admins only.");
+    const name = String((request.data && request.data.name) || "").trim(); // artist or "Song — Artist"
+    const cat = String((request.data && request.data.category) || "").trim();
+    if (!name) throw new HttpsError("invalid-argument", "Name required.");
+    const prompt = `You are screening music for a Reformed Christian family (biblical-creationist worldview; parents + boys 8 and 11) who want worship AND everyday music by Christian artists. Assess: "${name}"${cat ? " (" + cat + ")" : ""}. Judge the artist/song's lyrical content and worldview. Return STRICT JSON only:
+{"rating":"green|amber|red","category":"Worship|CCM/Pop|Hip-Hop|Hymn|Kids|Gospel|Crossover","suits":"all|boys|alone","languageFlag":"clean|filter","summary":"<one sentence>","analysis":{"tone":"<mood in a few words>","spiritual":"<gospel-centred? worship? evangelistic? everyday?>","theology":"<for a Reformed family: doctrinally rich / thin / concerning, or 'n/a'>","occult":"<any occult/dark-spiritual lyrical content, or 'None.'>","sex":"<sexual content in lyrics, or 'None.'>","language":"<profanity/blasphemy, or 'None.'>","themes":"<main lyrical themes>"}}
+Rules: green=clearly Christian & clean; amber=believer/crossover artist but some tracks need discernment, or theologically thin/prosperity-leaning worship; red=explicit content, occult/dark themes, or not actually Christian. languageFlag "filter" if ANY profanity/blasphemy.`;
+    const schema = { type: "object", properties: { rating: { type: "string", enum: ["green", "amber", "red"] }, category: { type: "string" }, suits: { type: "string", enum: ["all", "boys", "alone"] }, languageFlag: { type: "string", enum: ["clean", "filter"] }, summary: { type: "string" }, analysis: { type: "object", properties: { tone: { type: "string" }, spiritual: { type: "string" }, theology: { type: "string" }, occult: { type: "string" }, sex: { type: "string" }, language: { type: "string" }, themes: { type: "string" } }, required: ["tone", "spiritual", "theology", "occult", "sex", "language", "themes"] } }, required: ["rating", "category", "suits", "languageFlag", "summary", "analysis"] };
+    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.3 } });
+    let data = null, lastErr = "";
+    for (const model of models) {
+      for (let a = 0; a < 3 && !data; a++) {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, { method: "POST", headers: { "Content-Type": "application/json" }, body });
+        const jr = await r.json();
+        if (r.ok) { data = jr; break; }
+        lastErr = (jr && jr.error && jr.error.message) || `gemini ${r.status}`;
+        if (r.status === 503 || r.status === 429) { await sleep(700 * (a + 1)); continue; }
+        break;
+      }
+      if (data) break;
+    }
+    if (!data) throw new HttpsError("unavailable", "The AI is busy (" + lastErr + "). Try again shortly.");
+    const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "{}";
+    try { return JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
   },
 );
 
