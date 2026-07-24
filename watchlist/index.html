@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>The Steyn Family Screening Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #17111d;
+    --bg-1: #211829;
+    --surface: #2a2033;
+    --surface-hi: #342839;
+    --edge: #3d3044;
+    --ink: #f5efe6;
+    --ink-mute: #b0a3b8;
+    --ink-faint: #7d7185;
+    --brass: #e6b957;
+    --brass-deep: #c99a3c;
+    --green: #63bd81;
+    --green-bg: rgba(99,189,129,0.13);
+    --amber: #e6a943;
+    --amber-bg: rgba(230,169,67,0.13);
+    --red: #d97070;
+    --red-bg: rgba(217,112,112,0.13);
+    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', system-ui, sans-serif;
+    background:
+      radial-gradient(120% 80% at 50% -10%, #2b2033 0%, var(--bg-1) 45%, var(--bg-0) 100%);
+    background-attachment: fixed;
+    color: var(--ink);
+    line-height: 1.5;
+    min-height: 100vh;
+    padding-bottom: 4rem;
+  }
+
+  .wrap { max-width: 940px; margin: 0 auto; padding: 0 1.1rem; }
+
+  /* ---- Marquee header ---- */
+  header { text-align: center; padding: 2.6rem 1rem 1.4rem; }
+
+  .marquee {
+    display: inline-block;
+    border: 2px solid var(--brass-deep);
+    border-radius: 10px;
+    padding: 1rem 1.6rem 1.1rem;
+    position: relative;
+    background: linear-gradient(180deg, rgba(230,185,87,0.08), rgba(230,185,87,0.02));
+    box-shadow: var(--shadow), inset 0 0 30px rgba(230,185,87,0.06);
+  }
+  .bulbs { display: flex; gap: 0.55rem; justify-content: center; margin-bottom: 0.7rem; }
+  .bulb {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--brass);
+    box-shadow: 0 0 8px var(--brass), 0 0 3px #fff inset;
+    animation: flick 2.4s infinite;
+  }
+  .bulb:nth-child(2){ animation-delay:.3s } .bulb:nth-child(3){ animation-delay:.6s }
+  .bulb:nth-child(4){ animation-delay:.9s } .bulb:nth-child(5){ animation-delay:1.2s }
+  .bulb:nth-child(6){ animation-delay:1.5s } .bulb:nth-child(7){ animation-delay:1.8s }
+  @keyframes flick { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+  h1 {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-size: clamp(1.5rem, 5vw, 2.4rem);
+    color: var(--brass);
+    line-height: 1.05;
+  }
+  .subtitle {
+    font-family: 'Oswald', sans-serif;
+    font-weight: 300;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    color: var(--ink-mute);
+    margin-top: 0.5rem;
+  }
+
+  .intro {
+    max-width: 640px; margin: 1.4rem auto 0;
+    font-size: 0.92rem; color: var(--ink-mute); text-align: center;
+  }
+  .intro strong { color: var(--ink); font-weight: 600; }
+
+  /* ---- Legend ---- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; justify-content: center;
+    margin: 1.5rem auto 0; max-width: 720px;
+    font-size: 0.8rem; color: var(--ink-mute);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+  .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
+  .dot.green { background: var(--green); }
+  .dot.amber { background: var(--amber); }
+  .dot.red { background: var(--red); }
+
+  /* ---- Progress ---- */
+  .progress-card {
+    background: var(--surface); border: 1px solid var(--edge); border-radius: 12px;
+    padding: 1rem 1.2rem; margin: 1.8rem 0 0;
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  }
+  .progress-num {
+    font-family: 'Oswald', sans-serif; font-size: 1.7rem; font-weight: 600; color: var(--brass);
+    line-height: 1;
+  }
+  .progress-label { font-size: 0.85rem; color: var(--ink-mute); }
+  .bar { flex: 1 1 180px; height: 8px; background: var(--bg-0); border-radius: 99px; overflow: hidden; min-width: 140px; }
+  .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--brass-deep), var(--brass)); border-radius: 99px; transition: width .5s ease; }
+
+  /* ---- Controls ---- */
+  .controls { margin-top: 1.4rem; display: flex; flex-direction: column; gap: 0.8rem; }
+  .search {
+    width: 100%; background: var(--surface); border: 1px solid var(--edge);
+    color: var(--ink); border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.95rem;
+    font-family: inherit;
+  }
+  .search::placeholder { color: var(--ink-faint); }
+  .search:focus { outline: 2px solid var(--brass-deep); outline-offset: 1px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .chip {
+    background: var(--surface); border: 1px solid var(--edge); color: var(--ink-mute);
+    border-radius: 99px; padding: 0.42rem 0.85rem; font-size: 0.82rem; cursor: pointer;
+    font-family: inherit; transition: all .15s ease; user-select: none;
+  }
+  .chip:hover { border-color: var(--brass-deep); color: var(--ink); }
+  .chip.active { background: var(--brass); border-color: var(--brass); color: #241a2b; font-weight: 600; }
+  .chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .toggles { display: flex; flex-wrap: wrap; gap: 1.2rem; padding-top: 0.2rem; }
+  .toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.83rem; color: var(--ink-mute); cursor: pointer; }
+  .toggle input { width: 16px; height: 16px; accent-color: var(--brass); cursor: pointer; }
+
+  /* ---- Group headings ---- */
+  .group-head {
+    font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.12em;
+    font-size: 0.95rem; font-weight: 500; margin: 2.2rem 0 0.9rem;
+    display: flex; align-items: center; gap: 0.6rem; color: var(--ink);
+  }
+  .group-head .dot { width: 13px; height: 13px; }
+  .group-head .count { color: var(--ink-faint); font-weight: 400; font-size: 0.8rem; letter-spacing: 0.04em; }
+
+  /* ---- Cards ---- */
+  .card {
+    background: var(--surface); border: 1px solid var(--edge); border-left-width: 4px;
+    border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.65rem;
+    display: flex; gap: 0.85rem; align-items: flex-start; transition: background .15s ease;
+  }
+  .card:hover { background: var(--surface-hi); }
+  .card.green { border-left-color: var(--green); }
+  .card.amber { border-left-color: var(--amber); }
+  .card.red   { border-left-color: var(--red); }
+  .card.done  { opacity: 0.55; }
+  .card.done .title { text-decoration: line-through; text-decoration-color: var(--ink-faint); }
+
+  .check { padding-top: 0.15rem; }
+  .check input {
+    width: 20px; height: 20px; accent-color: var(--brass); cursor: pointer; flex-shrink: 0;
+  }
+
+  .body { flex: 1; min-width: 0; }
+  .title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
+  .title { font-weight: 600; font-size: 1rem; }
+  .year { color: var(--ink-faint); font-size: 0.82rem; }
+  .universe {
+    font-family: 'Oswald', sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
+    font-size: 0.64rem; color: var(--ink-faint); border: 1px solid var(--edge);
+    border-radius: 4px; padding: 0.1rem 0.35rem; white-space: nowrap;
+  }
+  .note { font-size: 0.86rem; color: var(--ink-mute); margin-top: 0.3rem; }
+
+  .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
+  .tag {
+    font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 5px; font-weight: 500;
+    display: inline-flex; align-items: center; gap: 0.28rem;
+  }
+  .tag.all   { background: var(--green-bg); color: var(--green); }
+  .tag.boys  { background: rgba(230,185,87,0.14); color: var(--brass); }
+  .tag.alone { background: rgba(176,163,184,0.14); color: var(--ink-mute); }
+  .tag.lang  { background: var(--amber-bg); color: var(--amber); }
+
+  .empty { text-align: center; color: var(--ink-faint); padding: 3rem 1rem; font-size: 0.95rem; }
+
+  footer { text-align: center; margin-top: 2.6rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.7; }
+  footer a { color: var(--brass-deep); }
+
+  .reset {
+    background: none; border: 1px solid var(--edge); color: var(--ink-faint);
+    border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.78rem; cursor: pointer;
+    font-family: inherit; margin-top: 1.2rem;
+  }
+  .reset:hover { border-color: var(--red); color: var(--red); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bulb { animation: none; } .bar-fill { transition: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="marquee">
+      <div class="bulbs"><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i></div>
+      <h1>The Steyn Family<br>Screening Room</h1>
+      <div class="subtitle">Superhero &amp; Adventure &middot; Screened for Content</div>
+    </div>
+    <p class="intro">
+      Every film below is sorted by one thing first: is it clear of the <strong>occult, demonic and mystical
+      "power" content</strong> you want out of the house. Dark tone is fine — that's not the filter.
+      Then each carries a note on whether it suits <strong>Liam &amp; Eben</strong> or is better on your own,
+      and a language flag where you'd want your filtering set up.
+    </p>
+
+    <div class="legend">
+      <span><i class="dot green"></i> Clean — occult/demonic-free</span>
+      <span><i class="dot amber"></i> Your call — a mythic/magic element to weigh</span>
+      <span><i class="dot red"></i> Contains occult/demonic content (or your exclusions)</span>
+    </div>
+  </header>
+
+  <div class="progress-card">
+    <div class="progress-num" id="pnum">0</div>
+    <div class="progress-label">watched<br><span id="ptot" style="color:var(--ink-faint)"></span></div>
+    <div class="bar"><div class="bar-fill" id="pfill"></div></div>
+  </div>
+
+  <div class="controls">
+    <input type="text" class="search" id="search" placeholder="Search a title…" aria-label="Search titles">
+    <div class="filters" id="filters" role="group" aria-label="Filter by suitability">
+      <button class="chip active" data-filter="all">All</button>
+      <button class="chip" data-filter="clean">Clean only</button>
+      <button class="chip" data-filter="family">Whole family</button>
+      <button class="chip" data-filter="boys">Good for the boys</button>
+      <button class="chip" data-filter="alone">Watch on your own</button>
+    </div>
+    <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="hideWatched"> Hide watched</label>
+      <label class="toggle"><input type="checkbox" id="showAvoid"> Show the avoid list</label>
+    </div>
+  </div>
+
+  <main id="list"></main>
+
+  <button class="reset" id="reset">Clear all watched marks</button>
+
+  <footer>
+    Streaming shifts often — check live SA availability at <a href="https://www.justwatch.com/za" target="_blank" rel="noopener">justwatch.com/za</a>.<br>
+    For any title flagged <span style="color:var(--amber)">⚑ language</span>, watch via Google&nbsp;TV / Play with
+    <em>Enjoy Movies Your Way</em>, or use Netflix profile controls.<br>
+    Your watched marks save on this device automatically.
+  </footer>
+</div>
+
+<script>
+/* ---------------- DATA ---------------- */
+/* rating: green | amber | red
+   kids:   all (whole family) | boys (older-kid action) | alone (mature/intense)
+   lang:   clean | filter (notable blasphemy/language — use your filter platform) */
+const MOVIES = [
+  // ---------- MCU: GREEN ----------
+  {t:"Captain America: The First Avenger", y:2011, u:"MCU", r:"green", k:"boys", l:"clean", n:"WWII origin, science-based. The Tesseract is cosmic sci-fi, not occult. The boys' kind of clean adventure."},
+  {t:"Captain America: The Winter Soldier", y:2014, u:"MCU", r:"green", k:"boys", l:"clean", n:"Grounded spy thriller. Intense fights but clean — the boys handled this one already."},
+  {t:"Captain America: Civil War", y:2016, u:"MCU", r:"green", k:"boys", l:"clean", n:"Team-vs-team conflict, heavy on action, clear of any occult angle."},
+  {t:"The Avengers", y:2012, u:"MCU", r:"green", k:"boys", l:"clean", n:"Loki and the Tesseract carry a Norse-god flavour but it's framed as alien sci-fi. A great whole-team starter."},
+  {t:"Avengers: Age of Ultron", y:2015, u:"MCU", r:"green", k:"boys", l:"clean", n:"AI villain, tech-driven. Wanda appears as an 'enhanced' human here — the chaos-magic turn comes later, not in this film."},
+  {t:"Iron Man", y:2008, u:"MCU", r:"green", k:"boys", l:"filter", n:"Tech origin story, no occult. A few strong words and a bit of playboy humour — worth your language filter."},
+  {t:"Iron Man 2", y:2010, u:"MCU", r:"green", k:"boys", l:"clean", n:"Tech and rivals. Clean of anything spiritual."},
+  {t:"Iron Man 3", y:2013, u:"MCU", r:"green", k:"alone", l:"clean", n:"Darker and more anxious in tone (still no occult). The 'Mandarin' turns out to be a hoax. Fine for you, maybe heavy for the boys."},
+  {t:"Ant-Man", y:2015, u:"MCU", r:"green", k:"boys", l:"clean", n:"Light, funny heist movie built on 'quantum' science. One of the easiest clean watches."},
+  {t:"Ant-Man and the Wasp", y:2018, u:"MCU", r:"green", k:"boys", l:"clean", n:"Same fun, science-based tone. Clean."},
+  {t:"Spider-Man: Homecoming", y:2017, u:"MCU", r:"green", k:"boys", l:"clean", n:"High-school Spidey, tech villain. Bright and clean."},
+  {t:"Spider-Man: Far From Home", y:2019, u:"MCU", r:"green", k:"boys", l:"clean", n:"Illusion-tech villain (Mysterio) — trickery, not real magic. Clean."},
+  {t:"Captain Marvel", y:2019, u:"MCU", r:"green", k:"boys", l:"clean", n:"Space sci-fi origin. Your softer landing after the Cap films."},
+  {t:"The Marvels", y:2023, u:"MCU", r:"green", k:"boys", l:"clean", n:"Light team-up, cosmic sci-fi. Clean."},
+  {t:"Black Widow", y:2021, u:"MCU", r:"green", k:"boys", l:"clean", n:"Grounded spy action and family drama — a notch tamer than Winter Soldier. Your pick for the boys next weekend."},
+  {t:"Guardians of the Galaxy", y:2014, u:"MCU", r:"green", k:"boys", l:"filter", n:"Space adventure, no occult. Crude humour and some language — use your filter for the younger view."},
+  {t:"Guardians of the Galaxy Vol. 2", y:2017, u:"MCU", r:"green", k:"boys", l:"filter", n:"Fun and heartfelt; same language/crude-humour caveat."},
+  {t:"Guardians of the Galaxy Vol. 3", y:2023, u:"MCU", r:"green", k:"alone", l:"filter", n:"Clean of occult but emotionally heavy — animal experimentation themes are genuinely distressing. Preview before the boys."},
+  {t:"Captain America: Brave New World", y:2025, u:"MCU", r:"green", k:"boys", l:"clean", n:"Political action-thriller, grounded and clean."},
+
+  // ---------- MCU: AMBER ----------
+  {t:"Thor", y:2011, u:"MCU", r:"amber", k:"boys", l:"clean", n:"The Norse 'gods' are framed as advanced aliens — 'magic and science are one and the same.' The god framing is the thing to weigh; no sorcery imagery."},
+  {t:"Thor: Ragnarok", y:2017, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Fun and colourful, but leans harder on mythic 'goddess of death' and underworld ('Hel') imagery. Your call on the framing."},
+  {t:"Thor: The Dark World", y:2013, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Dark elves and a mystical 'Aether'. More mythic-fantasy than the first; still not sorcery, but weigh it."},
+  {t:"Thor: Love and Thunder", y:2022, u:"MCU", r:"amber", k:"alone", l:"clean", n:"A pantheon of 'gods' (Zeus) and a shadow-monster villain. Some suggestive humour too — preview first."},
+  {t:"Black Panther", y:2018, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Clean of the demonic, but the 'Ancestral Plane' shows ancestor-spirit visions — a spiritual element you'll want to weigh."},
+  {t:"Black Panther: Wakanda Forever", y:2022, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Same ancestral-spirit element plus Talokan sea-god mythology; also heavy grief throughout. Better on your own first."},
+  {t:"Spider-Man: No Way Home", y:2021, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Great film, but Doctor Strange casts spells as a central plot device — that mystical thread is why it's amber, not green."},
+  {t:"Eternals", y:2021, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Cosmic 'gods'/Celestials mythology, and it contains a sex scene. Adults-only for that reason — not for the boys."},
+  {t:"Shang-Chi and the Legend of the Ten Rings", y:2021, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Leans into eastern mysticism — mystical realms, soul-devouring creatures, a dragon. Enough spiritual imagery that it's a discernment call."},
+  {t:"Venom", y:2018, u:"MCU", r:"amber", k:"alone", l:"filter", n:"Alien-symbiote sci-fi, not occult — but genuinely dark, monstrous and scary, with language. Watch-alone territory."},
+
+  // ---------- MCU: RED ----------
+  {t:"Doctor Strange", y:2016, u:"MCU", r:"red", k:"alone", l:"clean", n:"Built entirely on sorcery, the mystic arts and astral projection. This is the exact lane you're avoiding."},
+  {t:"Doctor Strange in the Multiverse of Madness", y:2022, u:"MCU", r:"red", k:"alone", l:"clean", n:"Horror-tinged: demonic imagery, the 'Darkhold' book of the damned, a corrupted Scarlet Witch, a walking-dead sequence. A firm skip."},
+  {t:"WandaVision", y:2021, u:"MCU", r:"red", k:"alone", l:"clean", n:"Scarlet Witch, chaos magic and the Darkhold are the core of the story. (Series, not a film.)"},
+  {t:"Blade", y:1998, u:"Marvel", r:"red", k:"alone", l:"filter", n:"Vampires, occult ritual and gore. Not for the house."},
+  {t:"Ghost Rider", y:2007, u:"Marvel", r:"red", k:"alone", l:"clean", n:"A literal demon/hell-pact premise. Skip."},
+
+  // ---------- DC: GREEN ----------
+  {t:"Superman", y:2025, u:"DCU", r:"green", k:"all", l:"clean", n:"The new James Gunn Superman — hopeful, heroic and clean. A great whole-family option."},
+  {t:"Superman: The Movie", y:1978, u:"DC Classic", r:"green", k:"all", l:"clean", n:"The Christopher Reeve original. Wholesome and clean — lovely for the boys."},
+  {t:"Superman II", y:1980, u:"DC Classic", r:"green", k:"all", l:"clean", n:"Reeve-era sequel, clean and heroic."},
+  {t:"Man of Steel", y:2013, u:"DCEU", r:"green", k:"boys", l:"clean", n:"Clear of occult, but a darker, heavier tone and a lot of city destruction. Older-boy viewing."},
+  {t:"Wonder Woman", y:2017, u:"DCEU", r:"green", k:"boys", l:"clean", n:"You've seen it. Ares is Greek-mythology framing rather than occult imagery. Clean, dark WWI setting."},
+  {t:"Wonder Woman 1984", y:2020, u:"DCEU", r:"green", k:"boys", l:"clean", n:"Lighter than the first. The 'Dreamstone' wish device is a mild fantasy macguffin, not occult."},
+  {t:"Blue Beetle", y:2023, u:"DCU", r:"green", k:"boys", l:"filter", n:"Alien-scarab tech origin, warm family story. Some language — filter for the boys."},
+
+  // ---------- DC: DARK BUT CLEAN ----------
+  {t:"Batman Begins", y:2005, u:"DC / Nolan", r:"green", k:"boys", l:"clean", n:"Grounded, serious origin — dark in tone but clean of the occult. The strongest 'dark-but-clean' Batman."},
+  {t:"The Dark Knight", y:2008, u:"DC / Nolan", r:"green", k:"alone", l:"clean", n:"Superb but genuinely intense — the Joker's menace makes this watch-alone or older-teen only. No occult content."},
+  {t:"The Dark Knight Rises", y:2012, u:"DC / Nolan", r:"green", k:"alone", l:"clean", n:"Dark, large-scale finale. Clean; better on your own."},
+  {t:"The Batman", y:2022, u:"DC", r:"green", k:"alone", l:"filter", n:"Very dark serial-killer noir — clean of occult but grim and mature. Adults, with language filtered."},
+
+  // ---------- DC: AMBER ----------
+  {t:"Aquaman", y:2018, u:"DCEU", r:"amber", k:"boys", l:"clean", n:"Undersea fantasy with a 'magic' trident and some genuinely scary sea creatures (the Trench). Fantasy-magic more than occult — your call."},
+  {t:"Aquaman and the Lost Kingdom", y:2023, u:"DCEU", r:"amber", k:"boys", l:"clean", n:"Same world; the villain dabbles in a dark, resurrection-flavoured power. Weigh that element."},
+  {t:"Shazam! Fury of the Gods", y:2023, u:"DCU", r:"amber", k:"alone", l:"clean", n:"Wizard-granted powers plus Greek 'daughters of Atlas' and a dragon. Lighter than the first film but still magic-driven."},
+
+  // ---------- DC: RED ----------
+  {t:"Batman v Superman: Dawn of Justice", y:2016, u:"DCEU", r:"red", k:"alone", l:"clean", n:"You flagged this one yourself — the Knightmare 'demons', Darkseid imagery and the monstrous Doomsday lean exactly where you don't want to go."},
+  {t:"Justice League", y:2017, u:"DCEU", r:"red", k:"alone", l:"clean", n:"Steppenwolf, parademons and Darkseid bring that same demonic-leaning imagery. Skip."},
+  {t:"Zack Snyder's Justice League", y:2021, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The longer cut leans further into the dark, demonic-flavoured visuals. Skip."},
+  {t:"The Flash", y:2023, u:"DCEU", r:"red", k:"alone", l:"clean", n:"Your exclusion — the character you'd rather not have on the screen. (Buy-only on Apple TV in SA anyway.)"},
+  {t:"Black Adam", y:2022, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The villain Sabbac is powered by a literal demon. That puts it firmly on the avoid list."},
+  {t:"Shazam!", y:2019, u:"DCU", r:"red", k:"alone", l:"clean", n:"Magic-granted powers and the 'Seven Deadly Sins' as demon-like creatures. The demonic element makes this a skip."},
+  {t:"Suicide Squad", y:2016, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The Enchantress is an occult witch villain, with ritual and dark-magic imagery throughout. Avoid."},
+  {t:"Constantine", y:2005, u:"DC", r:"red", k:"alone", l:"clean", n:"Demons, hell and exorcism are the whole premise. Skip."},
+
+  // ---------- ADVENTURE / FAMILY: GREEN ----------
+  {t:"The Incredibles", y:2004, u:"Pixar", r:"green", k:"all", l:"clean", n:"A superhero family, done with heart and humour. Fully clean — ideal for the whole family."},
+  {t:"Incredibles 2", y:2018, u:"Pixar", r:"green", k:"all", l:"clean", n:"Just as clean and fun as the first. Whole-family."},
+  {t:"Big Hero 6", y:2014, u:"Disney", r:"green", k:"all", l:"clean", n:"Robotics, brotherhood and a big-hearted robot. Clean and genuinely moving."},
+  {t:"Spider-Man: Into the Spider-Verse", y:2018, u:"Animated", r:"green", k:"all", l:"clean", n:"Stunning animated Spidey. Clean and a joy for the boys."},
+  {t:"Spider-Man: Across the Spider-Verse", y:2023, u:"Animated", r:"green", k:"boys", l:"clean", n:"More intense and ends on a cliffhanger, but clean. Older-boy watch."},
+  {t:"Bumblebee", y:2018, u:"Transformers", r:"green", k:"all", l:"clean", n:"The gentlest, most heartfelt Transformers — closest to whole-family. A great pick given the boys love the series."},
+  {t:"Transformers One", y:2024, u:"Transformers", r:"green", k:"all", l:"clean", n:"Animated origin story of Optimus and Megatron. Clean and well-reviewed — strong family choice."},
+  {t:"Transformers", y:2007, u:"Transformers", r:"green", k:"boys", l:"filter", n:"The live-action original the boys enjoy. Clean of occult, but crude humour and language — worth filtering."},
+  {t:"Sonic the Hedgehog", y:2020, u:"Adventure", r:"green", k:"all", l:"clean", n:"Fast, funny, clean. Great for the boys and younger."},
+  {t:"Sonic the Hedgehog 2", y:2022, u:"Adventure", r:"green", k:"all", l:"clean", n:"More of the same clean fun."},
+  {t:"Sonic the Hedgehog 3", y:2024, u:"Adventure", r:"green", k:"all", l:"clean", n:"Clean adventure, whole family."},
+  {t:"Paddington", y:2014, u:"Family", r:"green", k:"all", l:"clean", n:"Gentle, warm and genuinely lovely. Perfect for younger family nights."},
+  {t:"Paddington 2", y:2017, u:"Family", r:"green", k:"all", l:"clean", n:"Even better than the first — kind-hearted and spotless."},
+  {t:"The Lego Movie", y:2014, u:"Animated", r:"green", k:"all", l:"clean", n:"Clever, funny, clean. Whole family."},
+  {t:"National Treasure", y:2004, u:"Adventure", r:"green", k:"boys", l:"clean", n:"History-puzzle treasure hunt. Clean and a great fit for homeschool curiosity."},
+  {t:"How to Train Your Dragon (trilogy)", y:2010, u:"DreamWorks", r:"green", k:"all", l:"clean", n:"Dragons as animals to befriend — fantasy adventure, not occult. Heartfelt and clean."},
+  {t:"Jurassic Park", y:1993, u:"Adventure", r:"green", k:"boys", l:"clean", n:"The classic. Clean, but genuinely tense and scary — older-boy viewing."},
+  {t:"Jurassic World", y:2015, u:"Adventure", r:"green", k:"boys", l:"clean", n:"Clean dino action; some intense peril. Older boys."},
+  {t:"Wreck-It Ralph", y:2012, u:"Animated", r:"green", k:"all", l:"clean", n:"Video-game world, clean and clever. Whole family."},
+
+  // ---------- ADVENTURE / FAMILY: AMBER ----------
+  {t:"Star Wars (Original Trilogy)", y:1977, u:"Star Wars", r:"amber", k:"boys", l:"clean", n:"Space adventure at its best — but 'the Force' is a spiritual/mystical energy. That's the element to weigh for the house."},
+  {t:"The Chronicles of Narnia: The Lion, the Witch & the Wardrobe", y:2005, u:"Family", r:"amber", k:"all", l:"clean", n:"Christian allegory (Aslan as a Christ figure), which many Reformed families embrace — but it does contain the White Witch and magic. Flagging so it's your call."},
+  {t:"The Hobbit (trilogy)", y:2012, u:"Fantasy", r:"amber", k:"boys", l:"clean", n:"Tolkien's world — Christian-authored, but with wizards and sorcery. Lighter than LOTR. Your discernment on the magic."},
+  {t:"The Lord of the Rings (trilogy)", y:2001, u:"Fantasy", r:"amber", k:"alone", l:"clean", n:"Deeply Christian in its themes, yet full of wizards, a cursed ring, and the undead (Nazgûl). Intense too. Weighing it carefully makes sense; watch-alone first."},
+  {t:"Kung Fu Panda", y:2008, u:"DreamWorks", r:"amber", k:"all", l:"clean", n:"Lots of fun, but later films lean on 'chi'/inner-energy spirituality. Mild — noting it for your call."},
+  {t:"Jumanji: Welcome to the Jungle", y:2017, u:"Adventure", r:"amber", k:"boys", l:"filter", n:"A 'magic game' premise (mild fantasy, not occult) plus some crude humour and language. Fun; filter for the boys."},
+  {t:"Indiana Jones: Raiders of the Lost Ark", y:1981, u:"Adventure", r:"amber", k:"boys", l:"clean", n:"Great adventure; the supernatural climax is built on the biblical Ark of the Covenant. Some frightening imagery. Your call."},
+  {t:"Indiana Jones and the Last Crusade", y:1989, u:"Adventure", r:"amber", k:"boys", l:"clean", n:"The Holy Grail quest — biblical framing, the cleanest of the Indy films. Fun father-son story."},
+
+  // ---------- ADVENTURE / FAMILY: RED ----------
+  {t:"Indiana Jones and the Temple of Doom", y:1984, u:"Adventure", r:"red", k:"alone", l:"clean", n:"An occult cult with human sacrifice and dark ritual at its centre. The one Indy film to skip."},
+  {t:"Pirates of the Caribbean (series)", y:2003, u:"Adventure", r:"red", k:"alone", l:"clean", n:"Fun swashbuckling, but woven through with curses, the undead and a voodoo priestess (Calypso). The occult thread grows across the sequels."},
+  {t:"Percy Jackson & the Olympians", y:2010, u:"Fantasy", r:"red", k:"alone", l:"clean", n:"Built on Greek gods, demigods and mythological magic as the real framework. Skip for the house."},
+  {t:"Harry Potter (series)", y:2001, u:"Fantasy", r:"red", k:"alone", l:"clean", n:"Witchcraft and sorcery are the entire premise. A clear skip given what you're avoiding."}
+];
+
+/* ---------------- STATE ---------------- */
+const STORAGE_KEY = 'steyn-watchlist-v1';
+let watched = {};          // { title: true }
+let activeFilter = 'all';
+let hideWatched = false;
+let showAvoid = false;
+let searchTerm = '';
+
+const idFor = m => m.t + '|' + m.y;
+
+const GROUPS = [
+  {r:'green', label:'Clean — good to go', cls:'green'},
+  {r:'amber', label:'Your call — a mythic or magic element to weigh', cls:'amber'},
+  {r:'red',   label:'Contains occult / demonic content — the avoid list', cls:'red'}
+];
+
+const KID_TAG = {
+  all:   {cls:'all',   txt:'✓ Whole family'},
+  boys:  {cls:'boys',  txt:'✓ Good for the boys'},
+  alone: {cls:'alone', txt:'◐ Better on your own'}
+};
+
+/* ---------------- STORAGE (localStorage — persists per device) ---------------- */
+function loadWatched() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) watched = JSON.parse(raw) || {};
+  } catch (e) { watched = {}; }
+}
+function saveWatched() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(watched)); }
+  catch (e) { /* best-effort; UI already updated */ }
+}
+
+/* ---------------- RENDER ---------------- */
+function matches(m) {
+  if (searchTerm && !m.t.toLowerCase().includes(searchTerm)) return false;
+  if (!showAvoid && m.r === 'red') return false;
+  if (hideWatched && watched[idFor(m)]) return false;
+  switch (activeFilter) {
+    case 'clean':  return m.r === 'green';
+    case 'family': return m.k === 'all';
+    case 'boys':   return m.k === 'all' || m.k === 'boys';
+    case 'alone':  return m.k === 'alone';
+    default:       return true;
+  }
+}
+
+function cardHTML(m) {
+  const id = idFor(m);
+  const done = watched[id] ? ' done' : '';
+  const kid = KID_TAG[m.k];
+  const langTag = m.l === 'filter'
+    ? '<span class="tag lang">⚑ Language — use your filter</span>' : '';
+  return `<div class="card ${m.r}${done}" data-id="${id.replace(/"/g,'&quot;')}">
+    <label class="check">
+      <input type="checkbox" ${watched[id] ? 'checked' : ''} aria-label="Mark ${m.t.replace(/"/g,'')} watched">
+    </label>
+    <div class="body">
+      <div class="title-row">
+        <span class="title">${m.t}</span>
+        <span class="year">${m.y}</span>
+        <span class="universe">${m.u}</span>
+      </div>
+      <div class="note">${m.n}</div>
+      <div class="tags">
+        <span class="tag ${kid.cls}">${kid.txt}</span>
+        ${langTag}
+      </div>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const list = document.getElementById('list');
+  const visible = MOVIES.filter(matches);
+  let html = '';
+
+  GROUPS.forEach(g => {
+    if (!showAvoid && g.r === 'red') return;
+    const items = visible.filter(m => m.r === g.r);
+    if (!items.length) return;
+    html += `<h2 class="group-head"><i class="dot ${g.cls}"></i>${g.label}
+      <span class="count">${items.length}</span></h2>`;
+    html += items.map(cardHTML).join('');
+  });
+
+  if (!html) html = `<div class="empty">No films match that yet — try clearing the search or a different filter.</div>`;
+  list.innerHTML = html;
+
+  // wire checkboxes
+  list.querySelectorAll('.card').forEach(card => {
+    const cb = card.querySelector('input[type=checkbox]');
+    cb.addEventListener('change', () => {
+      const id = card.getAttribute('data-id');
+      if (cb.checked) watched[id] = true; else delete watched[id];
+      saveWatched();
+      updateProgress();
+      card.classList.toggle('done', cb.checked);
+      if (hideWatched && cb.checked) render();
+    });
+  });
+
+  updateProgress();
+}
+
+function updateProgress() {
+  // progress counts only green + amber (the watchable set)
+  const pool = MOVIES.filter(m => m.r !== 'red');
+  const done = pool.filter(m => watched[idFor(m)]).length;
+  const pct = pool.length ? Math.round(done / pool.length * 100) : 0;
+  document.getElementById('pnum').textContent = done;
+  document.getElementById('ptot').textContent = 'of ' + pool.length + ' watchable';
+  document.getElementById('pfill').style.width = pct + '%';
+}
+
+/* ---------------- EVENTS ---------------- */
+document.getElementById('filters').addEventListener('click', e => {
+  const btn = e.target.closest('.chip');
+  if (!btn) return;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.filter;
+  render();
+});
+document.getElementById('search').addEventListener('input', e => {
+  searchTerm = e.target.value.trim().toLowerCase();
+  render();
+});
+document.getElementById('hideWatched').addEventListener('change', e => {
+  hideWatched = e.target.checked; render();
+});
+document.getElementById('showAvoid').addEventListener('change', e => {
+  showAvoid = e.target.checked; render();
+});
+document.getElementById('reset').addEventListener('click', async () => {
+  if (!confirm('Clear every watched mark? This cannot be undone.')) return;
+  watched = {};
+  await saveWatched();
+  render();
+});
+
+/* ---------------- INIT ---------------- */
+(async function init(){
+  await loadWatched();
+  render();
+})();
+</script>
+</body>
+</html>

@@ -5,37 +5,45 @@
   "functions": {
     "source": "functions"
   },
-  "hosting": {
-    "public": "dist",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
-    "rewrites": [
-      {
-        "source": "/api/wa-inbound",
-        "function": { "functionId": "waInbound", "region": "us-central1" }
-      },
-      {
-        "source": "/api/parse-document",
-        "function": { "functionId": "parseDocument", "region": "us-central1" }
-      },
-      {
-        "source": "/api/refresh-parcels",
-        "function": { "functionId": "refreshParcelsNow", "region": "us-central1" }
-      },
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
-    ],
-    "headers": [
-      {
-        "source": "**/*.@(js|css)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      }
-    ]
-  }
+  "hosting": [
+    {
+      "site": "helloliam-ha-dashboard",
+      "public": "dist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "rewrites": [
+        {
+          "source": "/api/wa-inbound",
+          "function": { "functionId": "waInbound", "region": "us-central1" }
+        },
+        {
+          "source": "/api/parse-document",
+          "function": { "functionId": "parseDocument", "region": "us-central1" }
+        },
+        {
+          "source": "/api/refresh-parcels",
+          "function": { "functionId": "refreshParcelsNow", "region": "us-central1" }
+        },
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(js|css)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "site": "steyn-watchlist",
+      "public": "watchlist",
+      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    }
+  ]
 }
