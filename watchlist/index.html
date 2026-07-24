@@ -376,6 +376,10 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 // which signs in reliably in this browser. Every error is surfaced (including
 // popup-closed) so a failure is visible instead of silently doing nothing.
 const provider = new GoogleAuthProvider();
+// Always show the account chooser — the bootstrap admins (cloudbadger.com /
+// steyncd@gmail.com) differ from the browser's signed-in Google account, so
+// never silently reuse whichever account is already active.
+provider.setCustomParameters({ prompt: 'select_account' });
 document.getElementById('signinBtn').onclick = async () => {
   document.getElementById('gateErr').textContent = 'Opening Google sign-in…';
   try {
