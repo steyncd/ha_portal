@@ -299,17 +299,31 @@ summary: one plain-language sentence for the parents.`;
       required: ["rating", "suits", "languageFlag", "summary", "analysis"],
     };
 
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY.value()}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.2 },
-      }),
+    const body = JSON.stringify({
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.2 },
     });
-    const j = await r.json();
-    if (!r.ok) { logger.error("analyzeMovie gemini error", j); throw new HttpsError("internal", (j && j.error && j.error.message) || `gemini ${r.status}`); }
-    const text = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text) || "{}";
+    // Retry on transient overload (503/429) with backoff, and fall back through
+    // alternate flash models if one is overloaded or unavailable.
+    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
+    let data = null, lastErr = "";
+    for (const model of models) {
+      for (let attempt = 0; attempt < 3 && !data; attempt++) {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body,
+        });
+        const jr = await r.json();
+        if (r.ok) { data = jr; break; }
+        lastErr = (jr && jr.error && jr.error.message) || `gemini ${r.status}`;
+        logger.warn("analyzeMovie gemini attempt failed", { model, attempt, status: r.status, lastErr });
+        if (r.status === 503 || r.status === 429) { await sleep(700 * (attempt + 1)); continue; } // transient → retry same model
+        break; // non-retryable (e.g. 404 model not found) → try next model
+      }
+      if (data) break;
+    }
+    if (!data) throw new HttpsError("unavailable", "The AI is busy right now (" + lastErr + "). Please try again in a moment.");
+    const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "{}";
     let out;
     try { out = JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
     return out;
