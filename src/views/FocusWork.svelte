@@ -4,8 +4,22 @@
   // the derived history_stats sensors (packages/feature_device_analytics.yaml).
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
+  import { E } from "../lib/entities";
   import { n } from "../lib/format";
   import StatusChip from "../lib/components/StatusChip.svelte";
+
+  // Oura consolidation — recovery + activity from the ring, alongside work/movement.
+  const scoreColor = (v: number | null) => (v == null ? "var(--muted)" : v >= 85 ? "var(--success)" : v >= 70 ? "var(--acc)" : v >= 55 ? "var(--warning)" : "var(--error)");
+  const ringBg = (v: number | null, c: string) => `conic-gradient(${c} ${v ?? 0}%,rgba(255,255,255,.10) 0)`;
+  const ouraScores = $derived([
+    { name: "Readiness", v: ha.num(E.ouraReadiness) },
+    { name: "Sleep", v: ha.num(E.ouraSleepScore) },
+    { name: "Activity", v: ha.num(E.ouraActivityScore) },
+  ]);
+  const ouraSteps = $derived(ha.num(E.ouraSteps));
+  const ouraActiveCal = $derived(ha.num(E.ouraActiveCal));
+  const ouraRestingHR = $derived(ha.num(E.ouraRestingHR));
+  const ouraRingBatt = $derived(ha.num(E.ouraRingBatt));
 
   const activeToday = $derived(ha.num("sensor.macbook_active_today"));
   const meetingToday = $derived(ha.num("sensor.macbook_meeting_time_today"));
@@ -71,8 +85,28 @@
   <div class="tiles">
     <div class="t"><div class="tv">{fmtH(activeToday)}</div><div class="tk">💻 Active today</div></div>
     <div class="t"><div class="tv">{fmtH(meetingToday)}</div><div class="tk">🎥 On calls</div></div>
-    <div class="t"><div class="tv">{n(steps)}</div><div class="tk">👟 Steps</div></div>
+    <div class="t"><div class="tv">{n(ouraSteps ?? steps)}</div><div class="tk">👟 Steps</div></div>
     <div class="t"><div class="tv">{fmtH(awayToday)}</div><div class="tk">🚗 Away today</div></div>
+  </div>
+
+  <!-- Oura consolidation -->
+  <div class="card pad">
+    <div class="rh"><span class="lb">Oura · today</span><span class="sub">💍 {ouraRingBatt != null ? `${n(ouraRingBatt)}%` : "—"}</span></div>
+    <div class="oura">
+      <div class="oscores">
+        {#each ouraScores as s}
+          <div class="osc">
+            <div class="oring" style="background:{ringBg(s.v, scoreColor(s.v))}"><div class="oringc" style="color:{scoreColor(s.v)}">{n(s.v)}</div></div>
+            <div class="osl">{s.name}</div>
+          </div>
+        {/each}
+      </div>
+      <div class="ostats">
+        <div class="ost"><div class="osv">{n(ouraSteps)}</div><div class="osk">Oura steps</div></div>
+        <div class="ost"><div class="osv">{n(ouraActiveCal)}</div><div class="osk">active kcal</div></div>
+        <div class="ost"><div class="osv">{ouraRestingHR != null ? `${n(ouraRestingHR)}` : "—"}</div><div class="osk">resting HR</div></div>
+      </div>
+    </div>
   </div>
 
   <!-- app usage -->
@@ -96,9 +130,8 @@
   <div class="two">
     <!-- movement -->
     <div class="card pad">
-      <div class="rh"><span class="lb">Movement</span><span class="sub">{actIcon(activity)} {activity ?? "—"}</span></div>
+      <div class="rh"><span class="lb">Phone motion</span><span class="sub">{actIcon(activity)} {activity ?? "—"}</span></div>
       <div class="mv">
-        <div class="m"><div class="mv2">{n(steps)}</div><div class="mk">steps</div></div>
         <div class="m"><div class="mv2">{n(floors)}</div><div class="mk">floors ↑</div></div>
         <div class="m"><div class="mv2">{distance != null ? `${n(distance, 1)}` : "—"}</div><div class="mk">km</div></div>
       </div>
@@ -141,7 +174,18 @@
   .av { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
-  .mv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .oura { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .oscores { display: flex; gap: 16px; }
+  .osc { text-align: center; }
+  .oring { width: 60px; height: 60px; border-radius: 50%; display: grid; place-items: center; }
+  .oringc { width: 46px; height: 46px; border-radius: 50%; background: var(--bg, #0b1017); display: grid; place-items: center; font-size: 16px; font-weight: 800; }
+  .osl { font-size: 10.5px; color: var(--muted); margin-top: 5px; }
+  .ostats { display: flex; gap: 20px; flex: 1; justify-content: flex-end; }
+  .ost { text-align: center; }
+  .osv { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .osk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 3px; }
+  @media (max-width: 620px) { .oura { justify-content: center; } .ostats { justify-content: center; } }
+  .mv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .m { text-align: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
   .mv2 { font-size: 20px; font-weight: 800; }
   .mk { font-size: 10.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
