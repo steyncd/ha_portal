@@ -590,6 +590,15 @@ const ROWS: Row[] = [
   ["sensor.desktop_lastboot", "2026-07-24T00:30:00+00:00"],
   ["sensor.desktop_lastactive", "2026-07-24T05:15:00+00:00"],
   ["binary_sensor.on_a_call", "off"],
+
+  // Apple Health (Health Auto Export → hae.*) — Focus tab Health card
+  ["hae.hahealthsync_vo2_max", "42.6", { unit_of_measurement: "ml/(kg·min)" }],
+  ["hae.hahealthsync_heart_rate_variability", "48", { unit_of_measurement: "ms" }],
+  ["hae.hahealthsync_blood_oxygen_saturation", "97", { unit_of_measurement: "%" }],
+  ["hae.hahealthsync_respiratory_rate", "15", { unit_of_measurement: "count/min" }],
+  ["hae.hahealthsync_resting_heart_rate", "54", { unit_of_measurement: "bpm" }],
+  ["hae.hahealthsync_time_in_daylight", "63", { unit_of_measurement: "min" }],
+  ["hae.hahealthsync_environmental_audio_exposure", "68", { unit_of_measurement: "dBASPL" }],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(

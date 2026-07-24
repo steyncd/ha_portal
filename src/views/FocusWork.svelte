@@ -21,6 +21,16 @@
   const ouraRestingHR = $derived(ha.num(E.ouraRestingHR));
   const ouraRingBatt = $derived(ha.num(E.ouraRingBatt));
 
+  // Apple Health (Health Auto Export → hae.* entities) — metrics Oura doesn't cover.
+  const hVo2 = $derived(ha.num("hae.hahealthsync_vo2_max"));
+  const hHrv = $derived(ha.num("hae.hahealthsync_heart_rate_variability"));
+  const hSpo2 = $derived(ha.num("hae.hahealthsync_blood_oxygen_saturation"));
+  const hResp = $derived(ha.num("hae.hahealthsync_respiratory_rate"));
+  const hDaylight = $derived(ha.num("hae.hahealthsync_time_in_daylight"));
+  const hAudio = $derived(ha.num("hae.hahealthsync_environmental_audio_exposure"));
+  const hRestHR = $derived(ha.num("hae.hahealthsync_resting_heart_rate"));
+  const hasHealth = $derived([hVo2, hHrv, hSpo2, hResp, hDaylight, hAudio].some((v) => v != null));
+
   const activeToday = $derived(ha.num("sensor.macbook_active_today"));
   const meetingToday = $derived(ha.num("sensor.macbook_meeting_time_today"));
   const awayToday = $derived(ha.num("sensor.phone_away_today"));
@@ -126,6 +136,22 @@
     </div>
   </div>
 
+  <!-- Apple Health (complements Oura) -->
+  {#if hasHealth}
+    <div class="card pad">
+      <div class="rh"><span class="lb">🍎 Apple Health · today</span><span class="sub">from HealthKit</span></div>
+      <div class="hgrid">
+        <div class="h"><div class="hv">{hVo2 != null ? n(hVo2, 1) : "—"}</div><div class="hk">VO₂ max</div></div>
+        <div class="h"><div class="hv">{hHrv != null ? n(hHrv) : "—"}<span class="hu">ms</span></div><div class="hk">HRV</div></div>
+        <div class="h"><div class="hv">{hSpo2 != null ? n(hSpo2) : "—"}<span class="hu">%</span></div><div class="hk">Blood O₂</div></div>
+        <div class="h"><div class="hv">{hResp != null ? n(hResp) : "—"}</div><div class="hk">resp/min</div></div>
+        <div class="h"><div class="hv">{hRestHR != null ? n(hRestHR) : "—"}<span class="hu">bpm</span></div><div class="hk">resting HR</div></div>
+        <div class="h"><div class="hv">{hDaylight != null ? n(hDaylight) : "—"}<span class="hu">m</span></div><div class="hk">daylight</div></div>
+        <div class="h"><div class="hv">{hAudio != null ? n(hAudio) : "—"}<span class="hu">dB</span></div><div class="hk">audio exp.</div></div>
+      </div>
+    </div>
+  {/if}
+
   <!-- app usage -->
   <div class="card pad">
     <div class="rh"><span class="lb">App usage · today</span><span class="sub">MacBook foreground time</span></div>
@@ -214,6 +240,13 @@
   .av { font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 48px; text-align: right; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+  .hgrid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+  @media (max-width: 760px) { .hgrid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 460px) { .hgrid { grid-template-columns: repeat(2, 1fr); } }
+  .h { text-align: center; padding: 12px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
+  .hv { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hu { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 1px; }
+  .hk { font-size: 9.5px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
   .oura { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .oscores { display: flex; gap: 16px; }
   .osc { text-align: center; }
