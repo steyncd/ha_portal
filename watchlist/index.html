@@ -235,7 +235,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, onSnapshot, addDoc, deleteDoc, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -374,19 +374,24 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':
 
 /* ---------- auth ---------- */
 const provider = new GoogleAuthProvider();
+// Popup only. The redirect flow ("signInWithRedirect") fails on storage-
+// partitioned browsers with "missing initial state" — and now that authDomain
+// is same-origin, the popup handler works reliably, so no fallback is needed.
 document.getElementById('signinBtn').onclick = async () => {
   document.getElementById('gateErr').textContent = '';
-  try { await signInWithPopup(auth, provider); }
-  catch (e) {
-    if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
-      try { await signInWithRedirect(auth, provider); return; } catch (e2) { showGateErr(e2); }
-    } else showGateErr(e);
+  try {
+    await signInWithPopup(auth, provider);
+  } catch (e) {
+    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return; // user dismissed it
+    if (e.code === 'auth/popup-blocked') {
+      showGateErr({ message: 'Your browser blocked the sign-in window. Allow pop-ups for this site, then tap Sign in again.' });
+      return;
+    }
+    showGateErr(e);
   }
 };
 document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
-// Complete a redirect-based sign-in (fallback path) and surface any error.
-getRedirectResult(auth).catch(showGateErr);
 
 onAuthStateChanged(auth, async (user) => {
   me = user;
