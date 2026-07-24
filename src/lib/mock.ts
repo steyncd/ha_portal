@@ -581,6 +581,15 @@ const ROWS: Row[] = [
   ["sensor.christos_macbook_storage", "67.1", { unit_of_measurement: "GB" }],
   ["sensor.christos_macbook_geocoded_location", "302 Wyoming Street, Pretoria"],
   ["binary_sensor.hello_focus", "off"],
+
+  // Windows Desktop (HASS.Agent) — Focus tab
+  ["sensor.desktop_activewindow", "Excel — Q3 Budget.xlsx"],
+  ["binary_sensor.desktop_microphoneactive", "off"],
+  ["sensor.desktop_display_display_count", "3"],
+  ["sensor.desktop_memoryusage", "42.5", { unit_of_measurement: "%" }],
+  ["sensor.desktop_lastboot", "2026-07-24T00:30:00+00:00"],
+  ["sensor.desktop_lastactive", "2026-07-24T05:15:00+00:00"],
+  ["binary_sensor.on_a_call", "off"],
 ];
 
 export const MOCK: HassEntities = Object.fromEntries(

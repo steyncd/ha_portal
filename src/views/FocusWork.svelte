@@ -30,8 +30,25 @@
   const activity = $derived(ha.state("sensor.hello_activity"));
   const curApp = $derived(ha.state("sensor.christos_macbook_frontmost_app"));
   const macActive = $derived(ha.isOn("binary_sensor.christos_macbook_active"));
-  const onCall = $derived(ha.isOn("binary_sensor.macbook_in_meeting"));
+  const onCall = $derived(ha.isOn("binary_sensor.on_a_call"));
   const focus = $derived(ha.isOn("binary_sensor.hello_focus"));
+
+  // Windows Desktop (HASS.Agent)
+  const deskAvail = $derived(ha.available("sensor.desktop_activewindow"));
+  const deskApp = $derived(ha.state("sensor.desktop_activewindow"));
+  const deskMic = $derived(ha.isOn("binary_sensor.desktop_microphoneactive"));
+  const deskDisplays = $derived(ha.num("sensor.desktop_display_display_count"));
+  const deskMem = $derived(ha.num("sensor.desktop_memoryusage"));
+  const recencyH = (iso: string | undefined) => {
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    return Number.isFinite(t) ? (Date.now() - t) / 3_600_000 : null;
+  };
+  const deskUptime = $derived(recencyH(ha.state("sensor.desktop_lastboot")));
+  const deskActive = $derived.by(() => {
+    const h = recencyH(ha.state("sensor.desktop_lastactive"));
+    return h != null && h < 0.1; // active within the last ~6 min
+  });
   const displays = $derived(ha.num("sensor.christos_macbook_displays"));
   const whereMac = $derived(ha.state("sensor.christos_macbook_geocoded_location"));
   const wherePhone = $derived(ha.state("sensor.hello_geocoded_location"));
@@ -127,6 +144,24 @@
     {/if}
   </div>
 
+  <!-- Windows Desktop (HASS.Agent) -->
+  {#if deskAvail}
+    <div class="card pad">
+      <div class="rh"><span class="lb">🖥️ Desktop PC</span><span class="sub">{deskUptime != null ? `up ${fmtH(deskUptime)}` : ""}</span></div>
+      <div class="dstatus">
+        <StatusChip state={deskActive ? "ok" : "off"} label={deskActive ? "Active" : "Idle"} />
+        {#if deskMic}<StatusChip state="warn" label="On a call" />{/if}
+        {#if (deskDisplays ?? 0) > 1}<StatusChip state="ok" label={`${n(deskDisplays)} displays`} />{/if}
+        {#if deskApp && !/unknown|unavailable/i.test(deskApp)}<span class="curapp">▸ {deskApp}</span>{/if}
+      </div>
+      <div class="dstats">
+        <div class="ds2"><div class="dv">{deskMem != null ? `${n(deskMem)}%` : "—"}</div><div class="dk">memory</div></div>
+        <div class="ds2"><div class="dv">{fmtH(deskUptime)}</div><div class="dk">uptime</div></div>
+        <div class="ds2"><div class="dv">{deskDisplays != null ? n(deskDisplays) : "—"}</div><div class="dk">displays</div></div>
+      </div>
+    </div>
+  {/if}
+
   <div class="two">
     <!-- movement -->
     <div class="card pad">
@@ -157,6 +192,11 @@
   .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; }
   .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 16px 18px; }
   .curapp { font-size: 13px; font-weight: 600; color: var(--text-2, var(--muted)); }
+  .dstatus { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+  .dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .ds2 { text-align: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
+  .dv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .dk { font-size: 10.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   @media (max-width: 620px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
   .t { padding: 16px 18px; border-radius: 16px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
