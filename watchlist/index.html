@@ -235,7 +235,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut }
+import { getAuth, GoogleAuthProvider, signInWithRedirect, getRedirectResult, browserLocalPersistence, setPersistence, onAuthStateChanged, signOut }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, onSnapshot, addDoc, deleteDoc, writeBatch }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -373,25 +373,24 @@ let activeFilter = 'all', typeFilter = 'all', hideWatched = false, showAvoid = f
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- auth ---------- */
+// Full-page redirect (not popup). Safari kills the auth popup's link back to
+// the app, so signInWithPopup closes silently without signing in. Redirect is
+// reliable here because authDomain is same-origin (so the SDK's pending-redirect
+// state is stored first-party and survives the round-trip).
 const provider = new GoogleAuthProvider();
-// Popup only. The redirect flow ("signInWithRedirect") fails on storage-
-// partitioned browsers with "missing initial state" — and now that authDomain
-// is same-origin, the popup handler works reliably, so no fallback is needed.
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
 document.getElementById('signinBtn').onclick = async () => {
-  document.getElementById('gateErr').textContent = '';
+  document.getElementById('gateErr').textContent = 'Redirecting to Google…';
   try {
-    await signInWithPopup(auth, provider);
+    await signInWithRedirect(auth, provider);
   } catch (e) {
-    if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return; // user dismissed it
-    if (e.code === 'auth/popup-blocked') {
-      showGateErr({ message: 'Your browser blocked the sign-in window. Allow pop-ups for this site, then tap Sign in again.' });
-      return;
-    }
     showGateErr(e);
   }
 };
 document.getElementById('signoutBtn').onclick = () => signOut(auth);
 function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
+// Complete the redirect sign-in when Google sends the user back; surface errors.
+getRedirectResult(auth).catch(showGateErr);
 
 onAuthStateChanged(auth, async (user) => {
   me = user;
