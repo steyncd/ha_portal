@@ -55,7 +55,11 @@
       const avail = ha.available(d.level);
       const st = d.state ? ha.state(d.state) : undefined;
       const charging = st ? /charg/i.test(st) && !/not|dis/i.test(st) : false;
-      return { d, lvl, avail, st, charging, series: hist[d.key] ?? [], a: analyse(hist[d.key] ?? []) };
+      // Freshness: iOS pushes battery sporadically — flag when it hasn't reported in a while.
+      const lu = ha.entities[d.level]?.last_updated;
+      const staleH = lu ? (Date.now() - Date.parse(lu)) / 3_600_000 : null;
+      const stale = avail && staleH != null && staleH > 1;
+      return { d, lvl, avail, st, charging, staleH, stale, series: hist[d.key] ?? [], a: analyse(hist[d.key] ?? []) };
     }),
   );
 
@@ -74,7 +78,7 @@
 
   <div class="grid">
     {#each rows as r (r.d.key)}
-      <div class="card" class:dim={!r.avail}>
+      <div class="card" class:dim={!r.avail} class:stale={r.stale}>
         <div class="top">
           <span class="ic">{r.d.icon}</span>
           <div class="nm">
@@ -89,6 +93,7 @@
               {:else}
                 {r.st ?? "On battery"}
               {/if}
+              {#if r.stale}<span class="stalepill">· updated {fmtH(r.staleH)} ago</span>{/if}
             </div>
           </div>
           <div class="pct" style="color:{colr(r.lvl)}">{r.avail ? `${n(r.lvl)}%` : "—"}</div>
@@ -126,6 +131,8 @@
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
   .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; padding: 18px; }
   .card.dim { opacity: 0.62; }
+  .card.stale { opacity: 0.7; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 30%, transparent); }
+  .stalepill { color: var(--warning); }
   .top { display: flex; align-items: center; gap: 12px; }
   .ic { font-size: 24px; width: 42px; height: 42px; display: grid; place-items: center; border-radius: 12px; background: rgba(255, 255, 255, 0.05); flex: none; }
   .nm { flex: 1; min-width: 0; }
