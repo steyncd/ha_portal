@@ -7,238 +7,202 @@
 <title>The Steyn Family Screening Room</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg-0: #17111d;
-    --bg-1: #211829;
-    --surface: #2a2033;
-    --surface-hi: #342839;
-    --edge: #3d3044;
-    --ink: #f5efe6;
-    --ink-mute: #b0a3b8;
-    --ink-faint: #7d7185;
-    --brass: #e6b957;
-    --brass-deep: #c99a3c;
-    --green: #63bd81;
-    --green-bg: rgba(99,189,129,0.13);
-    --amber: #e6a943;
-    --amber-bg: rgba(230,169,67,0.13);
-    --red: #d97070;
-    --red-bg: rgba(217,112,112,0.13);
-    --shadow: 0 10px 30px rgba(0,0,0,0.35);
+  :root{
+    --base:#0a0f16; --text:#eef2f9; --text-2:#c8d4e2; --muted:#93a3b5; --muted-2:#7d8ba0;
+    --acc:#2dd4bf; --acc2:#818cf8;
+    --grad:linear-gradient(135deg,var(--acc2),var(--acc));
+    --card:rgba(255,255,255,0.045); --card-hi:rgba(255,255,255,0.08);
+    --line:rgba(255,255,255,0.10);
+    --green:#34d399; --amber:#fbbf24; --red:#fb7185;
+    --green-bg:color-mix(in srgb,var(--green) 13%,transparent);
+    --amber-bg:color-mix(in srgb,var(--amber) 13%,transparent);
+    --red-bg:color-mix(in srgb,var(--red) 13%,transparent);
+    --shadow:0 12px 34px rgba(0,0,0,0.45);
   }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    font-family: 'Inter', system-ui, sans-serif;
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Inter',system-ui,sans-serif; color:var(--text); line-height:1.5; min-height:100vh;
     background:
-      radial-gradient(120% 80% at 50% -10%, #2b2033 0%, var(--bg-1) 45%, var(--bg-0) 100%);
-    background-attachment: fixed;
-    color: var(--ink);
-    line-height: 1.5;
-    min-height: 100vh;
-    padding-bottom: 4rem;
+      radial-gradient(900px 700px at 50% -8%, color-mix(in srgb,var(--acc2) 16%,transparent), transparent 60%),
+      radial-gradient(900px 760px at 52% 120%, color-mix(in srgb,var(--acc) 12%,transparent), transparent 60%),
+      var(--base);
+    background-attachment:fixed; padding-bottom:4rem;
   }
+  .wrap{max-width:940px;margin:0 auto;padding:0 1.1rem}
+  a{color:var(--acc)}
+  .btn{font-family:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text);
+    border-radius:11px;padding:0.6rem 1rem;font-size:0.9rem;font-weight:600;transition:.15s}
+  .btn:hover{background:var(--card-hi)}
+  .btn.primary{background:var(--grad);color:#08121a;border-color:transparent;font-weight:800}
+  .btn.sm{padding:0.4rem 0.7rem;font-size:0.8rem;border-radius:9px}
+  .btn.danger:hover{border-color:var(--red);color:var(--red)}
 
-  .wrap { max-width: 940px; margin: 0 auto; padding: 0 1.1rem; }
+  /* ---- Gate (sign-in / no access) ---- */
+  .gate{min-height:100vh;display:grid;place-items:center;padding:1.5rem}
+  .gate-card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:2.4rem 2rem;
+    max-width:400px;width:100%;text-align:center;box-shadow:var(--shadow)}
+  .gate-logo{font-size:2.4rem}
+  .gate h1{font-size:1.4rem;font-weight:800;margin:0.8rem 0 0.3rem;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .gate p{color:var(--muted);font-size:0.92rem;margin-bottom:1.4rem}
+  .gsignin{display:inline-flex;align-items:center;gap:0.6rem;background:#fff;color:#1f2430;border:none;
+    border-radius:12px;padding:0.75rem 1.3rem;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:inherit}
+  .gerr{color:var(--red);font-size:0.82rem;margin-top:1rem;min-height:1rem}
 
-  /* ---- Marquee header ---- */
-  header { text-align: center; padding: 2.6rem 1rem 1.4rem; }
+  /* ---- Header ---- */
+  header{text-align:center;padding:2.4rem 1rem 0.6rem}
+  .kicker{font-size:0.7rem;letter-spacing:0.34em;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+  h1.title{font-size:clamp(1.6rem,5vw,2.5rem);font-weight:800;line-height:1.05;letter-spacing:-0.01em;
+    background:var(--grad);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{color:var(--muted);font-size:0.8rem;letter-spacing:0.1em;text-transform:uppercase;margin-top:0.5rem}
+  .intro{max-width:640px;margin:1.3rem auto 0;font-size:0.92rem;color:var(--text-2);text-align:center}
+  .intro strong{color:var(--text)}
 
-  .marquee {
-    display: inline-block;
-    border: 2px solid var(--brass-deep);
-    border-radius: 10px;
-    padding: 1rem 1.6rem 1.1rem;
-    position: relative;
-    background: linear-gradient(180deg, rgba(230,185,87,0.08), rgba(230,185,87,0.02));
-    box-shadow: var(--shadow), inset 0 0 30px rgba(230,185,87,0.06);
-  }
-  .bulbs { display: flex; gap: 0.55rem; justify-content: center; margin-bottom: 0.7rem; }
-  .bulb {
-    width: 8px; height: 8px; border-radius: 50%;
-    background: var(--brass);
-    box-shadow: 0 0 8px var(--brass), 0 0 3px #fff inset;
-    animation: flick 2.4s infinite;
-  }
-  .bulb:nth-child(2){ animation-delay:.3s } .bulb:nth-child(3){ animation-delay:.6s }
-  .bulb:nth-child(4){ animation-delay:.9s } .bulb:nth-child(5){ animation-delay:1.2s }
-  .bulb:nth-child(6){ animation-delay:1.5s } .bulb:nth-child(7){ animation-delay:1.8s }
-  @keyframes flick { 0%,100%{opacity:1} 50%{opacity:.35} }
+  .topbar{display:flex;justify-content:flex-end;align-items:center;gap:0.6rem;padding:1rem 0 0}
+  .who{font-size:0.82rem;color:var(--muted);margin-right:auto}
+  .who b{color:var(--text-2)}
+  .rolechip{font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;padding:0.15rem 0.5rem;border-radius:6px;
+    background:var(--wash,color-mix(in srgb,var(--acc) 18%,transparent));color:var(--acc);font-weight:700}
 
-  h1 {
-    font-family: 'Oswald', sans-serif;
-    font-weight: 600;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    font-size: clamp(1.5rem, 5vw, 2.4rem);
-    color: var(--brass);
-    line-height: 1.05;
-  }
-  .subtitle {
-    font-family: 'Oswald', sans-serif;
-    font-weight: 300;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    font-size: 0.72rem;
-    color: var(--ink-mute);
-    margin-top: 0.5rem;
-  }
+  .legend{display:flex;flex-wrap:wrap;gap:0.5rem 1.2rem;justify-content:center;margin:1.4rem auto 0;max-width:720px;font-size:0.8rem;color:var(--muted)}
+  .legend span{display:inline-flex;align-items:center;gap:0.4rem}
+  .dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+  .dot.green{background:var(--green)}.dot.amber{background:var(--amber)}.dot.red{background:var(--red)}
 
-  .intro {
-    max-width: 640px; margin: 1.4rem auto 0;
-    font-size: 0.92rem; color: var(--ink-mute); text-align: center;
-  }
-  .intro strong { color: var(--ink); font-weight: 600; }
+  .progress-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:1rem 1.2rem;margin:1.8rem 0 0;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+  .progress-num{font-size:1.7rem;font-weight:800;color:var(--acc);line-height:1}
+  .progress-label{font-size:0.85rem;color:var(--muted)}
+  .bar{flex:1 1 180px;height:8px;background:rgba(255,255,255,0.08);border-radius:99px;overflow:hidden;min-width:140px}
+  .bar-fill{height:100%;width:0%;background:var(--grad);border-radius:99px;transition:width .5s ease}
 
-  /* ---- Legend ---- */
-  .legend {
-    display: flex; flex-wrap: wrap; gap: 0.5rem 1.2rem; justify-content: center;
-    margin: 1.5rem auto 0; max-width: 720px;
-    font-size: 0.8rem; color: var(--ink-mute);
-  }
-  .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
-  .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; }
-  .dot.green { background: var(--green); }
-  .dot.amber { background: var(--amber); }
-  .dot.red { background: var(--red); }
+  .controls{margin-top:1.4rem;display:flex;flex-direction:column;gap:0.8rem}
+  .search{width:100%;background:var(--card);border:1px solid var(--line);color:var(--text);border-radius:11px;padding:0.7rem 0.9rem;font-size:0.95rem;font-family:inherit}
+  .search::placeholder{color:var(--muted-2)}
+  .search:focus{outline:2px solid var(--acc);outline-offset:1px}
+  .filters{display:flex;flex-wrap:wrap;gap:0.5rem}
+  .chip{background:var(--card);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:0.42rem 0.85rem;font-size:0.82rem;cursor:pointer;font-family:inherit;transition:.15s;user-select:none}
+  .chip:hover{border-color:var(--acc);color:var(--text)}
+  .chip.active{background:var(--grad);border-color:transparent;color:#08121a;font-weight:700}
+  .toggles{display:flex;flex-wrap:wrap;gap:1.2rem;padding-top:0.2rem}
+  .toggle{display:inline-flex;align-items:center;gap:0.5rem;font-size:0.83rem;color:var(--muted);cursor:pointer}
+  .toggle input{width:16px;height:16px;accent-color:var(--acc);cursor:pointer}
 
-  /* ---- Progress ---- */
-  .progress-card {
-    background: var(--surface); border: 1px solid var(--edge); border-radius: 12px;
-    padding: 1rem 1.2rem; margin: 1.8rem 0 0;
-    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
-  }
-  .progress-num {
-    font-family: 'Oswald', sans-serif; font-size: 1.7rem; font-weight: 600; color: var(--brass);
-    line-height: 1;
-  }
-  .progress-label { font-size: 0.85rem; color: var(--ink-mute); }
-  .bar { flex: 1 1 180px; height: 8px; background: var(--bg-0); border-radius: 99px; overflow: hidden; min-width: 140px; }
-  .bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--brass-deep), var(--brass)); border-radius: 99px; transition: width .5s ease; }
+  .adminbar{display:flex;flex-wrap:wrap;gap:0.6rem;margin-top:1rem;padding:0.8rem 1rem;background:var(--card);border:1px dashed var(--line);border-radius:12px;align-items:center}
+  .adminbar .lbl{font-size:0.72rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--muted);margin-right:auto}
 
-  /* ---- Controls ---- */
-  .controls { margin-top: 1.4rem; display: flex; flex-direction: column; gap: 0.8rem; }
-  .search {
-    width: 100%; background: var(--surface); border: 1px solid var(--edge);
-    color: var(--ink); border-radius: 10px; padding: 0.7rem 0.9rem; font-size: 0.95rem;
-    font-family: inherit;
-  }
-  .search::placeholder { color: var(--ink-faint); }
-  .search:focus { outline: 2px solid var(--brass-deep); outline-offset: 1px; }
+  .group-head{text-transform:uppercase;letter-spacing:0.1em;font-size:0.92rem;font-weight:700;margin:2.2rem 0 0.9rem;display:flex;align-items:center;gap:0.6rem;color:var(--text)}
+  .group-head .count{color:var(--muted-2);font-weight:500;font-size:0.8rem}
 
-  .filters { display: flex; flex-wrap: wrap; gap: 0.5rem; }
-  .chip {
-    background: var(--surface); border: 1px solid var(--edge); color: var(--ink-mute);
-    border-radius: 99px; padding: 0.42rem 0.85rem; font-size: 0.82rem; cursor: pointer;
-    font-family: inherit; transition: all .15s ease; user-select: none;
-  }
-  .chip:hover { border-color: var(--brass-deep); color: var(--ink); }
-  .chip.active { background: var(--brass); border-color: var(--brass); color: #241a2b; font-weight: 600; }
-  .chip:focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+  .card{background:var(--card);border:1px solid var(--line);border-left-width:4px;border-radius:12px;padding:0.9rem 1rem;margin-bottom:0.65rem;display:flex;gap:0.85rem;align-items:flex-start;transition:.15s}
+  .card:hover{background:var(--card-hi)}
+  .card.green{border-left-color:var(--green)}.card.amber{border-left-color:var(--amber)}.card.red{border-left-color:var(--red)}
+  .card.done{opacity:.55}
+  .card.done .title{text-decoration:line-through;text-decoration-color:var(--muted-2)}
+  .check input{width:20px;height:20px;accent-color:var(--acc);cursor:pointer;flex-shrink:0;margin-top:0.15rem}
+  .body{flex:1;min-width:0}
+  .title-row{display:flex;align-items:baseline;gap:0.5rem;flex-wrap:wrap}
+  .title{font-weight:700;font-size:1rem}
+  .year{color:var(--muted-2);font-size:0.82rem}
+  .universe{letter-spacing:0.06em;text-transform:uppercase;font-size:0.62rem;color:var(--muted-2);border:1px solid var(--line);border-radius:5px;padding:0.1rem 0.4rem;white-space:nowrap}
+  .note{font-size:0.86rem;color:var(--text-2);margin-top:0.3rem}
+  .tags{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.55rem;align-items:center}
+  .tag{font-size:0.72rem;padding:0.18rem 0.5rem;border-radius:6px;font-weight:600}
+  .tag.all{background:var(--green-bg);color:var(--green)}
+  .tag.boys{background:color-mix(in srgb,var(--acc2) 16%,transparent);color:var(--acc2)}
+  .tag.alone{background:rgba(147,163,181,0.16);color:var(--muted)}
+  .tag.lang{background:var(--amber-bg);color:var(--amber)}
+  .cardadmin{margin-left:auto;display:flex;gap:0.35rem}
+  .iconbtn{background:none;border:1px solid var(--line);color:var(--muted);border-radius:8px;padding:0.2rem 0.5rem;font-size:0.72rem;cursor:pointer;font-family:inherit}
+  .iconbtn:hover{color:var(--text);border-color:var(--acc)}
+  .iconbtn.del:hover{color:var(--red);border-color:var(--red)}
+  .unanalysed{display:inline-block;margin-top:0.4rem;font-size:0.72rem;color:var(--amber)}
+  .breakdown{margin-top:0.5rem}
+  .breakdown>summary{cursor:pointer;font-size:0.74rem;color:var(--acc);font-weight:600;list-style:none;user-select:none}
+  .breakdown>summary::-webkit-details-marker{display:none}
+  .breakdown>summary::before{content:"▸ ";}
+  .breakdown[open]>summary::before{content:"▾ ";}
+  .bdbody{margin-top:0.5rem;display:flex;flex-direction:column;gap:0.4rem;border-left:2px solid var(--line);padding-left:0.7rem}
+  .bdrow{display:grid;grid-template-columns:110px 1fr;gap:0.6rem;font-size:0.8rem}
+  .bdrow .bdk{color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;font-size:0.66rem;padding-top:0.1rem}
+  .bdrow>span:last-child{color:var(--text-2);line-height:1.45}
+  .astatus{font-size:0.75rem;color:var(--muted);min-height:1em}
 
-  .toggles { display: flex; flex-wrap: wrap; gap: 1.2rem; padding-top: 0.2rem; }
-  .toggle { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.83rem; color: var(--ink-mute); cursor: pointer; }
-  .toggle input { width: 16px; height: 16px; accent-color: var(--brass); cursor: pointer; }
+  .empty{text-align:center;color:var(--muted-2);padding:3rem 1rem;font-size:0.95rem}
+  footer{text-align:center;margin-top:2.6rem;font-size:0.78rem;color:var(--muted-2);line-height:1.7}
 
-  /* ---- Group headings ---- */
-  .group-head {
-    font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.12em;
-    font-size: 0.95rem; font-weight: 500; margin: 2.2rem 0 0.9rem;
-    display: flex; align-items: center; gap: 0.6rem; color: var(--ink);
-  }
-  .group-head .dot { width: 13px; height: 13px; }
-  .group-head .count { color: var(--ink-faint); font-weight: 400; font-size: 0.8rem; letter-spacing: 0.04em; }
-
-  /* ---- Cards ---- */
-  .card {
-    background: var(--surface); border: 1px solid var(--edge); border-left-width: 4px;
-    border-radius: 10px; padding: 0.9rem 1rem; margin-bottom: 0.65rem;
-    display: flex; gap: 0.85rem; align-items: flex-start; transition: background .15s ease;
-  }
-  .card:hover { background: var(--surface-hi); }
-  .card.green { border-left-color: var(--green); }
-  .card.amber { border-left-color: var(--amber); }
-  .card.red   { border-left-color: var(--red); }
-  .card.done  { opacity: 0.55; }
-  .card.done .title { text-decoration: line-through; text-decoration-color: var(--ink-faint); }
-
-  .check { padding-top: 0.15rem; }
-  .check input {
-    width: 20px; height: 20px; accent-color: var(--brass); cursor: pointer; flex-shrink: 0;
-  }
-
-  .body { flex: 1; min-width: 0; }
-  .title-row { display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap; }
-  .title { font-weight: 600; font-size: 1rem; }
-  .year { color: var(--ink-faint); font-size: 0.82rem; }
-  .universe {
-    font-family: 'Oswald', sans-serif; letter-spacing: 0.08em; text-transform: uppercase;
-    font-size: 0.64rem; color: var(--ink-faint); border: 1px solid var(--edge);
-    border-radius: 4px; padding: 0.1rem 0.35rem; white-space: nowrap;
-  }
-  .note { font-size: 0.86rem; color: var(--ink-mute); margin-top: 0.3rem; }
-
-  .tags { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.55rem; }
-  .tag {
-    font-size: 0.72rem; padding: 0.18rem 0.5rem; border-radius: 5px; font-weight: 500;
-    display: inline-flex; align-items: center; gap: 0.28rem;
-  }
-  .tag.all   { background: var(--green-bg); color: var(--green); }
-  .tag.boys  { background: rgba(230,185,87,0.14); color: var(--brass); }
-  .tag.alone { background: rgba(176,163,184,0.14); color: var(--ink-mute); }
-  .tag.lang  { background: var(--amber-bg); color: var(--amber); }
-
-  .empty { text-align: center; color: var(--ink-faint); padding: 3rem 1rem; font-size: 0.95rem; }
-
-  footer { text-align: center; margin-top: 2.6rem; font-size: 0.78rem; color: var(--ink-faint); line-height: 1.7; }
-  footer a { color: var(--brass-deep); }
-
-  .reset {
-    background: none; border: 1px solid var(--edge); color: var(--ink-faint);
-    border-radius: 8px; padding: 0.4rem 0.8rem; font-size: 0.78rem; cursor: pointer;
-    font-family: inherit; margin-top: 1.2rem;
-  }
-  .reset:hover { border-color: var(--red); color: var(--red); }
-
-  @media (prefers-reduced-motion: reduce) {
-    .bulb { animation: none; } .bar-fill { transition: none; }
-  }
+  /* ---- Modal ---- */
+  .overlay{position:fixed;inset:0;background:rgba(4,7,12,0.72);backdrop-filter:blur(4px);display:grid;place-items:center;padding:1.2rem;z-index:50}
+  .modal{background:#121824;border:1px solid var(--line);border-radius:18px;padding:1.5rem;max-width:520px;width:100%;box-shadow:var(--shadow);max-height:90vh;overflow:auto}
+  .modal h2{font-size:1.1rem;font-weight:800;margin-bottom:1rem}
+  .fld{display:flex;flex-direction:column;gap:0.35rem;margin-bottom:0.85rem}
+  .fld label{font-size:0.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.04em}
+  .fld input,.fld select,.fld textarea{background:rgba(255,255,255,0.05);border:1px solid var(--line);color:var(--text);border-radius:10px;padding:0.6rem 0.8rem;font-size:0.9rem;font-family:inherit}
+  .fld textarea{resize:vertical;min-height:66px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0.85rem}
+  .modal-actions{display:flex;gap:0.6rem;justify-content:flex-end;margin-top:0.5rem;flex-wrap:wrap}
+  .people{display:flex;flex-direction:column;gap:0.5rem;margin-bottom:1rem}
+  .prow{display:flex;align-items:center;gap:0.6rem;background:rgba(255,255,255,0.04);border-radius:10px;padding:0.5rem 0.7rem}
+  .prow .em{flex:1;min-width:0;font-size:0.86rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .addrow{display:flex;gap:0.5rem}
+  .addrow input{flex:1}
+  @media (prefers-reduced-motion: reduce){.bar-fill{transition:none}}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="marquee">
-      <div class="bulbs"><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i><i class="bulb"></i></div>
-      <h1>The Steyn Family<br>Screening Room</h1>
-      <div class="subtitle">Superhero &amp; Adventure &middot; Screened for Content</div>
-    </div>
-    <p class="intro">
-      Every film below is sorted by one thing first: is it clear of the <strong>occult, demonic and mystical
-      "power" content</strong> you want out of the house. Dark tone is fine — that's not the filter.
-      Then each carries a note on whether it suits <strong>Liam &amp; Eben</strong> or is better on your own,
-      and a language flag where you'd want your filtering set up.
-    </p>
 
+<!-- Gate -->
+<div class="gate" id="gate">
+  <div class="gate-card">
+    <div class="gate-logo">🎬</div>
+    <h1>Steyn Screening Room</h1>
+    <p id="gateMsg">Sign in to view the family watchlist.</p>
+    <button class="gsignin" id="signinBtn">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.9 6.1C12.2 13.4 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.1 5.3-4.6 7l7.1 5.5c4.2-3.9 6.6-9.6 6.6-16z"/><path fill="#FBBC05" d="M10.4 28.4c-.5-1.4-.8-2.9-.8-4.4s.3-3 .8-4.4l-7.9-6.1C.9 16.9 0 20.3 0 24s.9 7.1 2.5 10.1l7.9-5.7z"/><path fill="#34A853" d="M24 48c6.2 0 11.4-2 15.2-5.5l-7.1-5.5c-2 1.3-4.6 2.1-8.1 2.1-6.4 0-11.8-3.9-13.6-9.4l-7.9 5.7C6.4 42.6 14.6 48 24 48z"/></svg>
+      Continue with Google
+    </button>
+    <div class="gerr" id="gateErr"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div class="wrap" id="app" hidden>
+  <div class="topbar">
+    <div class="who">Signed in as <b id="whoEmail"></b> <span class="rolechip" id="roleChip" hidden></span></div>
+    <button class="btn sm" id="signoutBtn">Sign out</button>
+  </div>
+
+  <header>
+    <div class="kicker">Superhero &amp; Adventure · Screened for content</div>
+    <h1 class="title">The Steyn Family<br>Screening Room</h1>
+    <div class="subtitle">Occult-free first · then who it suits · then language</div>
+    <p class="intro">
+      Sorted by one thing first: is it clear of the <strong>occult, demonic and mystical "power" content</strong>
+      you want out of the house. Dark tone is fine. Each carries a note on whether it suits
+      <strong>Liam &amp; Eben</strong> or is better on your own, plus a language flag.
+    </p>
     <div class="legend">
       <span><i class="dot green"></i> Clean — occult/demonic-free</span>
       <span><i class="dot amber"></i> Your call — a mythic/magic element to weigh</span>
-      <span><i class="dot red"></i> Contains occult/demonic content (or your exclusions)</span>
+      <span><i class="dot red"></i> Contains occult/demonic content</span>
     </div>
   </header>
 
   <div class="progress-card">
     <div class="progress-num" id="pnum">0</div>
-    <div class="progress-label">watched<br><span id="ptot" style="color:var(--ink-faint)"></span></div>
+    <div class="progress-label">watched<br><span id="ptot" style="color:var(--muted-2)"></span></div>
     <div class="bar"><div class="bar-fill" id="pfill"></div></div>
   </div>
 
   <div class="controls">
     <input type="text" class="search" id="search" placeholder="Search a title…" aria-label="Search titles">
-    <div class="filters" id="filters" role="group" aria-label="Filter by suitability">
+    <div class="filters" id="typefilters" role="group" aria-label="Type">
+      <button class="chip active" data-type="all">All</button>
+      <button class="chip" data-type="movie">🎬 Movies</button>
+      <button class="chip" data-type="series">📺 Series</button>
+    </div>
+    <div class="filters" id="filters" role="group" aria-label="Filter">
       <button class="chip active" data-filter="all">All</button>
       <button class="chip" data-filter="clean">Clean only</button>
       <button class="chip" data-filter="family">Whole family</button>
@@ -251,279 +215,501 @@
     </div>
   </div>
 
+  <div class="adminbar" id="adminbar" hidden>
+    <span class="lbl">Admin</span>
+    <button class="btn sm primary" id="addBtn">＋ Add title</button>
+    <button class="btn sm" id="analyseAllBtn">🤖 Analyse all</button>
+    <button class="btn sm" id="peopleBtn">Manage people</button>
+    <button class="btn sm" id="seedBtn" hidden>Seed starter list</button>
+  </div>
+
   <main id="list"></main>
 
-  <button class="reset" id="reset">Clear all watched marks</button>
-
   <footer>
-    Streaming shifts often — check live SA availability at <a href="https://www.justwatch.com/za" target="_blank" rel="noopener">justwatch.com/za</a>.<br>
-    For any title flagged <span style="color:var(--amber)">⚑ language</span>, watch via Google&nbsp;TV / Play with
-    <em>Enjoy Movies Your Way</em>, or use Netflix profile controls.<br>
-    Your watched marks save on this device automatically.
+    Streaming shifts often — check SA availability at <a href="https://www.justwatch.com/za" target="_blank" rel="noopener">justwatch.com/za</a>.<br>
+    Watched marks are shared across everyone signed in.
   </footer>
 </div>
 
-<script>
-/* ---------------- DATA ---------------- */
-/* rating: green | amber | red
-   kids:   all (whole family) | boys (older-kid action) | alone (mature/intense)
-   lang:   clean | filter (notable blasphemy/language — use your filter platform) */
-const MOVIES = [
-  // ---------- MCU: GREEN ----------
-  {t:"Captain America: The First Avenger", y:2011, u:"MCU", r:"green", k:"boys", l:"clean", n:"WWII origin, science-based. The Tesseract is cosmic sci-fi, not occult. The boys' kind of clean adventure."},
-  {t:"Captain America: The Winter Soldier", y:2014, u:"MCU", r:"green", k:"boys", l:"clean", n:"Grounded spy thriller. Intense fights but clean — the boys handled this one already."},
-  {t:"Captain America: Civil War", y:2016, u:"MCU", r:"green", k:"boys", l:"clean", n:"Team-vs-team conflict, heavy on action, clear of any occult angle."},
-  {t:"The Avengers", y:2012, u:"MCU", r:"green", k:"boys", l:"clean", n:"Loki and the Tesseract carry a Norse-god flavour but it's framed as alien sci-fi. A great whole-team starter."},
-  {t:"Avengers: Age of Ultron", y:2015, u:"MCU", r:"green", k:"boys", l:"clean", n:"AI villain, tech-driven. Wanda appears as an 'enhanced' human here — the chaos-magic turn comes later, not in this film."},
-  {t:"Iron Man", y:2008, u:"MCU", r:"green", k:"boys", l:"filter", n:"Tech origin story, no occult. A few strong words and a bit of playboy humour — worth your language filter."},
-  {t:"Iron Man 2", y:2010, u:"MCU", r:"green", k:"boys", l:"clean", n:"Tech and rivals. Clean of anything spiritual."},
-  {t:"Iron Man 3", y:2013, u:"MCU", r:"green", k:"alone", l:"clean", n:"Darker and more anxious in tone (still no occult). The 'Mandarin' turns out to be a hoax. Fine for you, maybe heavy for the boys."},
-  {t:"Ant-Man", y:2015, u:"MCU", r:"green", k:"boys", l:"clean", n:"Light, funny heist movie built on 'quantum' science. One of the easiest clean watches."},
-  {t:"Ant-Man and the Wasp", y:2018, u:"MCU", r:"green", k:"boys", l:"clean", n:"Same fun, science-based tone. Clean."},
-  {t:"Spider-Man: Homecoming", y:2017, u:"MCU", r:"green", k:"boys", l:"clean", n:"High-school Spidey, tech villain. Bright and clean."},
-  {t:"Spider-Man: Far From Home", y:2019, u:"MCU", r:"green", k:"boys", l:"clean", n:"Illusion-tech villain (Mysterio) — trickery, not real magic. Clean."},
-  {t:"Captain Marvel", y:2019, u:"MCU", r:"green", k:"boys", l:"clean", n:"Space sci-fi origin. Your softer landing after the Cap films."},
-  {t:"The Marvels", y:2023, u:"MCU", r:"green", k:"boys", l:"clean", n:"Light team-up, cosmic sci-fi. Clean."},
-  {t:"Black Widow", y:2021, u:"MCU", r:"green", k:"boys", l:"clean", n:"Grounded spy action and family drama — a notch tamer than Winter Soldier. Your pick for the boys next weekend."},
-  {t:"Guardians of the Galaxy", y:2014, u:"MCU", r:"green", k:"boys", l:"filter", n:"Space adventure, no occult. Crude humour and some language — use your filter for the younger view."},
-  {t:"Guardians of the Galaxy Vol. 2", y:2017, u:"MCU", r:"green", k:"boys", l:"filter", n:"Fun and heartfelt; same language/crude-humour caveat."},
-  {t:"Guardians of the Galaxy Vol. 3", y:2023, u:"MCU", r:"green", k:"alone", l:"filter", n:"Clean of occult but emotionally heavy — animal experimentation themes are genuinely distressing. Preview before the boys."},
-  {t:"Captain America: Brave New World", y:2025, u:"MCU", r:"green", k:"boys", l:"clean", n:"Political action-thriller, grounded and clean."},
+<div id="modalRoot"></div>
 
-  // ---------- MCU: AMBER ----------
-  {t:"Thor", y:2011, u:"MCU", r:"amber", k:"boys", l:"clean", n:"The Norse 'gods' are framed as advanced aliens — 'magic and science are one and the same.' The god framing is the thing to weigh; no sorcery imagery."},
-  {t:"Thor: Ragnarok", y:2017, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Fun and colourful, but leans harder on mythic 'goddess of death' and underworld ('Hel') imagery. Your call on the framing."},
-  {t:"Thor: The Dark World", y:2013, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Dark elves and a mystical 'Aether'. More mythic-fantasy than the first; still not sorcery, but weigh it."},
-  {t:"Thor: Love and Thunder", y:2022, u:"MCU", r:"amber", k:"alone", l:"clean", n:"A pantheon of 'gods' (Zeus) and a shadow-monster villain. Some suggestive humour too — preview first."},
-  {t:"Black Panther", y:2018, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Clean of the demonic, but the 'Ancestral Plane' shows ancestor-spirit visions — a spiritual element you'll want to weigh."},
-  {t:"Black Panther: Wakanda Forever", y:2022, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Same ancestral-spirit element plus Talokan sea-god mythology; also heavy grief throughout. Better on your own first."},
-  {t:"Spider-Man: No Way Home", y:2021, u:"MCU", r:"amber", k:"boys", l:"clean", n:"Great film, but Doctor Strange casts spells as a central plot device — that mystical thread is why it's amber, not green."},
-  {t:"Eternals", y:2021, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Cosmic 'gods'/Celestials mythology, and it contains a sex scene. Adults-only for that reason — not for the boys."},
-  {t:"Shang-Chi and the Legend of the Ten Rings", y:2021, u:"MCU", r:"amber", k:"alone", l:"clean", n:"Leans into eastern mysticism — mystical realms, soul-devouring creatures, a dragon. Enough spiritual imagery that it's a discernment call."},
-  {t:"Venom", y:2018, u:"MCU", r:"amber", k:"alone", l:"filter", n:"Alien-symbiote sci-fi, not occult — but genuinely dark, monstrous and scary, with language. Watch-alone territory."},
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, onAuthStateChanged, signOut }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteField, collection, onSnapshot, addDoc, deleteDoc, writeBatch }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import { getFunctions, httpsCallable }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js";
 
-  // ---------- MCU: RED ----------
-  {t:"Doctor Strange", y:2016, u:"MCU", r:"red", k:"alone", l:"clean", n:"Built entirely on sorcery, the mystic arts and astral projection. This is the exact lane you're avoiding."},
-  {t:"Doctor Strange in the Multiverse of Madness", y:2022, u:"MCU", r:"red", k:"alone", l:"clean", n:"Horror-tinged: demonic imagery, the 'Darkhold' book of the damned, a corrupted Scarlet Witch, a walking-dead sequence. A firm skip."},
-  {t:"WandaVision", y:2021, u:"MCU", r:"red", k:"alone", l:"clean", n:"Scarlet Witch, chaos magic and the Darkhold are the core of the story. (Series, not a film.)"},
-  {t:"Blade", y:1998, u:"Marvel", r:"red", k:"alone", l:"filter", n:"Vampires, occult ritual and gore. Not for the house."},
-  {t:"Ghost Rider", y:2007, u:"Marvel", r:"red", k:"alone", l:"clean", n:"A literal demon/hell-pact premise. Skip."},
+const firebaseConfig = {
+  apiKey: "AIzaSyB5v9wFlVM9SrNGlTau-d19ctKEL2A_xMc",
+  authDomain: "helloliam-ha-dashboard.firebaseapp.com",
+  projectId: "helloliam-ha-dashboard",
+  storageBucket: "helloliam-ha-dashboard.firebasestorage.app",
+  messagingSenderId: "797371865602",
+  appId: "1:797371865602:web:cb5e332e182ad63b20651b",
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const fns = getFunctions(app, "us-central1");
+const analyzeMovieFn = httpsCallable(fns, "analyzeMovie");
 
-  // ---------- DC: GREEN ----------
-  {t:"Superman", y:2025, u:"DCU", r:"green", k:"all", l:"clean", n:"The new James Gunn Superman — hopeful, heroic and clean. A great whole-family option."},
-  {t:"Superman: The Movie", y:1978, u:"DC Classic", r:"green", k:"all", l:"clean", n:"The Christopher Reeve original. Wholesome and clean — lovely for the boys."},
-  {t:"Superman II", y:1980, u:"DC Classic", r:"green", k:"all", l:"clean", n:"Reeve-era sequel, clean and heroic."},
-  {t:"Man of Steel", y:2013, u:"DCEU", r:"green", k:"boys", l:"clean", n:"Clear of occult, but a darker, heavier tone and a lot of city destruction. Older-boy viewing."},
-  {t:"Wonder Woman", y:2017, u:"DCEU", r:"green", k:"boys", l:"clean", n:"You've seen it. Ares is Greek-mythology framing rather than occult imagery. Clean, dark WWI setting."},
-  {t:"Wonder Woman 1984", y:2020, u:"DCEU", r:"green", k:"boys", l:"clean", n:"Lighter than the first. The 'Dreamstone' wish device is a mild fantasy macguffin, not occult."},
-  {t:"Blue Beetle", y:2023, u:"DCU", r:"green", k:"boys", l:"filter", n:"Alien-scarab tech origin, warm family story. Some language — filter for the boys."},
+const BOOTSTRAP_ADMINS = ["christosteyn@cloudbadger.com", "steyncd@gmail.com"];
+const ACCESS = doc(db, "watchlist", "access");
+const WATCHED = doc(db, "watchlist", "watched");
+const MOVIES_COL = collection(db, "watchlist_movies");
 
-  // ---------- DC: DARK BUT CLEAN ----------
-  {t:"Batman Begins", y:2005, u:"DC / Nolan", r:"green", k:"boys", l:"clean", n:"Grounded, serious origin — dark in tone but clean of the occult. The strongest 'dark-but-clean' Batman."},
-  {t:"The Dark Knight", y:2008, u:"DC / Nolan", r:"green", k:"alone", l:"clean", n:"Superb but genuinely intense — the Joker's menace makes this watch-alone or older-teen only. No occult content."},
-  {t:"The Dark Knight Rises", y:2012, u:"DC / Nolan", r:"green", k:"alone", l:"clean", n:"Dark, large-scale finale. Clean; better on your own."},
-  {t:"The Batman", y:2022, u:"DC", r:"green", k:"alone", l:"filter", n:"Very dark serial-killer noir — clean of occult but grim and mature. Adults, with language filtered."},
-
-  // ---------- DC: AMBER ----------
-  {t:"Aquaman", y:2018, u:"DCEU", r:"amber", k:"boys", l:"clean", n:"Undersea fantasy with a 'magic' trident and some genuinely scary sea creatures (the Trench). Fantasy-magic more than occult — your call."},
-  {t:"Aquaman and the Lost Kingdom", y:2023, u:"DCEU", r:"amber", k:"boys", l:"clean", n:"Same world; the villain dabbles in a dark, resurrection-flavoured power. Weigh that element."},
-  {t:"Shazam! Fury of the Gods", y:2023, u:"DCU", r:"amber", k:"alone", l:"clean", n:"Wizard-granted powers plus Greek 'daughters of Atlas' and a dragon. Lighter than the first film but still magic-driven."},
-
-  // ---------- DC: RED ----------
-  {t:"Batman v Superman: Dawn of Justice", y:2016, u:"DCEU", r:"red", k:"alone", l:"clean", n:"You flagged this one yourself — the Knightmare 'demons', Darkseid imagery and the monstrous Doomsday lean exactly where you don't want to go."},
-  {t:"Justice League", y:2017, u:"DCEU", r:"red", k:"alone", l:"clean", n:"Steppenwolf, parademons and Darkseid bring that same demonic-leaning imagery. Skip."},
-  {t:"Zack Snyder's Justice League", y:2021, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The longer cut leans further into the dark, demonic-flavoured visuals. Skip."},
-  {t:"The Flash", y:2023, u:"DCEU", r:"red", k:"alone", l:"clean", n:"Your exclusion — the character you'd rather not have on the screen. (Buy-only on Apple TV in SA anyway.)"},
-  {t:"Black Adam", y:2022, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The villain Sabbac is powered by a literal demon. That puts it firmly on the avoid list."},
-  {t:"Shazam!", y:2019, u:"DCU", r:"red", k:"alone", l:"clean", n:"Magic-granted powers and the 'Seven Deadly Sins' as demon-like creatures. The demonic element makes this a skip."},
-  {t:"Suicide Squad", y:2016, u:"DCEU", r:"red", k:"alone", l:"clean", n:"The Enchantress is an occult witch villain, with ritual and dark-magic imagery throughout. Avoid."},
-  {t:"Constantine", y:2005, u:"DC", r:"red", k:"alone", l:"clean", n:"Demons, hell and exorcism are the whole premise. Skip."},
-
-  // ---------- ADVENTURE / FAMILY: GREEN ----------
-  {t:"The Incredibles", y:2004, u:"Pixar", r:"green", k:"all", l:"clean", n:"A superhero family, done with heart and humour. Fully clean — ideal for the whole family."},
-  {t:"Incredibles 2", y:2018, u:"Pixar", r:"green", k:"all", l:"clean", n:"Just as clean and fun as the first. Whole-family."},
-  {t:"Big Hero 6", y:2014, u:"Disney", r:"green", k:"all", l:"clean", n:"Robotics, brotherhood and a big-hearted robot. Clean and genuinely moving."},
-  {t:"Spider-Man: Into the Spider-Verse", y:2018, u:"Animated", r:"green", k:"all", l:"clean", n:"Stunning animated Spidey. Clean and a joy for the boys."},
-  {t:"Spider-Man: Across the Spider-Verse", y:2023, u:"Animated", r:"green", k:"boys", l:"clean", n:"More intense and ends on a cliffhanger, but clean. Older-boy watch."},
-  {t:"Bumblebee", y:2018, u:"Transformers", r:"green", k:"all", l:"clean", n:"The gentlest, most heartfelt Transformers — closest to whole-family. A great pick given the boys love the series."},
-  {t:"Transformers One", y:2024, u:"Transformers", r:"green", k:"all", l:"clean", n:"Animated origin story of Optimus and Megatron. Clean and well-reviewed — strong family choice."},
-  {t:"Transformers", y:2007, u:"Transformers", r:"green", k:"boys", l:"filter", n:"The live-action original the boys enjoy. Clean of occult, but crude humour and language — worth filtering."},
-  {t:"Sonic the Hedgehog", y:2020, u:"Adventure", r:"green", k:"all", l:"clean", n:"Fast, funny, clean. Great for the boys and younger."},
-  {t:"Sonic the Hedgehog 2", y:2022, u:"Adventure", r:"green", k:"all", l:"clean", n:"More of the same clean fun."},
-  {t:"Sonic the Hedgehog 3", y:2024, u:"Adventure", r:"green", k:"all", l:"clean", n:"Clean adventure, whole family."},
-  {t:"Paddington", y:2014, u:"Family", r:"green", k:"all", l:"clean", n:"Gentle, warm and genuinely lovely. Perfect for younger family nights."},
-  {t:"Paddington 2", y:2017, u:"Family", r:"green", k:"all", l:"clean", n:"Even better than the first — kind-hearted and spotless."},
-  {t:"The Lego Movie", y:2014, u:"Animated", r:"green", k:"all", l:"clean", n:"Clever, funny, clean. Whole family."},
-  {t:"National Treasure", y:2004, u:"Adventure", r:"green", k:"boys", l:"clean", n:"History-puzzle treasure hunt. Clean and a great fit for homeschool curiosity."},
-  {t:"How to Train Your Dragon (trilogy)", y:2010, u:"DreamWorks", r:"green", k:"all", l:"clean", n:"Dragons as animals to befriend — fantasy adventure, not occult. Heartfelt and clean."},
-  {t:"Jurassic Park", y:1993, u:"Adventure", r:"green", k:"boys", l:"clean", n:"The classic. Clean, but genuinely tense and scary — older-boy viewing."},
-  {t:"Jurassic World", y:2015, u:"Adventure", r:"green", k:"boys", l:"clean", n:"Clean dino action; some intense peril. Older boys."},
-  {t:"Wreck-It Ralph", y:2012, u:"Animated", r:"green", k:"all", l:"clean", n:"Video-game world, clean and clever. Whole family."},
-
-  // ---------- ADVENTURE / FAMILY: AMBER ----------
-  {t:"Star Wars (Original Trilogy)", y:1977, u:"Star Wars", r:"amber", k:"boys", l:"clean", n:"Space adventure at its best — but 'the Force' is a spiritual/mystical energy. That's the element to weigh for the house."},
-  {t:"The Chronicles of Narnia: The Lion, the Witch & the Wardrobe", y:2005, u:"Family", r:"amber", k:"all", l:"clean", n:"Christian allegory (Aslan as a Christ figure), which many Reformed families embrace — but it does contain the White Witch and magic. Flagging so it's your call."},
-  {t:"The Hobbit (trilogy)", y:2012, u:"Fantasy", r:"amber", k:"boys", l:"clean", n:"Tolkien's world — Christian-authored, but with wizards and sorcery. Lighter than LOTR. Your discernment on the magic."},
-  {t:"The Lord of the Rings (trilogy)", y:2001, u:"Fantasy", r:"amber", k:"alone", l:"clean", n:"Deeply Christian in its themes, yet full of wizards, a cursed ring, and the undead (Nazgûl). Intense too. Weighing it carefully makes sense; watch-alone first."},
-  {t:"Kung Fu Panda", y:2008, u:"DreamWorks", r:"amber", k:"all", l:"clean", n:"Lots of fun, but later films lean on 'chi'/inner-energy spirituality. Mild — noting it for your call."},
-  {t:"Jumanji: Welcome to the Jungle", y:2017, u:"Adventure", r:"amber", k:"boys", l:"filter", n:"A 'magic game' premise (mild fantasy, not occult) plus some crude humour and language. Fun; filter for the boys."},
-  {t:"Indiana Jones: Raiders of the Lost Ark", y:1981, u:"Adventure", r:"amber", k:"boys", l:"clean", n:"Great adventure; the supernatural climax is built on the biblical Ark of the Covenant. Some frightening imagery. Your call."},
-  {t:"Indiana Jones and the Last Crusade", y:1989, u:"Adventure", r:"amber", k:"boys", l:"clean", n:"The Holy Grail quest — biblical framing, the cleanest of the Indy films. Fun father-son story."},
-
-  // ---------- ADVENTURE / FAMILY: RED ----------
-  {t:"Indiana Jones and the Temple of Doom", y:1984, u:"Adventure", r:"red", k:"alone", l:"clean", n:"An occult cult with human sacrifice and dark ritual at its centre. The one Indy film to skip."},
-  {t:"Pirates of the Caribbean (series)", y:2003, u:"Adventure", r:"red", k:"alone", l:"clean", n:"Fun swashbuckling, but woven through with curses, the undead and a voodoo priestess (Calypso). The occult thread grows across the sequels."},
-  {t:"Percy Jackson & the Olympians", y:2010, u:"Fantasy", r:"red", k:"alone", l:"clean", n:"Built on Greek gods, demigods and mythological magic as the real framework. Skip for the house."},
-  {t:"Harry Potter (series)", y:2001, u:"Fantasy", r:"red", k:"alone", l:"clean", n:"Witchcraft and sorcery are the entire premise. A clear skip given what you're avoiding."}
+/* starter list — seeded into Firestore once, then editable in the UI */
+const SEED = [
+  {t:"Captain America: The First Avenger",y:2011,u:"MCU",r:"green",k:"boys",l:"clean",n:"WWII origin, science-based. The Tesseract is cosmic sci-fi, not occult."},
+  {t:"Captain America: The Winter Soldier",y:2014,u:"MCU",r:"green",k:"boys",l:"clean",n:"Grounded spy thriller. Intense fights but clean."},
+  {t:"Captain America: Civil War",y:2016,u:"MCU",r:"green",k:"boys",l:"clean",n:"Team-vs-team conflict, clear of any occult angle."},
+  {t:"The Avengers",y:2012,u:"MCU",r:"green",k:"boys",l:"clean",n:"Loki/Tesseract framed as alien sci-fi. A great whole-team starter."},
+  {t:"Avengers: Age of Ultron",y:2015,u:"MCU",r:"green",k:"boys",l:"clean",n:"AI villain, tech-driven. Wanda is an 'enhanced' human here — chaos magic comes later."},
+  {t:"Iron Man",y:2008,u:"MCU",r:"green",k:"boys",l:"filter",n:"Tech origin, no occult. Some strong words + playboy humour."},
+  {t:"Iron Man 2",y:2010,u:"MCU",r:"green",k:"boys",l:"clean",n:"Tech and rivals. Clean."},
+  {t:"Iron Man 3",y:2013,u:"MCU",r:"green",k:"alone",l:"clean",n:"Darker, anxious tone. The 'Mandarin' is a hoax. Maybe heavy for the boys."},
+  {t:"Ant-Man",y:2015,u:"MCU",r:"green",k:"boys",l:"clean",n:"Light heist movie on 'quantum' science. Easy clean watch."},
+  {t:"Ant-Man and the Wasp",y:2018,u:"MCU",r:"green",k:"boys",l:"clean",n:"Same fun, science-based tone. Clean."},
+  {t:"Spider-Man: Homecoming",y:2017,u:"MCU",r:"green",k:"boys",l:"clean",n:"High-school Spidey, tech villain. Bright and clean."},
+  {t:"Spider-Man: Far From Home",y:2019,u:"MCU",r:"green",k:"boys",l:"clean",n:"Illusion-tech villain (Mysterio) — trickery, not real magic."},
+  {t:"Captain Marvel",y:2019,u:"MCU",r:"green",k:"boys",l:"clean",n:"Space sci-fi origin."},
+  {t:"The Marvels",y:2023,u:"MCU",r:"green",k:"boys",l:"clean",n:"Light team-up, cosmic sci-fi. Clean."},
+  {t:"Black Widow",y:2021,u:"MCU",r:"green",k:"boys",l:"clean",n:"Grounded spy action + family drama."},
+  {t:"Guardians of the Galaxy",y:2014,u:"MCU",r:"green",k:"boys",l:"filter",n:"Space adventure, no occult. Crude humour + language."},
+  {t:"Guardians of the Galaxy Vol. 2",y:2017,u:"MCU",r:"green",k:"boys",l:"filter",n:"Heartfelt; same language/crude-humour caveat."},
+  {t:"Guardians of the Galaxy Vol. 3",y:2023,u:"MCU",r:"green",k:"alone",l:"filter",n:"Clean of occult but emotionally heavy — animal-experimentation themes distress."},
+  {t:"Captain America: Brave New World",y:2025,u:"MCU",r:"green",k:"boys",l:"clean",n:"Political action-thriller, grounded and clean."},
+  {t:"Thor",y:2011,u:"MCU",r:"amber",k:"boys",l:"clean",n:"Norse 'gods' framed as advanced aliens. The god framing is the thing to weigh."},
+  {t:"Thor: Ragnarok",y:2017,u:"MCU",r:"amber",k:"boys",l:"clean",n:"Leans on 'goddess of death' + underworld ('Hel') imagery."},
+  {t:"Thor: The Dark World",y:2013,u:"MCU",r:"amber",k:"alone",l:"clean",n:"Dark elves + mystical 'Aether'. More mythic-fantasy."},
+  {t:"Thor: Love and Thunder",y:2022,u:"MCU",r:"amber",k:"alone",l:"clean",n:"Pantheon of 'gods' (Zeus) + shadow-monster villain. Some suggestive humour."},
+  {t:"Black Panther",y:2018,u:"MCU",r:"amber",k:"boys",l:"clean",n:"'Ancestral Plane' ancestor-spirit visions — a spiritual element to weigh."},
+  {t:"Black Panther: Wakanda Forever",y:2022,u:"MCU",r:"amber",k:"alone",l:"clean",n:"Ancestral-spirit element + Talokan sea-god mythology; heavy grief."},
+  {t:"Spider-Man: No Way Home",y:2021,u:"MCU",r:"amber",k:"boys",l:"clean",n:"Doctor Strange casts spells as a central plot device — that mystical thread is why."},
+  {t:"Eternals",y:2021,u:"MCU",r:"amber",k:"alone",l:"clean",n:"Cosmic 'gods'/Celestials mythology + a sex scene. Adults only."},
+  {t:"Shang-Chi and the Legend of the Ten Rings",y:2021,u:"MCU",r:"amber",k:"alone",l:"clean",n:"Eastern mysticism — mystical realms, soul-devouring creatures, a dragon."},
+  {t:"Venom",y:2018,u:"MCU",r:"amber",k:"alone",l:"filter",n:"Alien-symbiote sci-fi, not occult — but dark, monstrous, scary, with language."},
+  {t:"Doctor Strange",y:2016,u:"MCU",r:"red",k:"alone",l:"clean",n:"Built entirely on sorcery, mystic arts + astral projection. The exact lane you're avoiding."},
+  {t:"Doctor Strange in the Multiverse of Madness",y:2022,u:"MCU",r:"red",k:"alone",l:"clean",n:"Horror-tinged: demonic imagery, the 'Darkhold', corrupted Scarlet Witch. Firm skip."},
+  {t:"WandaVision",y:2021,u:"MCU",r:"red",k:"alone",l:"clean",n:"Scarlet Witch, chaos magic + the Darkhold are the core. (Series.)"},
+  {t:"Blade",y:1998,u:"Marvel",r:"red",k:"alone",l:"filter",n:"Vampires, occult ritual + gore."},
+  {t:"Ghost Rider",y:2007,u:"Marvel",r:"red",k:"alone",l:"clean",n:"A literal demon/hell-pact premise."},
+  {t:"Superman",y:2025,u:"DCU",r:"green",k:"all",l:"clean",n:"The new Gunn Superman — hopeful, heroic, clean. Great whole-family option."},
+  {t:"Superman: The Movie",y:1978,u:"DC Classic",r:"green",k:"all",l:"clean",n:"The Christopher Reeve original. Wholesome and clean."},
+  {t:"Superman II",y:1980,u:"DC Classic",r:"green",k:"all",l:"clean",n:"Reeve-era sequel, clean and heroic."},
+  {t:"Man of Steel",y:2013,u:"DCEU",r:"green",k:"boys",l:"clean",n:"Clear of occult, but darker tone + lots of city destruction."},
+  {t:"Wonder Woman",y:2017,u:"DCEU",r:"green",k:"boys",l:"clean",n:"Ares is Greek-mythology framing rather than occult. Clean, dark WWI setting."},
+  {t:"Wonder Woman 1984",y:2020,u:"DCEU",r:"green",k:"boys",l:"clean",n:"Lighter. The 'Dreamstone' wish device is a mild fantasy macguffin."},
+  {t:"Blue Beetle",y:2023,u:"DCU",r:"green",k:"boys",l:"filter",n:"Alien-scarab tech origin, warm family story. Some language."},
+  {t:"Batman Begins",y:2005,u:"DC / Nolan",r:"green",k:"boys",l:"clean",n:"Grounded, serious origin — dark but clean. The strongest dark-but-clean Batman."},
+  {t:"The Dark Knight",y:2008,u:"DC / Nolan",r:"green",k:"alone",l:"clean",n:"Superb but genuinely intense — the Joker makes this older-teen only. No occult."},
+  {t:"The Dark Knight Rises",y:2012,u:"DC / Nolan",r:"green",k:"alone",l:"clean",n:"Dark, large-scale finale. Clean."},
+  {t:"The Batman",y:2022,u:"DC",r:"green",k:"alone",l:"filter",n:"Very dark serial-killer noir — clean of occult but grim + mature."},
+  {t:"Aquaman",y:2018,u:"DCEU",r:"amber",k:"boys",l:"clean",n:"Undersea fantasy with a 'magic' trident + scary sea creatures. Fantasy-magic."},
+  {t:"Aquaman and the Lost Kingdom",y:2023,u:"DCEU",r:"amber",k:"boys",l:"clean",n:"Villain dabbles in a dark, resurrection-flavoured power."},
+  {t:"Shazam! Fury of the Gods",y:2023,u:"DCU",r:"amber",k:"alone",l:"clean",n:"Wizard-granted powers + Greek 'daughters of Atlas' + a dragon."},
+  {t:"Batman v Superman: Dawn of Justice",y:2016,u:"DCEU",r:"red",k:"alone",l:"clean",n:"Knightmare 'demons', Darkseid imagery + monstrous Doomsday."},
+  {t:"Justice League",y:2017,u:"DCEU",r:"red",k:"alone",l:"clean",n:"Steppenwolf, parademons + Darkseid — demonic-leaning imagery."},
+  {t:"Zack Snyder's Justice League",y:2021,u:"DCEU",r:"red",k:"alone",l:"clean",n:"Longer cut leans further into demonic-flavoured visuals."},
+  {t:"The Flash",y:2023,u:"DCEU",r:"red",k:"alone",l:"clean",n:"Your exclusion — the actor you'd rather not have on screen."},
+  {t:"Black Adam",y:2022,u:"DCEU",r:"red",k:"alone",l:"clean",n:"The villain Sabbac is powered by a literal demon."},
+  {t:"Shazam!",y:2019,u:"DCU",r:"red",k:"alone",l:"clean",n:"Magic-granted powers + the 'Seven Deadly Sins' as demon-like creatures."},
+  {t:"Suicide Squad",y:2016,u:"DCEU",r:"red",k:"alone",l:"clean",n:"The Enchantress is an occult witch villain — ritual + dark-magic imagery."},
+  {t:"Constantine",y:2005,u:"DC",r:"red",k:"alone",l:"clean",n:"Demons, hell + exorcism are the whole premise."},
+  {t:"The Incredibles",y:2004,u:"Pixar",r:"green",k:"all",l:"clean",n:"A superhero family with heart + humour. Fully clean — ideal whole-family."},
+  {t:"Incredibles 2",y:2018,u:"Pixar",r:"green",k:"all",l:"clean",n:"Just as clean + fun as the first."},
+  {t:"Big Hero 6",y:2014,u:"Disney",r:"green",k:"all",l:"clean",n:"Robotics, brotherhood + a big-hearted robot. Clean + moving."},
+  {t:"Spider-Man: Into the Spider-Verse",y:2018,u:"Animated",r:"green",k:"all",l:"clean",n:"Stunning animated Spidey. Clean + a joy."},
+  {t:"Spider-Man: Across the Spider-Verse",y:2023,u:"Animated",r:"green",k:"boys",l:"clean",n:"More intense + a cliffhanger, but clean."},
+  {t:"Bumblebee",y:2018,u:"Transformers",r:"green",k:"all",l:"clean",n:"The gentlest, most heartfelt Transformers — closest to whole-family."},
+  {t:"Transformers One",y:2024,u:"Transformers",r:"green",k:"all",l:"clean",n:"Animated origin of Optimus + Megatron. Clean + well-reviewed."},
+  {t:"Transformers",y:2007,u:"Transformers",r:"green",k:"boys",l:"filter",n:"The live-action original. Clean of occult, but crude humour + language."},
+  {t:"Sonic the Hedgehog",y:2020,u:"Adventure",r:"green",k:"all",l:"clean",n:"Fast, funny, clean."},
+  {t:"Sonic the Hedgehog 2",y:2022,u:"Adventure",r:"green",k:"all",l:"clean",n:"More of the same clean fun."},
+  {t:"Sonic the Hedgehog 3",y:2024,u:"Adventure",r:"green",k:"all",l:"clean",n:"Clean adventure, whole family."},
+  {t:"Paddington",y:2014,u:"Family",r:"green",k:"all",l:"clean",n:"Gentle, warm + genuinely lovely."},
+  {t:"Paddington 2",y:2017,u:"Family",r:"green",k:"all",l:"clean",n:"Even better than the first — kind-hearted + spotless."},
+  {t:"The Lego Movie",y:2014,u:"Animated",r:"green",k:"all",l:"clean",n:"Clever, funny, clean."},
+  {t:"National Treasure",y:2004,u:"Adventure",r:"green",k:"boys",l:"clean",n:"History-puzzle treasure hunt. Great fit for homeschool curiosity."},
+  {t:"How to Train Your Dragon (trilogy)",y:2010,u:"DreamWorks",r:"green",k:"all",l:"clean",n:"Dragons as animals to befriend — fantasy adventure, not occult."},
+  {t:"Jurassic Park",y:1993,u:"Adventure",r:"green",k:"boys",l:"clean",n:"The classic. Clean but genuinely tense + scary."},
+  {t:"Jurassic World",y:2015,u:"Adventure",r:"green",k:"boys",l:"clean",n:"Clean dino action; some intense peril."},
+  {t:"Wreck-It Ralph",y:2012,u:"Animated",r:"green",k:"all",l:"clean",n:"Video-game world, clean + clever."},
+  {t:"Star Wars (Original Trilogy)",y:1977,u:"Star Wars",r:"amber",k:"boys",l:"clean",n:"'The Force' is a spiritual/mystical energy — the element to weigh."},
+  {t:"The Chronicles of Narnia: The Lion, the Witch & the Wardrobe",y:2005,u:"Family",r:"amber",k:"all",l:"clean",n:"Christian allegory (Aslan as a Christ figure), but contains the White Witch + magic."},
+  {t:"The Hobbit (trilogy)",y:2012,u:"Fantasy",r:"amber",k:"boys",l:"clean",n:"Tolkien's world — Christian-authored, but with wizards + sorcery."},
+  {t:"The Lord of the Rings (trilogy)",y:2001,u:"Fantasy",r:"amber",k:"alone",l:"clean",n:"Deeply Christian themes, yet wizards, a cursed ring + the undead. Intense."},
+  {t:"Kung Fu Panda",y:2008,u:"DreamWorks",r:"amber",k:"all",l:"clean",n:"Fun, but later films lean on 'chi'/inner-energy spirituality. Mild."},
+  {t:"Jumanji: Welcome to the Jungle",y:2017,u:"Adventure",r:"amber",k:"boys",l:"filter",n:"A 'magic game' premise (mild fantasy) + crude humour + language."},
+  {t:"Indiana Jones: Raiders of the Lost Ark",y:1981,u:"Adventure",r:"amber",k:"boys",l:"clean",n:"Supernatural climax built on the biblical Ark. Some frightening imagery."},
+  {t:"Indiana Jones and the Last Crusade",y:1989,u:"Adventure",r:"amber",k:"boys",l:"clean",n:"The Holy Grail quest — biblical framing, the cleanest Indy. Father-son story."},
+  {t:"Indiana Jones and the Temple of Doom",y:1984,u:"Adventure",r:"red",k:"alone",l:"clean",n:"An occult cult with human sacrifice + dark ritual at its centre."},
+  {t:"Pirates of the Caribbean (series)",y:2003,u:"Adventure",r:"red",k:"alone",l:"clean",n:"Curses, the undead + a voodoo priestess (Calypso). The occult thread grows."},
+  {t:"Percy Jackson & the Olympians",y:2010,u:"Fantasy",r:"red",k:"alone",l:"clean",n:"Greek gods, demigods + mythological magic as the real framework."},
+  {t:"Harry Potter (series)",y:2001,u:"Fantasy",r:"red",k:"alone",l:"clean",n:"Witchcraft + sorcery are the entire premise. A clear skip."},
 ];
-
-/* ---------------- STATE ---------------- */
-const STORAGE_KEY = 'steyn-watchlist-v1';
-let watched = {};          // { title: true }
-let activeFilter = 'all';
-let hideWatched = false;
-let showAvoid = false;
-let searchTerm = '';
-
-const idFor = m => m.t + '|' + m.y;
 
 const GROUPS = [
-  {r:'green', label:'Clean — good to go', cls:'green'},
-  {r:'amber', label:'Your call — a mythic or magic element to weigh', cls:'amber'},
-  {r:'red',   label:'Contains occult / demonic content — the avoid list', cls:'red'}
+  {r:'green',label:'Clean — good to go',cls:'green'},
+  {r:'amber',label:'Your call — a mythic or magic element to weigh',cls:'amber'},
+  {r:'red',label:'Contains occult / demonic content — the avoid list',cls:'red'},
 ];
+const KID_TAG = { all:{cls:'all',txt:'✓ Whole family'}, boys:{cls:'boys',txt:'✓ Good for the boys'}, alone:{cls:'alone',txt:'◐ Better on your own'} };
 
-const KID_TAG = {
-  all:   {cls:'all',   txt:'✓ Whole family'},
-  boys:  {cls:'boys',  txt:'✓ Good for the boys'},
-  alone: {cls:'alone', txt:'◐ Better on your own'}
+/* ---------- state ---------- */
+let me = null, role = null;              // role: 'admin' | 'viewer'
+let movies = [];                          // [{id, ...fields}]
+let watched = {};                         // { docId: true }
+let accessDoc = { admins: [], allowed: [] };
+let activeFilter = 'all', typeFilter = 'all', hideWatched = false, showAvoid = false, searchTerm = '';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- auth ---------- */
+const provider = new GoogleAuthProvider();
+document.getElementById('signinBtn').onclick = async () => {
+  document.getElementById('gateErr').textContent = '';
+  try { await signInWithPopup(auth, provider); }
+  catch (e) {
+    if (e.code === 'auth/popup-blocked' || e.code === 'auth/cancelled-popup-request') {
+      try { await signInWithRedirect(auth, provider); return; } catch (e2) { showGateErr(e2); }
+    } else showGateErr(e);
+  }
 };
+document.getElementById('signoutBtn').onclick = () => signOut(auth);
+function showGateErr(e){ document.getElementById('gateErr').textContent = (e.code||'')+' '+(e.message||e); }
 
-/* ---------------- STORAGE (localStorage — persists per device) ---------------- */
-function loadWatched() {
+onAuthStateChanged(auth, async (user) => {
+  me = user;
+  if (!user) { showGate('Sign in to view the family watchlist.', true); return; }
+  await bootApp();
+});
+
+async function bootApp(){
+  // Determine role by reading the access doc (rules enforce this too).
+  let allowed = false;
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) watched = JSON.parse(raw) || {};
-  } catch (e) { watched = {}; }
-}
-function saveWatched() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(watched)); }
-  catch (e) { /* best-effort; UI already updated */ }
-}
+    const snap = await getDoc(ACCESS);
+    if (snap.exists()) {
+      accessDoc = { admins: snap.data().admins || [], allowed: snap.data().allowed || [] };
+    } else {
+      accessDoc = { admins: [], allowed: [] };
+    }
+  } catch(e){ /* permission denied → not allowed */ }
 
-/* ---------------- RENDER ---------------- */
-function matches(m) {
-  if (searchTerm && !m.t.toLowerCase().includes(searchTerm)) return false;
-  if (!showAvoid && m.r === 'red') return false;
-  if (hideWatched && watched[idFor(m)]) return false;
-  switch (activeFilter) {
-    case 'clean':  return m.r === 'green';
-    case 'family': return m.k === 'all';
-    case 'boys':   return m.k === 'all' || m.k === 'boys';
-    case 'alone':  return m.k === 'alone';
-    default:       return true;
+  const email = (me.email||'').toLowerCase();
+  const isBoot = BOOTSTRAP_ADMINS.map(x=>x.toLowerCase()).includes(email);
+  const isAdmin = isBoot || accessDoc.admins.map(x=>x.toLowerCase()).includes(email);
+  allowed = isAdmin || accessDoc.allowed.map(x=>x.toLowerCase()).includes(email);
+
+  // First run: a bootstrap admin with no access doc → create it + seed.
+  if (isBoot && !accessDoc.admins.length) {
+    try {
+      accessDoc = { admins: [me.email], allowed: [me.email] };
+      await setDoc(ACCESS, accessDoc);
+      isAdminNow(); allowed = true;
+    } catch(e){ /* ignore */ }
+  }
+
+  if (!allowed) { showGate("You're signed in as "+me.email+", but you don't have access yet. Ask Christo or Mandri to add you.", false); return; }
+
+  role = isAdmin ? 'admin' : 'viewer';
+  document.getElementById('gate').hidden = true;
+  document.getElementById('app').hidden = false;
+  document.getElementById('whoEmail').textContent = me.email;
+  const rc = document.getElementById('roleChip'); rc.hidden = false; rc.textContent = role;
+  document.getElementById('adminbar').hidden = role !== 'admin';
+
+  subscribeMovies();
+  subscribeWatched();
+}
+function isAdminNow(){ role='admin'; }
+
+function showGate(msg, canSignIn){
+  document.getElementById('gate').hidden = false;
+  document.getElementById('app').hidden = true;
+  document.getElementById('gateMsg').textContent = msg;
+  document.getElementById('signinBtn').style.display = canSignIn ? '' : 'none';
+  document.getElementById('signoutBtn'); // no-op
+  if (!canSignIn) {
+    // offer sign-out from the gate for a wrong account
+    const c = document.querySelector('.gate-card');
+    if (!document.getElementById('gateSignout')) {
+      const b = document.createElement('button'); b.id='gateSignout'; b.className='btn sm'; b.style.marginTop='1rem';
+      b.textContent='Sign out'; b.onclick=()=>signOut(auth); c.appendChild(b);
+    }
   }
 }
 
-function cardHTML(m) {
-  const id = idFor(m);
-  const done = watched[id] ? ' done' : '';
-  const kid = KID_TAG[m.k];
-  const langTag = m.l === 'filter'
-    ? '<span class="tag lang">⚑ Language — use your filter</span>' : '';
-  return `<div class="card ${m.r}${done}" data-id="${id.replace(/"/g,'&quot;')}">
-    <label class="check">
-      <input type="checkbox" ${watched[id] ? 'checked' : ''} aria-label="Mark ${m.t.replace(/"/g,'')} watched">
-    </label>
+/* ---------- data ---------- */
+function subscribeMovies(){
+  onSnapshot(MOVIES_COL, (qs) => {
+    movies = qs.docs.map(d => ({ id: d.id, ...d.data() }));
+    // seed if empty and admin
+    const seedBtn = document.getElementById('seedBtn');
+    if (!movies.length && role === 'admin') { seedBtn.hidden = false; }
+    else { seedBtn.hidden = true; }
+    render();
+  }, (e)=>{ document.getElementById('list').innerHTML = `<div class="empty">Couldn't load the list (${esc(e.code||e.message)}).</div>`; });
+}
+function subscribeWatched(){
+  onSnapshot(WATCHED, (snap) => { watched = (snap.exists() && snap.data().ids) || {}; render(); }, ()=>{});
+}
+async function toggleWatched(id, on){
+  try { await setDoc(WATCHED, { ids: { [id]: on ? true : deleteField() } }, { merge: true }); }
+  catch(e){ alert("Couldn't save: "+(e.code||e.message)); }
+}
+
+/* seed */
+document.getElementById('seedBtn').onclick = async () => {
+  if (!confirm('Add the starter list of '+SEED.length+' films?')) return;
+  const batch = writeBatch(db);
+  SEED.forEach(m => batch.set(doc(MOVIES_COL), { ...m, type: 'movie' }));
+  try { await batch.commit(); } catch(e){ alert('Seed failed: '+(e.code||e.message)); }
+};
+document.getElementById('analyseAllBtn').onclick = async () => {
+  const todo = movies.filter(m => !m.analysis);
+  if (!todo.length) { alert('Every title is already analysed. (Use per-card 🤖 Analyse to re-run one.)'); return; }
+  const mins = Math.max(1, Math.ceil(todo.length * 5 / 60));
+  if (!confirm('Analyse '+todo.length+' un-analysed titles with Gemini?\nRuns one at a time to respect rate limits — about '+mins+' min. You can keep using the page.')) return;
+  const btn = document.getElementById('analyseAllBtn'); btn.disabled = true;
+  let ok = 0, fail = 0;
+  for (let i = 0; i < todo.length; i++) {
+    btn.textContent = `Analysing ${i+1}/${todo.length}…`;
+    (await analyseOne(todo[i], true)) ? ok++ : fail++;
+    await new Promise(r => setTimeout(r, 4500));
+  }
+  btn.disabled = false; btn.textContent = '🤖 Analyse all';
+  alert('Done — analysed '+ok+(fail ? (', '+fail+' failed (re-run to retry)') : '')+'.');
+};
+
+/* ---------- render ---------- */
+function matches(m){
+  if (typeFilter !== 'all' && (m.type||'movie') !== typeFilter) return false;
+  if (searchTerm && !(m.t||'').toLowerCase().includes(searchTerm)) return false;
+  if (!showAvoid && m.r === 'red') return false;
+  if (hideWatched && watched[m.id]) return false;
+  switch(activeFilter){
+    case 'clean': return m.r === 'green';
+    case 'family': return m.k === 'all';
+    case 'boys': return m.k === 'all' || m.k === 'boys';
+    case 'alone': return m.k === 'alone';
+    default: return true;
+  }
+}
+function cardHTML(m){
+  const done = watched[m.id] ? ' done' : '';
+  const kid = KID_TAG[m.k] || KID_TAG.boys;
+  const langTag = m.l === 'filter' ? '<span class="tag lang">⚑ Language — use your filter</span>' : '';
+  const typeBadge = (m.type === 'series') ? '<span class="universe">📺 Series</span>' : '';
+  const note = m.summary || m.n || '';
+  const a = m.analysis;
+  const row = (k,v) => `<div class="bdrow"><span class="bdk">${k}</span><span>${esc(v||'—')}</span></div>`;
+  const bd = a
+    ? `<details class="breakdown"><summary>Full breakdown</summary><div class="bdbody">
+        ${row('Spiritual', a.spiritual)}${row('Occult / demonic', a.occult)}${row('Violence', a.violence)}
+        ${row('Sex / nudity', a.sex)}${row('Mature themes', a.themes)}${row('Language', a.language)}
+      </div></details>`
+    : (role === 'admin' ? '<span class="unanalysed">⚠ Not analysed yet</span>' : '');
+  const admin = role === 'admin'
+    ? `<div class="cardadmin"><button class="iconbtn" data-analyse="${m.id}">🤖 Analyse</button><button class="iconbtn" data-edit="${m.id}">Edit</button><button class="iconbtn del" data-del="${m.id}">Delete</button></div>` : '';
+  return `<div class="card ${m.r}${done}">
+    <label class="check"><input type="checkbox" data-watch="${m.id}" ${watched[m.id]?'checked':''} aria-label="Mark ${esc(m.t)} watched"></label>
     <div class="body">
-      <div class="title-row">
-        <span class="title">${m.t}</span>
-        <span class="year">${m.y}</span>
-        <span class="universe">${m.u}</span>
-      </div>
-      <div class="note">${m.n}</div>
-      <div class="tags">
-        <span class="tag ${kid.cls}">${kid.txt}</span>
-        ${langTag}
-      </div>
+      <div class="title-row"><span class="title">${esc(m.t)}</span><span class="year">${esc(m.y)}</span><span class="universe">${esc(m.u)}</span>${typeBadge}</div>
+      <div class="note">${esc(note)}</div>
+      ${bd}
+      <div class="tags"><span class="tag ${kid.cls}">${kid.txt}</span>${langTag}${admin}</div>
     </div>
   </div>`;
 }
-
-function render() {
+function render(){
   const list = document.getElementById('list');
-  const visible = MOVIES.filter(matches);
+  const visible = movies.filter(matches);
   let html = '';
-
   GROUPS.forEach(g => {
     if (!showAvoid && g.r === 'red') return;
-    const items = visible.filter(m => m.r === g.r);
+    const items = visible.filter(m => m.r === g.r).sort((a,b)=>(a.t||'').localeCompare(b.t||''));
     if (!items.length) return;
-    html += `<h2 class="group-head"><i class="dot ${g.cls}"></i>${g.label}
-      <span class="count">${items.length}</span></h2>`;
+    html += `<h2 class="group-head"><i class="dot ${g.cls}"></i>${g.label}<span class="count">${items.length}</span></h2>`;
     html += items.map(cardHTML).join('');
   });
-
-  if (!html) html = `<div class="empty">No films match that yet — try clearing the search or a different filter.</div>`;
+  if (!html) html = `<div class="empty">No films match — clear the search or try a different filter.</div>`;
   list.innerHTML = html;
-
-  // wire checkboxes
-  list.querySelectorAll('.card').forEach(card => {
-    const cb = card.querySelector('input[type=checkbox]');
-    cb.addEventListener('change', () => {
-      const id = card.getAttribute('data-id');
-      if (cb.checked) watched[id] = true; else delete watched[id];
-      saveWatched();
-      updateProgress();
-      card.classList.toggle('done', cb.checked);
-      if (hideWatched && cb.checked) render();
+  list.querySelectorAll('input[data-watch]').forEach(cb => cb.onchange = () => toggleWatched(cb.dataset.watch, cb.checked));
+  if (role === 'admin') {
+    list.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openMovieModal(movies.find(x=>x.id===b.dataset.edit)));
+    list.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
+      const m = movies.find(x=>x.id===b.dataset.del);
+      if (m && confirm('Delete "'+m.t+'"?')) { try{ await deleteDoc(doc(MOVIES_COL, m.id)); }catch(e){ alert(e.code||e.message);} }
     });
-  });
-
+    list.querySelectorAll('[data-analyse]').forEach(b => b.onclick = async () => {
+      const m = movies.find(x=>x.id===b.dataset.analyse); if (!m) return;
+      b.disabled = true; b.textContent = '…analysing';
+      const ok = await analyseOne(m); if (!ok){ b.disabled=false; b.textContent='🤖 Analyse'; }
+    });
+  }
   updateProgress();
 }
 
-function updateProgress() {
-  // progress counts only green + amber (the watchable set)
-  const pool = MOVIES.filter(m => m.r !== 'red');
-  const done = pool.filter(m => watched[idFor(m)]).length;
-  const pct = pool.length ? Math.round(done / pool.length * 100) : 0;
+/* AI analysis via the analyzeMovie Cloud Function (Gemini). Applies rating,
+   suitability, language flag, summary + the structured breakdown to the doc. */
+async function analyseOne(m, silent){
+  try {
+    const res = await analyzeMovieFn({ title: m.t, year: m.y, type: m.type || 'movie' });
+    const d = res.data || {};
+    if (!d.analysis) throw new Error('No analysis returned');
+    await updateDoc(doc(MOVIES_COL, m.id), {
+      r: d.rating || m.r, k: d.suits || m.k, l: d.languageFlag || m.l,
+      summary: d.summary || m.summary || m.n || '', analysis: d.analysis,
+    });
+    return true;
+  } catch (e) { if (!silent) alert('Analyse failed: ' + (e.message || e.code || e)); return false; }
+}
+function updateProgress(){
+  const pool = movies.filter(m => m.r !== 'red');
+  const done = pool.filter(m => watched[m.id]).length;
+  const pct = pool.length ? Math.round(done/pool.length*100) : 0;
   document.getElementById('pnum').textContent = done;
   document.getElementById('ptot').textContent = 'of ' + pool.length + ' watchable';
   document.getElementById('pfill').style.width = pct + '%';
 }
 
-/* ---------------- EVENTS ---------------- */
+/* ---------- controls ---------- */
 document.getElementById('filters').addEventListener('click', e => {
-  const btn = e.target.closest('.chip');
-  if (!btn) return;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active');
-  activeFilter = btn.dataset.filter;
-  render();
+  const btn = e.target.closest('.chip'); if (!btn) return;
+  document.querySelectorAll('#filters .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active'); activeFilter = btn.dataset.filter; render();
 });
-document.getElementById('search').addEventListener('input', e => {
-  searchTerm = e.target.value.trim().toLowerCase();
-  render();
+document.getElementById('typefilters').addEventListener('click', e => {
+  const btn = e.target.closest('.chip'); if (!btn) return;
+  document.querySelectorAll('#typefilters .chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active'); typeFilter = btn.dataset.type; render();
 });
-document.getElementById('hideWatched').addEventListener('change', e => {
-  hideWatched = e.target.checked; render();
-});
-document.getElementById('showAvoid').addEventListener('change', e => {
-  showAvoid = e.target.checked; render();
-});
-document.getElementById('reset').addEventListener('click', async () => {
-  if (!confirm('Clear every watched mark? This cannot be undone.')) return;
-  watched = {};
-  await saveWatched();
-  render();
-});
+document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value.trim().toLowerCase(); render(); });
+document.getElementById('hideWatched').addEventListener('change', e => { hideWatched = e.target.checked; render(); });
+document.getElementById('showAvoid').addEventListener('change', e => { showAvoid = e.target.checked; render(); });
 
-/* ---------------- INIT ---------------- */
-(async function init(){
-  await loadWatched();
-  render();
-})();
+/* ---------- admin: content ---------- */
+document.getElementById('addBtn').onclick = () => openMovieModal(null);
+function openMovieModal(m){
+  const isEdit = !!m;
+  m = m || {t:'',y:new Date().getFullYear(),u:'',type:'movie',r:'green',k:'boys',l:'clean',summary:'',analysis:{}};
+  const a = m.analysis || {};
+  const opt = (v,cur,lbl)=>`<option value="${v}" ${v===cur?'selected':''}>${lbl}</option>`;
+  document.getElementById('modalRoot').innerHTML = `
+  <div class="overlay" id="ov"><div class="modal">
+    <h2>${isEdit?'Edit title':'Add title'}</h2>
+    <div class="grid2">
+      <div class="fld"><label>Title</label><input id="f_t" value="${esc(m.t)}"></div>
+      <div class="fld"><label>Year</label><input id="f_y" type="number" value="${esc(m.y)}"></div>
+    </div>
+    <div class="grid2">
+      <div class="fld"><label>Type</label><select id="f_type">${opt('movie',m.type||'movie','🎬 Movie')}${opt('series',m.type,'📺 Series')}</select></div>
+      <div class="fld"><label>Universe / label</label><input id="f_u" value="${esc(m.u)}"></div>
+    </div>
+    <div class="fld"><button class="btn primary" id="analyseBtn" style="width:100%">🤖 Analyse with Gemini</button><div id="aStatus" class="astatus"></div></div>
+    <div class="grid2">
+      <div class="fld"><label>Rating</label><select id="f_r">${opt('green',m.r,'🟢 Clean')}${opt('amber',m.r,'🟡 Your call')}${opt('red',m.r,'🔴 Avoid')}</select></div>
+      <div class="fld"><label>Suits</label><select id="f_k">${opt('all',m.k,'Whole family')}${opt('boys',m.k,'The boys')}${opt('alone',m.k,'On your own')}</select></div>
+    </div>
+    <div class="fld"><label>Language flag</label><select id="f_l">${opt('clean',m.l,'Clean')}${opt('filter',m.l,'Needs language filter')}</select></div>
+    <div class="fld"><label>Summary</label><textarea id="f_summary">${esc(m.summary||m.n||'')}</textarea></div>
+    <div class="fld"><label>Spiritual</label><textarea id="f_a_spiritual">${esc(a.spiritual||'')}</textarea></div>
+    <div class="fld"><label>Occult / demonic</label><textarea id="f_a_occult">${esc(a.occult||'')}</textarea></div>
+    <div class="fld"><label>Violence</label><textarea id="f_a_violence">${esc(a.violence||'')}</textarea></div>
+    <div class="fld"><label>Sex / nudity</label><textarea id="f_a_sex">${esc(a.sex||'')}</textarea></div>
+    <div class="fld"><label>Mature themes (not for kids)</label><textarea id="f_a_themes">${esc(a.themes||'')}</textarea></div>
+    <div class="fld"><label>Language notes (incl. blasphemy)</label><textarea id="f_a_language">${esc(a.language||'')}</textarea></div>
+    <div class="modal-actions"><button class="btn" id="mcancel">Cancel</button><button class="btn primary" id="msave">${isEdit?'Save':'Add'}</button></div>
+  </div></div>`;
+  const close = () => document.getElementById('modalRoot').innerHTML = '';
+  const val = id => document.getElementById(id).value;
+  const setV = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
+  document.getElementById('ov').onclick = e => { if (e.target.id==='ov') close(); };
+  document.getElementById('mcancel').onclick = close;
+  document.getElementById('analyseBtn').onclick = async () => {
+    const t = val('f_t').trim(); if (!t) { alert('Enter a title first'); return; }
+    const st = document.getElementById('aStatus'), btn = document.getElementById('analyseBtn');
+    btn.disabled = true; st.textContent = 'Analysing with Gemini…';
+    try {
+      const res = await analyzeMovieFn({ title: t, year: val('f_y'), type: val('f_type') });
+      const d = res.data || {}, an = d.analysis || {};
+      setV('f_r', d.rating||'green'); setV('f_k', d.suits||'boys'); setV('f_l', d.languageFlag||'clean'); setV('f_summary', d.summary||'');
+      setV('f_a_spiritual', an.spiritual||''); setV('f_a_occult', an.occult||''); setV('f_a_violence', an.violence||'');
+      setV('f_a_sex', an.sex||''); setV('f_a_themes', an.themes||''); setV('f_a_language', an.language||'');
+      st.textContent = '✓ Analysed — review the fields, then Save.';
+    } catch(e){ st.textContent = 'Analyse failed: ' + (e.message||e.code||e); }
+    btn.disabled = false;
+  };
+  document.getElementById('msave').onclick = async () => {
+    const data = {
+      t:val('f_t').trim(), y:Number(val('f_y'))||0, u:val('f_u').trim(), type:val('f_type'),
+      r:val('f_r'), k:val('f_k'), l:val('f_l'), summary:val('f_summary').trim(),
+      analysis:{ spiritual:val('f_a_spiritual').trim(), occult:val('f_a_occult').trim(), violence:val('f_a_violence').trim(),
+        sex:val('f_a_sex').trim(), themes:val('f_a_themes').trim(), language:val('f_a_language').trim() },
+    };
+    if (!data.t) { alert('Title required'); return; }
+    if (!Object.values(data.analysis).some(Boolean)) delete data.analysis;
+    try { if (isEdit) await updateDoc(doc(MOVIES_COL, m.id), data); else await addDoc(MOVIES_COL, data); close(); }
+    catch(e){ alert('Save failed: '+(e.code||e.message)); }
+  };
+}
+
+/* ---------- admin: people ---------- */
+document.getElementById('peopleBtn').onclick = openPeopleModal;
+function openPeopleModal(){
+  const bootSet = new Set(BOOTSTRAP_ADMINS.map(x=>x.toLowerCase()));
+  const rows = (list, isAdminList) => list.map(em => {
+    const boot = bootSet.has(em.toLowerCase());
+    const actions = boot ? '<span class="rolechip">permanent admin</span>' :
+      (isAdminList
+        ? `<button class="iconbtn" data-demote="${esc(em)}">Make viewer</button>`
+        : `<button class="iconbtn" data-promote="${esc(em)}">Make admin</button>`)
+      + `<button class="iconbtn del" data-remove="${esc(em)}">Remove</button>`;
+    return `<div class="prow"><span class="em">${esc(em)}</span>${actions}</div>`;
+  }).join('') || '<div class="note">None yet.</div>';
+  const admins = accessDoc.admins || [], allowed = (accessDoc.allowed||[]).filter(e => !admins.map(x=>x.toLowerCase()).includes(e.toLowerCase()));
+  document.getElementById('modalRoot').innerHTML = `
+  <div class="overlay" id="ov"><div class="modal">
+    <h2>People</h2>
+    <div class="fld"><label>Admins — can edit films + manage people</label></div>
+    <div class="people">${rows(admins, true)}</div>
+    <div class="fld"><label>Viewers — can watch + tick off</label></div>
+    <div class="people">${rows(allowed, false)}</div>
+    <div class="fld"><label>Add someone (their Google email)</label>
+      <div class="addrow"><input id="p_email" type="email" placeholder="name@gmail.com"><button class="btn primary sm" id="p_add">Add viewer</button></div>
+    </div>
+    <div class="modal-actions"><button class="btn" id="pclose">Done</button></div>
+  </div></div>`;
+  const close = () => document.getElementById('modalRoot').innerHTML = '';
+  document.getElementById('ov').onclick = e => { if (e.target.id==='ov') close(); };
+  document.getElementById('pclose').onclick = close;
+  const save = async (next) => {
+    try { await setDoc(ACCESS, next); accessDoc = next; openPeopleModal(); }
+    catch(e){ alert('Update failed: '+(e.code||e.message)); }
+  };
+  const norm = (arr) => [...new Set(arr.map(x=>x.trim()).filter(Boolean))];
+  document.getElementById('p_add').onclick = () => {
+    const em = document.getElementById('p_email').value.trim();
+    if (!em || !em.includes('@')) { alert('Enter a valid email'); return; }
+    save({ admins: accessDoc.admins, allowed: norm([...(accessDoc.allowed||[]), em]) });
+  };
+  document.querySelectorAll('[data-promote]').forEach(b => b.onclick = () => {
+    const em = b.dataset.promote;
+    save({ admins: norm([...(accessDoc.admins||[]), em]), allowed: norm([...(accessDoc.allowed||[]), em]) });
+  });
+  document.querySelectorAll('[data-demote]').forEach(b => b.onclick = () => {
+    const em = b.dataset.demote.toLowerCase();
+    save({ admins: (accessDoc.admins||[]).filter(x=>x.toLowerCase()!==em), allowed: accessDoc.allowed });
+  });
+  document.querySelectorAll('[data-remove]').forEach(b => b.onclick = () => {
+    const em = b.dataset.remove.toLowerCase();
+    save({ admins: (accessDoc.admins||[]).filter(x=>x.toLowerCase()!==em), allowed: (accessDoc.allowed||[]).filter(x=>x.toLowerCase()!==em) });
+  });
+}
 </script>
 </body>
 </html>

@@ -66,6 +66,37 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
+    // ---- Watchlist app (separate access model from the portal) ----
+    // Bootstrap admins can always manage it (seed + add others); after that the
+    // admin/allowed lists in watchlist/access govern access. Fully private:
+    // non-allowed signed-in users can't read anything here.
+    function waAccessExists() {
+      return exists(/databases/$(database)/documents/watchlist/access);
+    }
+    function waAccess() {
+      return get(/databases/$(database)/documents/watchlist/access).data;
+    }
+    function waAdmin() {
+      return bootstrap()
+        || (request.auth != null && waAccessExists()
+            && request.auth.token.email in waAccess().admins);
+    }
+    function waAllowed() {
+      return waAdmin()
+        || (request.auth != null && waAccessExists()
+            && request.auth.token.email in waAccess().allowed);
+    }
+    // access doc: allowed users read (to learn their role); admins write.
+    // watched doc: allowed users read + write (shared marks across accounts).
+    match /watchlist/{doc} {
+      allow read: if waAllowed();
+      allow write: if doc == 'watched' ? waAllowed() : waAdmin();
+    }
+    match /watchlist_movies/{id} {
+      allow read: if waAllowed();
+      allow write: if waAdmin();
+    }
+
     // Everything else (logged data, messages, etc.): household members only.
     // Guests are intentionally excluded here — they get no broad Firestore read.
     match /{document=**} {

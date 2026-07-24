@@ -10,7 +10,7 @@
 // from the portal (Settings -> WhatsApp).
 //
 // Secrets (firebase functions:secrets:set NAME): HA_URL, HA_TOKEN, WA_WEBHOOK_SECRET
-const { onRequest } = require("firebase-functions/v2/https");
+const { onRequest, onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onSchedule } = require("firebase-functions/v2/scheduler");
 const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
@@ -231,6 +231,87 @@ exports.parseDocument = onRequest(
       logger.error("parseDocument failed", e);
       res.status(500).json({ ok: false, error: String((e && e.message) || e) });
     }
+  },
+);
+
+// ---- Watchlist: AI content analysis (Gemini) for a film ----
+// Callable by watchlist admins only. Returns a structured discernment breakdown
+// so every title is screened before it's added to the list.
+const WA_BOOTSTRAP_ADMINS = ["christosteyn@cloudbadger.com", "steyncd@gmail.com"];
+exports.analyzeMovie = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+    let isAdmin = WA_BOOTSTRAP_ADMINS.includes(email);
+    if (!isAdmin) {
+      try {
+        const snap = await db.doc("watchlist/access").get();
+        const admins = ((snap.exists && snap.data().admins) || []).map((x) => String(x).toLowerCase());
+        isAdmin = admins.includes(email);
+      } catch { /* deny below */ }
+    }
+    if (!isAdmin) throw new HttpsError("permission-denied", "Admins only.");
+
+    const title = String((request.data && request.data.title) || "").trim();
+    const year = String((request.data && request.data.year) || "").trim();
+    const kind = String((request.data && request.data.type) || "movie").trim() === "series" ? "series" : "film";
+    if (!title) throw new HttpsError("invalid-argument", "Title required.");
+
+    const prompt = `You are screening ${kind === "series" ? "TV series" : "films"} for a Reformed Christian family in South Africa. Their #1 filter: they want to AVOID occult, demonic, witchcraft and mystical "power/sorcery" content. A dark or serious TONE is fine — that is NOT the filter. They have two sons, Liam & Eben (older kids), plus the adults.
+
+Analyse the ${kind} "${title}"${year ? " (" + year + ")" : ""}${kind === "series" ? " (assess the series overall across its seasons)" : ""} and return STRICT JSON only.
+
+Rating rules:
+- "green" = clean of occult/demonic/sorcery content.
+- "amber" = a mythic/magic/spiritual element that is a discernment call (e.g. Norse 'gods' framed as aliens, 'the Force', Greek mythology, Christian allegory involving magic).
+- "red" = contains real occult/demonic/witchcraft/sorcery content (spells, demons, hell-pacts, mediums, curses, etc.).
+
+suits: "all" (whole family incl. younger kids), "boys" (fine for the older sons), "alone" (mature/intense — parents only).
+languageFlag: "filter" if there is notable strong language OR ANY blasphemy / misuse of God's or Jesus' name; otherwise "clean".
+
+For each field give ONE concise, specific sentence (write "None." if genuinely none):
+- spiritual: religious/spiritual elements or worldview.
+- occult: occult/demonic/witchcraft/sorcery content specifically (the family's key filter).
+- violence: level and nature of violence.
+- sex: sexual content, nudity or innuendo.
+- themes: mature themes not suitable for younger kids (grief, terror, disturbing content).
+- language: strong language; CALL OUT blasphemy / misuse of God's or Jesus' name specifically if present.
+summary: one plain-language sentence for the parents.`;
+
+    const schema = {
+      type: "object",
+      properties: {
+        rating: { type: "string", enum: ["green", "amber", "red"] },
+        suits: { type: "string", enum: ["all", "boys", "alone"] },
+        languageFlag: { type: "string", enum: ["clean", "filter"] },
+        summary: { type: "string" },
+        analysis: {
+          type: "object",
+          properties: {
+            spiritual: { type: "string" }, occult: { type: "string" }, violence: { type: "string" },
+            sex: { type: "string" }, themes: { type: "string" }, language: { type: "string" },
+          },
+          required: ["spiritual", "occult", "violence", "sex", "themes", "language"],
+        },
+      },
+      required: ["rating", "suits", "languageFlag", "summary", "analysis"],
+    };
+
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${GEMINI_API_KEY.value()}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.2 },
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) { logger.error("analyzeMovie gemini error", j); throw new HttpsError("internal", (j && j.error && j.error.message) || `gemini ${r.status}`); }
+    const text = (j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text) || "{}";
+    let out;
+    try { out = JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
+    return out;
   },
 );
 
