@@ -272,6 +272,7 @@ suits: "all" (whole family incl. younger kids), "boys" (fine for the older sons)
 languageFlag: "filter" if there is notable strong language OR ANY blasphemy / misuse of God's or Jesus' name; otherwise "clean".
 
 For each field give ONE concise, specific sentence (write "None." if genuinely none):
+- tone: the overall mood/feel in a few words (e.g. "Lighthearted and comedic", "Dark and intense", "Warm and heartfelt", "Thrilling / suspenseful", "Scary / horror", "Epic adventure", "Romantic"). Always fill this — never "None."
 - spiritual: religious/spiritual elements or worldview.
 - occult: occult/demonic/witchcraft/sorcery content specifically (the family's key filter).
 - violence: level and nature of violence.
@@ -290,10 +291,10 @@ summary: one plain-language sentence for the parents.`;
         analysis: {
           type: "object",
           properties: {
-            spiritual: { type: "string" }, occult: { type: "string" }, violence: { type: "string" },
+            tone: { type: "string" }, spiritual: { type: "string" }, occult: { type: "string" }, violence: { type: "string" },
             sex: { type: "string" }, themes: { type: "string" }, language: { type: "string" },
           },
-          required: ["spiritual", "occult", "violence", "sex", "themes", "language"],
+          required: ["tone", "spiritual", "occult", "violence", "sex", "themes", "language"],
         },
       },
       required: ["rating", "suits", "languageFlag", "summary", "analysis"],
@@ -377,6 +378,53 @@ exports.whereToWatch = onCall(
       rent: za ? names(za.rent) : [],
       buy: za ? names(za.buy) : [],
     };
+  },
+);
+
+// ---- Watchlist: TMDB title search (autocomplete for adding titles) ----
+// Any allowed watchlist user can query; returns up to 8 real film/series matches
+// so the add-title form can only add titles that actually exist.
+exports.tmdbSearch = onCall(
+  { secrets: [TMDB_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+    let allowed = WA_BOOTSTRAP_ADMINS.includes(email);
+    if (!allowed) {
+      try {
+        const snap = await db.doc("watchlist/access").get();
+        const d = (snap.exists && snap.data()) || {};
+        const all = [...(d.admins || []), ...(d.allowed || [])].map((x) => String(x).toLowerCase());
+        allowed = all.includes(email);
+      } catch { /* deny below */ }
+    }
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+
+    const q = String((request.data && request.data.query) || "").trim();
+    if (q.length < 2) return { results: [] };
+
+    const headers = { Authorization: `Bearer ${TMDB_KEY.value()}`, "Content-Type": "application/json;charset=utf-8" };
+    const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(q)}&include_adult=false&page=1`;
+    const r = await fetch(url, { headers });
+    const j = await r.json();
+    if (!r.ok) { logger.error("tmdbSearch error", j); throw new HttpsError("internal", (j && j.status_message) || `tmdb ${r.status}`); }
+    const results = (j.results || [])
+      .filter((x) => x.media_type === "movie" || x.media_type === "tv")
+      .slice(0, 8)
+      .map((x) => {
+        const isTv = x.media_type === "tv";
+        const date = (isTv ? x.first_air_date : x.release_date) || "";
+        return {
+          tmdbId: x.id,
+          title: isTv ? (x.name || "") : (x.title || ""),
+          year: date ? Number(date.slice(0, 4)) : null,
+          type: isTv ? "series" : "movie",
+          poster: x.poster_path ? `https://image.tmdb.org/t/p/w92${x.poster_path}` : null,
+          overview: x.overview || "",
+        };
+      })
+      .filter((x) => x.title);
+    return { results };
   },
 );
 
