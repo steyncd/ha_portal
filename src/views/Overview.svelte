@@ -19,10 +19,17 @@
 
   let battHist = $state<{ t: number; v: number }[]>([]);
   let solarHist = $state<{ t: number; v: number }[]>([]);
+  let fcRaw = $state<{ datetime: string; temperature: number; condition: string }[]>([]);
   onMount(async () => {
     battHist = await ha.history(E.batterySoc, 24);
     solarHist = await ha.history(E.pvPower, 24);
+    fcRaw = (await ha.getForecast(E.weather, "hourly")).slice(0, 6);
   });
+  const WX_ICON: Record<string, string> = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", snowy: "❄️", "snowy-rainy": "🌨️", fog: "🌫️", windy: "💨", hail: "🌨️", exceptional: "🌡️" };
+  const fc = $derived(fcRaw.map((f, i) => ({ h: i === 0 ? "Now" : (() => { try { return new Date(f.datetime).getHours() + "h"; } catch { return ""; } })(), ic: WX_ICON[f.condition] ?? "🌡️", t: Math.round(f.temperature) })));
+  const wxCond = $derived((ha.state(E.weather) ?? "").replace(/-/g, " "));
+  const wxIcon = $derived(WX_ICON[ha.state(E.weather) ?? ""] ?? "🌡️");
+  const outdoor = $derived(ha.num("sensor.outdoor_temperature"));
 
   const now = new Date();
   const dateStr = dateMedium(now);
@@ -111,13 +118,12 @@
     return items;
   });
 
-  const FC = [["Now", "🌙", 16], ["21h", "🌫️", 12], ["23h", "🌫️", 11], ["01h", "🌫️", 10], ["03h", "❄️", 8], ["06h", "❄️", 7]];
 </script>
 
 <div class="head">
   <div>
     <h1>{greeting(sastHour(now))}, Christo</h1>
-    <p>{dateStr} · everything calm · running on your own power</p>
+    <p>{dateStr} · {attention.length ? "a few things need attention" : "everything calm"} · running on your own power</p>
   </div>
   <div class="actions">
     <button class="btn" onclick={() => onnav("__palette")}><span>⌘</span> Search</button>
@@ -289,14 +295,18 @@
   <!-- next hours -->
   {#if prefs.widgets.forecast}
     <div class="w card">
-      <div class="wh"><span class="lb">Next hours</span><span class="sub2">🌙 Clear · 16°</span></div>
-      <div class="fc">
-        {#each FC as [h, ic, tp], i}
-          <div class="fcc" style="background:{i === 0 ? 'var(--soft)' : 'rgba(255,255,255,.03)'}">
-            <span class="fch">{h}</span><span class="fci">{ic}</span><span class="fct">{tp}°</span>
-          </div>
-        {/each}
-      </div>
+      <div class="wh"><span class="lb">Next hours</span><span class="sub2">{wxIcon} {wxCond || "—"}{outdoor != null ? ` · ${n(outdoor)}°` : ""}</span></div>
+      {#if fc.length}
+        <div class="fc">
+          {#each fc as f, i}
+            <div class="fcc" style="background:{i === 0 ? 'var(--soft)' : 'rgba(255,255,255,.03)'}">
+              <span class="fch">{f.h}</span><span class="fci">{f.ic}</span><span class="fct">{f.t}°</span>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <div class="center-sub">Forecast unavailable</div>
+      {/if}
     </div>
   {/if}
 </div>

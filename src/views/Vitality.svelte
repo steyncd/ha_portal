@@ -12,8 +12,8 @@
   };
 
   const annual = $derived(ha.num("input_number.vitality_points_annual") ?? 0);
-  const currentTier = $derived(ha.state("sensor.vitality_current_tier") ?? "Blue");
-  const nextTier = $derived(ha.state("sensor.vitality_next_tier") ?? "Bronze");
+  const currentTier = $derived(ha.state("sensor.vitality_current_tier") ?? "—");
+  const nextTier = $derived(ha.state("sensor.vitality_next_tier") ?? "—");
   const toNext = $derived(ha.num("sensor.vitality_points_to_next_tier") ?? 0);
 
   const thresholds = $derived({
