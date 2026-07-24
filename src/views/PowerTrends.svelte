@@ -48,7 +48,7 @@
   const period = $derived<"hour" | "day">(range.days <= 3 ? "hour" : "day");
   const bucketH = $derived(period === "hour" ? 1 : 24);
 
-  const tariff = $derived(ha.num(E.tariff) ?? 3.5);
+  const tariff = $derived(ha.num(E.tariff) ?? 4.05);
 
   // "6 hours" / "3 days" for headings & prose (range.days can be fractional now)
   const spanTxt = $derived(
