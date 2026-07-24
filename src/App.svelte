@@ -153,7 +153,14 @@
   <div class="center">
     <div class="bg"></div>
     <div class="login">
-      <span class="llogo">🏠</span>
+      <span class="llogo" aria-label="Steyn Home">
+        <svg viewBox="0 0 96 96" width="64" height="64" aria-hidden="true">
+          <defs><linearGradient id="steynLoginG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8" /><stop offset="1" stop-color="#a855f7" /></linearGradient></defs>
+          <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLoginG)" />
+          <path d="M35 41 L48 31 L61 41" fill="none" stroke="#0b0d12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+          <text x="49" y="73" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-size="42" font-weight="700" fill="#0b0d12">S</text>
+        </svg>
+      </span>
       <h1>Steyn Home</h1>
       <p class="dim">Sign in to continue</p>
       <button class="gbtn" onclick={() => authStore.signIn()}>Continue with Google</button>
@@ -181,9 +188,11 @@
       <aside class:collapsed={prefs.collapsed}>
         <div class="brand">
           <span class="logo" aria-label="Steyn Home">
-            <svg viewBox="0 0 72 72" width="100%" height="100%" fill="none" aria-hidden="true">
-              <path d="M20 34 L36 21 L52 34 V52 a2 2 0 0 1-2 2 H22 a2 2 0 0 1-2-2 Z" stroke="#0b1220" stroke-width="4" stroke-linejoin="round"/>
-              <path d="M25 45 h6 l3 -7 l4 12 l3 -5 h6" stroke="#0b1220" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <svg viewBox="0 0 96 96" width="100%" height="100%" aria-hidden="true">
+              <defs><linearGradient id="steynLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#818cf8" /><stop offset="1" stop-color="#a855f7" /></linearGradient></defs>
+              <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLogoG)" />
+              <path d="M35 41 L48 31 L61 41" fill="none" stroke="#0b0d12" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+              <text x="49" y="73" text-anchor="middle" font-family="'Space Grotesk','Segoe UI',system-ui,sans-serif" font-size="42" font-weight="700" fill="#0b0d12">S</text>
             </svg>
           </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
@@ -298,7 +307,7 @@
   .err { color: var(--error); font-size: 12.5px; margin-top: 4px; }
 
   .login { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; background: rgba(20, 26, 36, 0.72); backdrop-filter: var(--glass-blur); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 24px; padding: 40px 44px; box-shadow: 0 30px 80px -30px rgba(0,0,0,0.7); }
-  .llogo { font-size: 42px; }
+  .llogo { display: inline-flex; }
   .login h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.5px; }
   .gbtn { margin-top: 14px; background: #fff; color: #1f1f1f; border-radius: 12px; padding: 12px 26px; font-weight: 700; font-size: 14px; box-shadow: 0 6px 20px -8px rgba(0,0,0,0.5); }
   .gbtn:hover { transform: translateY(-1px); }
@@ -318,7 +327,7 @@
   aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.02); backdrop-filter: var(--glass-blur); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
   aside.collapsed { width: 66px; }
   .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 3px; }
-  .logo { width: 30px; height: 30px; flex-shrink: 0; border-radius: 9px; background: var(--grad); display: grid; place-items: center; font-size: 15px; color: #07131c; }
+  .logo { width: 32px; height: 32px; flex-shrink: 0; display: block; }
   .bn { font-size: 14.5px; font-weight: 700; flex: 1; white-space: nowrap; }
   .clp { width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.06); color: #b6c5d6; font-size: 13px; margin-left: auto; }
   .nav { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: 11px; width: 100%; text-align: left; }

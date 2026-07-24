@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" width="96" height="96">
+  <path d="M48 6 L83 27 L83 69 L48 90 L13 69 L13 27 Z" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"></path>
+  <path d="M35 41 L48 31 L61 41" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"></path>
+  <text x="49" y="72" text-anchor="middle" font-family="&#39;Space Grotesk&#39;,&#39;Segoe UI&#39;,system-ui,sans-serif" font-size="42" font-weight="700" fill="currentColor">S</text>
+</svg>
