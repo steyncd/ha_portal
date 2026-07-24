@@ -213,6 +213,7 @@
       <button class="chip" data-filter="alone">Watch on your own</button>
     </div>
     <div class="toggles">
+      <label class="toggle"><input type="checkbox" id="cleanLang"> Clean language only</label>
       <label class="toggle"><input type="checkbox" id="hideWatched"> Hide watched</label>
       <label class="toggle"><input type="checkbox" id="showAvoid"> Show the avoid list</label>
     </div>
@@ -223,6 +224,7 @@
     <button class="btn sm primary" id="addBtn">＋ Add title</button>
     <button class="btn sm" id="analyseAllBtn">🤖 Analyse all</button>
     <button class="btn sm" id="peopleBtn">Manage people</button>
+    <button class="btn sm" id="resyncBtn">↻ Re-sync built-in</button>
     <button class="btn sm" id="seedBtn" hidden>Seed starter list</button>
   </div>
 
@@ -333,7 +335,7 @@ const SEED = [
   {t:"Big Hero 6",y:2014,u:"Disney",r:"green",k:"all",l:"clean",n:"Robotics, brotherhood + a big-hearted robot. Clean + moving.",analysis:{spiritual:"None.",occult:"None; pure robotics/science.",violence:"Animated action and peril; no gore.",sex:"None.",themes:"Grief over a brother's death and healthy handling of loss and revenge; moving but gentle.",language:"Clean; no blasphemy."}},
   {t:"Spider-Man: Into the Spider-Verse",y:2018,u:"Animated",r:"green",k:"all",l:"clean",n:"Stunning animated Spidey. Clean + a joy.",analysis:{spiritual:"None.",occult:"None.",violence:"Stylised animated action; a mentor's death and an emotional funeral, no gore.",sex:"None.",themes:"Grief, growing up and self-belief; briefly emotional but wholesome.",language:"Very mild; no blasphemy."}},
   {t:"Spider-Man: Across the Spider-Verse",y:2023,u:"Animated",r:"green",k:"boys",l:"clean",n:"More intense + a cliffhanger, but clean.",analysis:{spiritual:"None.",occult:"None.",violence:"Fast, intense animated action and chases; no gore.",sex:"None.",themes:"Family, identity and a dark cliffhanger ending; more intense and emotionally heavy than the first.",language:"Very mild; no blasphemy."}},
-  {t:"Bumblebee",y:2018,u:"Transformers",r:"green",k:"all",l:"clean",n:"The gentlest, most heartfelt Transformers — closest to whole-family.",analysis:{spiritual:"None.",occult:"None.",violence:"Robot combat and some 1980s-style action; a couple of deaths, no gore.",sex:"None.",themes:"A girl grieving her late father bonds with a robot; warm and gentle.",language:"A little mild language; no blasphemy."}},
+  {t:"Bumblebee",y:2018,u:"Transformers",r:"green",k:"all",l:"filter",n:"Heartfelt and clean of occult — but heavy on God's name in vain, so filter the language.",analysis:{spiritual:"None.",occult:"None.",violence:"Robot combat and some 1980s-style action; a couple of deaths, no gore.",sex:"None.",themes:"A girl grieving her late father bonds with a robot; warm and gentle.",language:"NOT clean — frequent blasphemy: ~25 religious exclamations misusing God's and Jesus' name (\"Oh my God,\" \"Jesus,\" \"I swear to God\"), plus ~16 mild obscenities and a few scatological terms. Best watched with a profanity filter (e.g. Enjoy Movies Your Way)."}},
   {t:"Transformers One",y:2024,u:"Transformers",r:"green",k:"all",l:"clean",n:"Animated origin of Optimus + Megatron. Clean + well-reviewed.",analysis:{spiritual:"None.",occult:"None.",violence:"Animated robot battles; no human gore.",sex:"None.",themes:"Friendship turning to rivalry and betrayal; mild.",language:"Very mild; no blasphemy."}},
   {t:"Transformers",y:2007,u:"Transformers",r:"green",k:"boys",l:"filter",n:"The live-action original. Clean of occult, but crude humour + language.",analysis:{spiritual:"None.",occult:"None; alien robots and an ancient artefact ('AllSpark') are sci-fi.",violence:"Large-scale robot-vs-military combat and destruction; bloodless.",sex:"Crude sexual jokes and innuendo; a masturbation gag.",themes:"Teen adventure with crude comedy.",language:"Regular strong language and crude humour — filter recommended; possible misuse of God's name."}},
   {t:"Sonic the Hedgehog",y:2020,u:"Adventure",r:"green",k:"all",l:"clean",n:"Fast, funny, clean.",analysis:{spiritual:"None.",occult:"None.",violence:"Cartoonish action and slapstick; no gore.",sex:"None.",themes:"Belonging and friendship; light.",language:"Clean; no blasphemy."}},
@@ -373,7 +375,9 @@ let me = null, role = null;              // role: 'admin' | 'viewer'
 let movies = [];                          // [{id, ...fields}]
 let watched = {};                         // { docId: true }
 let accessDoc = { admins: [], allowed: [] };
-let activeFilter = 'all', typeFilter = 'all', hideWatched = false, showAvoid = false, searchTerm = '';
+let activeFilter = 'all', typeFilter = 'all', hideWatched = false, showAvoid = false, cleanLang = false, searchTerm = '';
+const PAGE_SIZE = 30;
+let shown = PAGE_SIZE; // how many cards are currently rendered (paging)
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
 /* ---------- auth ---------- */
@@ -518,6 +522,27 @@ document.getElementById('seedBtn').onclick = async () => {
   if (!confirm('Add the starter list of '+SEED.length+' titles (already analysed)?')) return;
   try { await seedList(); } catch(e){ alert('Seed failed: '+(e.code||e.message)); }
 };
+/* Re-sync: push the latest built-in analysis onto the already-seeded titles
+   (matched by title + year). Used to roll out corrected reviews. Overwrites
+   built-in titles' fields; leaves your own added titles and watched marks. */
+document.getElementById('resyncBtn').onclick = async () => {
+  if (!confirm('Re-sync the built-in titles to the latest reviewed analysis?\nThis overwrites the rating, notes and breakdown of matching built-in titles (your own added titles and watched marks are untouched).')) return;
+  const btn = document.getElementById('resyncBtn');
+  btn.disabled = true; const orig = btn.textContent; btn.textContent = '…syncing';
+  try {
+    const batch = writeBatch(db);
+    let updated = 0, added = 0;
+    for (const s of SEED) {
+      const data = { ...s, type: s.type || 'movie' };
+      const existing = movies.find(m => (m.t||'') === s.t && String(m.y) === String(s.y));
+      if (existing) { batch.update(doc(MOVIES_COL, existing.id), data); updated++; }
+      else { batch.set(doc(MOVIES_COL), data); added++; }
+    }
+    await batch.commit();
+    alert('Re-synced ✓  ' + updated + ' updated' + (added ? ', ' + added + ' added' : '') + '.');
+  } catch(e){ alert('Re-sync failed: ' + (e.code||e.message)); }
+  finally { btn.disabled = false; btn.textContent = orig; }
+};
 document.getElementById('analyseAllBtn').onclick = async () => {
   const todo = movies.filter(m => !m.analysis);
   if (!todo.length) { alert('Every title is already analysed. (Use per-card 🤖 Analyse to re-run one.)'); return; }
@@ -540,6 +565,7 @@ function matches(m){
   if (searchTerm && !(m.t||'').toLowerCase().includes(searchTerm)) return false;
   if (!showAvoid && m.r === 'red') return false;
   if (hideWatched && watched[m.id]) return false;
+  if (cleanLang && m.l !== 'clean') return false;
   switch(activeFilter){
     case 'clean': return m.r === 'green';
     case 'family': return m.k === 'all';
@@ -577,16 +603,25 @@ function cardHTML(m){
 function render(){
   const list = document.getElementById('list');
   const visible = movies.filter(matches);
-  let html = '';
+  const total = visible.length;
+  let rendered = 0, html = '';
+  // Render groups in order, but cap total cards at `shown` (paging). Group
+  // headers show the group's full match count, not just what's on this page.
   GROUPS.forEach(g => {
     if (!showAvoid && g.r === 'red') return;
+    if (rendered >= shown) return;
     const items = visible.filter(m => m.r === g.r).sort((a,b)=>(a.t||'').localeCompare(b.t||''));
     if (!items.length) return;
+    const slice = items.slice(0, shown - rendered);
     html += `<h2 class="group-head"><i class="dot ${g.cls}"></i>${g.label}<span class="count">${items.length}</span></h2>`;
-    html += items.map(cardHTML).join('');
+    html += slice.map(cardHTML).join('');
+    rendered += slice.length;
   });
-  if (!html) html = `<div class="empty">No films match — clear the search or try a different filter.</div>`;
+  if (!html) html = `<div class="empty">No titles match — clear the search or try a different filter.</div>`;
+  else if (rendered < total) html += `<button class="btn" id="loadMore" style="display:block;margin:1.6rem auto 0">Show more (${total - rendered} more)</button>`;
   list.innerHTML = html;
+  const lm = document.getElementById('loadMore');
+  if (lm) lm.onclick = () => { shown += PAGE_SIZE; render(); };
   list.querySelectorAll('input[data-watch]').forEach(cb => cb.onchange = () => toggleWatched(cb.dataset.watch, cb.checked));
   if (role === 'admin') {
     list.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openMovieModal(movies.find(x=>x.id===b.dataset.edit)));
@@ -627,19 +662,22 @@ function updateProgress(){
 }
 
 /* ---------- controls ---------- */
+// Any filter/search change resets paging back to the first page.
+function reRender(){ shown = PAGE_SIZE; render(); }
 document.getElementById('filters').addEventListener('click', e => {
   const btn = e.target.closest('.chip'); if (!btn) return;
   document.querySelectorAll('#filters .chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active'); activeFilter = btn.dataset.filter; render();
+  btn.classList.add('active'); activeFilter = btn.dataset.filter; reRender();
 });
 document.getElementById('typefilters').addEventListener('click', e => {
   const btn = e.target.closest('.chip'); if (!btn) return;
   document.querySelectorAll('#typefilters .chip').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active'); typeFilter = btn.dataset.type; render();
+  btn.classList.add('active'); typeFilter = btn.dataset.type; reRender();
 });
-document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value.trim().toLowerCase(); render(); });
-document.getElementById('hideWatched').addEventListener('change', e => { hideWatched = e.target.checked; render(); });
-document.getElementById('showAvoid').addEventListener('change', e => { showAvoid = e.target.checked; render(); });
+document.getElementById('search').addEventListener('input', e => { searchTerm = e.target.value.trim().toLowerCase(); reRender(); });
+document.getElementById('cleanLang').addEventListener('change', e => { cleanLang = e.target.checked; reRender(); });
+document.getElementById('hideWatched').addEventListener('change', e => { hideWatched = e.target.checked; reRender(); });
+document.getElementById('showAvoid').addEventListener('change', e => { showAvoid = e.target.checked; reRender(); });
 
 /* ---------- admin: content ---------- */
 document.getElementById('addBtn').onclick = () => openMovieModal(null);
