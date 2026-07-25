@@ -642,6 +642,76 @@ exports.tidalLookup = onCall(
   },
 );
 
+// ---- Listening Room: Tidal user-login (authorization code) flow ----
+// Exchanges the auth code (with the client secret, server-side) for a user token,
+// then lists the signed-in user's own playlists.
+const TIDAL_H = (token) => ({ Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" });
+exports.tidalExchange = onCall(
+  { secrets: [TIDAL_CLIENT_ID, TIDAL_CLIENT_SECRET], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { admin } = await waRoles(email);
+    if (!admin) throw new HttpsError("permission-denied", "Admins only.");
+    const code = String((request.data && request.data.code) || "");
+    const verifier = String((request.data && request.data.codeVerifier) || "");
+    const redirectUri = String((request.data && request.data.redirectUri) || "");
+    if (!code || !redirectUri) throw new HttpsError("invalid-argument", "Missing code/redirectUri.");
+    const basic = Buffer.from(`${TIDAL_CLIENT_ID.value()}:${TIDAL_CLIENT_SECRET.value()}`).toString("base64");
+    const body = new URLSearchParams({ grant_type: "authorization_code", code, redirect_uri: redirectUri,
+      client_id: TIDAL_CLIENT_ID.value() });
+    if (verifier) body.set("code_verifier", verifier);
+    const tr = await fetch("https://auth.tidal.com/v1/oauth2/token", { method: "POST",
+      headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" }, body: body.toString() });
+    const tj = await tr.json();
+    if (!tr.ok || !tj.access_token) throw new HttpsError("unavailable", "Token exchange failed: " + (tj.error_description || tj.error || tr.status));
+    const token = tj.access_token;
+    // Who am I?
+    let userId = tj.user_id || (tj.user && tj.user.userId) || null;
+    if (!userId) { try { const me = await (await fetch("https://openapi.tidal.com/v2/users/me?countryCode=ZA", { headers: TIDAL_H(token) })).json(); userId = me && me.data && me.data.id; } catch (e) {} }
+    // List the user's playlists.
+    const playlists = [];
+    let next = userId ? `/userCollections/${userId}/relationships/playlists?countryCode=ZA&include=playlists&page[limit]=50` : null;
+    let guard = 0;
+    try {
+      while (next && guard++ < 20) {
+        const r = await fetch("https://openapi.tidal.com/v2" + next, { headers: TIDAL_H(token) });
+        if (!r.ok) { if (playlists.length) break; throw new HttpsError("unavailable", "Couldn't list playlists (HTTP " + r.status + "). Endpoint may differ for your account."); }
+        const j = await r.json();
+        (j.included || []).filter((x) => x.type === "playlists").forEach((p) => playlists.push({ id: p.id, name: (p.attributes && p.attributes.name) || "Untitled", count: (p.attributes && p.attributes.numberOfItems) || 0 }));
+        next = (j.links && j.links.next) || null;
+      }
+    } catch (e) { if (e instanceof HttpsError) throw e; }
+    return { accessToken: token, userId: userId || null, playlists };
+  },
+);
+exports.tidalUserItems = onCall(
+  { region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { admin } = await waRoles(email);
+    if (!admin) throw new HttpsError("permission-denied", "Admins only.");
+    const token = String((request.data && request.data.accessToken) || "");
+    const playlistId = String((request.data && request.data.playlistId) || "");
+    if (!token || !playlistId) throw new HttpsError("invalid-argument", "Missing accessToken/playlistId.");
+    const tracks = [];
+    let next = `/playlists/${playlistId}/relationships/items?countryCode=ZA&include=items.artists&page[limit]=50`, guard = 0;
+    while (next && guard++ < 40) {
+      const r = await fetch("https://openapi.tidal.com/v2" + next, { headers: TIDAL_H(token) });
+      if (!r.ok) break;
+      const j = await r.json();
+      const artists = {}; (j.included || []).filter((x) => x.type === "artists").forEach((a) => { artists[a.id] = a.attributes && a.attributes.name; });
+      (j.included || []).filter((x) => x.type === "tracks").forEach((t) => {
+        const at = t.attributes || {};
+        const aids = ((t.relationships && t.relationships.artists && t.relationships.artists.data) || []).map((a) => artists[a.id]).filter(Boolean);
+        const link = (at.externalLinks || []).find((l) => l.href);
+        tracks.push({ title: at.title, artist: aids.join(", "), explicit: !!at.explicit, tidalUrl: link ? link.href : null });
+      });
+      next = (j.links && j.links.next) || null;
+    }
+    return { tracks };
+  },
+);
+
 // ---- Ship24 parcel tracking: refresh all tracked parcels' status ----
 async function refreshAllParcels() {
   const snap = await db.collection("parcels").get();
