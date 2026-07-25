@@ -30,6 +30,8 @@ const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
 const SHIP24_KEY = defineSecret("SHIP24_KEY");
 const TMDB_KEY = defineSecret("TMDB_KEY");
+const TIDAL_CLIENT_ID = defineSecret("TIDAL_CLIENT_ID");
+const TIDAL_CLIENT_SECRET = defineSecret("TIDAL_CLIENT_SECRET");
 
 const RATE_LIMIT = 30; // max messages per sender per rolling minute
 const WINDOW_MS = 60_000;
@@ -586,6 +588,57 @@ Rules: green=clearly Christian & clean; amber=believer/crossover artist but some
     if (!data) throw new HttpsError("unavailable", "The AI is busy (" + lastErr + "). Try again shortly.");
     const text = (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text) || "{}";
     try { return JSON.parse(text); } catch { throw new HttpsError("internal", "Could not parse the AI response."); }
+  },
+);
+
+// ---- Listening Room: resolve a track to a direct Tidal link ----
+// Client-credentials OAuth (secret stays server-side); returns the canonical
+// tidal.com/browse/track/<id> share link for the best catalogue match.
+let _tidalTok = { value: null, exp: 0 };
+async function tidalToken() {
+  const now = Date.now();
+  if (_tidalTok.value && now < _tidalTok.exp) return _tidalTok.value;
+  const basic = Buffer.from(`${TIDAL_CLIENT_ID.value()}:${TIDAL_CLIENT_SECRET.value()}`).toString("base64");
+  const r = await fetch("https://auth.tidal.com/v1/oauth2/token", {
+    method: "POST",
+    headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
+    body: "grant_type=client_credentials",
+  });
+  const j = await r.json();
+  if (!j.access_token) return null;
+  _tidalTok = { value: j.access_token, exp: now + Math.max(60, (j.expires_in || 3600) - 60) * 1000 };
+  return _tidalTok.value;
+}
+exports.tidalLookup = onCall(
+  { secrets: [TIDAL_CLIENT_ID, TIDAL_CLIENT_SECRET], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    const { allowed } = await waRoles(email);
+    if (!allowed) throw new HttpsError("permission-denied", "Not allowed.");
+    const title = String((request.data && request.data.title) || "").trim();
+    const artist = String((request.data && request.data.artist) || "").trim();
+    if (!title && !artist) return { url: null };
+    const token = await tidalToken();
+    if (!token) return { url: null };
+    try {
+      const q = encodeURIComponent(`${title} ${artist}`.trim());
+      const r = await fetch(`https://openapi.tidal.com/v2/searchResults/${q}?countryCode=ZA&include=tracks`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.api+json" },
+      });
+      if (!r.ok) return { url: null };
+      const j = await r.json();
+      const order = (((j.data || {}).relationships || {}).tracks || {}).data || [];
+      const tracks = (j.included || []).filter((x) => x.type === "tracks");
+      const byId = {}; tracks.forEach((t) => { byId[t.id] = t; });
+      const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+      const want = norm(title);
+      const pick = order.map((x) => byId[x.id]).find((t) => t && norm(t.attributes && t.attributes.title) === want)
+        || order.map((x) => byId[x.id]).find((t) => t && norm(t.attributes && t.attributes.title).includes(want))
+        || byId[(order[0] || {}).id];
+      if (!pick) return { url: null };
+      const link = (pick.attributes && (pick.attributes.externalLinks || []).find((l) => l.href));
+      return { url: link ? link.href : `https://tidal.com/browse/track/${pick.id}` };
+    } catch (e) { return { url: null }; }
   },
 );
 
