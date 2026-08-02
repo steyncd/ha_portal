@@ -26,6 +26,7 @@
     traffic: () => import("./views/Traffic.svelte"),
     lights: () => import("./views/Lights.svelte"),
     reminders: () => import("./views/Reminders.svelte"),
+    trello: () => import("./views/Trello.svelte"),
     system: () => import("./views/System.svelte"),
     control: () => import("./views/ControlHub.svelte"),
     me: () => import("./views/MeHub.svelte"),

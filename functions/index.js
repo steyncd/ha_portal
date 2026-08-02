@@ -32,6 +32,8 @@ const SHIP24_KEY = defineSecret("SHIP24_KEY");
 const TMDB_KEY = defineSecret("TMDB_KEY");
 const TIDAL_CLIENT_ID = defineSecret("TIDAL_CLIENT_ID");
 const TIDAL_CLIENT_SECRET = defineSecret("TIDAL_CLIENT_SECRET");
+const TRELLO_KEY = defineSecret("TRELLO_KEY");
+const TRELLO_TOKEN = defineSecret("TRELLO_TOKEN");
 
 const RATE_LIMIT = 30; // max messages per sender per rolling minute
 const WINDOW_MS = 60_000;
@@ -233,6 +235,84 @@ exports.parseDocument = onRequest(
     } catch (e) {
       logger.error("parseDocument failed", e);
       res.status(500).json({ ok: false, error: String((e && e.message) || e) });
+    }
+  },
+);
+
+// ---- Trello proxy: read boards/lists/cards + manage cards via the Trello REST
+// API, with the key/token kept server-side. Any signed-in portal user may call.
+// The HA "ha-trello" integration is read-only (counts only), so card contents
+// and mutations go straight to api.trello.com through here.
+exports.trelloApi = onRequest(
+  { secrets: [TRELLO_KEY, TRELLO_TOKEN], region: "us-central1", maxInstances: 5 },
+  async (req, res) => {
+    const authz = req.headers.authorization || "";
+    const idToken = authz.startsWith("Bearer ") ? authz.slice(7) : "";
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+
+    const key = TRELLO_KEY.value(), token = TRELLO_TOKEN.value();
+    if (!key || !token) { res.status(500).json({ ok: false, error: "Trello key/token not configured" }); return; }
+    const auth = `key=${encodeURIComponent(key)}&token=${encodeURIComponent(token)}`;
+    const base = "https://api.trello.com/1";
+    const call = async (method, path, extra) => {
+      const url = `${base}${path}${path.includes("?") ? "&" : "?"}${auth}`;
+      const r = await fetch(url, { method, ...(extra || {}) });
+      const text = await r.text();
+      let body; try { body = text ? JSON.parse(text) : null; } catch { body = text; }
+      if (!r.ok) throw new Error((body && body.message) || `Trello ${r.status}`);
+      return body;
+    };
+    try {
+      const action = (req.query.action || (req.body && req.body.action) || "").toString();
+      if (req.method === "GET" && action === "boards") {
+        const boards = await call("GET", "/members/me/boards?filter=open&fields=name,id,prefs");
+        res.json({ ok: true, boards: (boards || []).map((b) => ({ id: b.id, name: b.name })) });
+        return;
+      }
+      if (req.method === "GET" && action === "board") {
+        const boardId = (req.query.boardId || "").toString();
+        if (!boardId) { res.status(400).json({ ok: false, error: "missing boardId" }); return; }
+        const lists = await call("GET", `/boards/${boardId}/lists?filter=open&fields=name,pos&cards=open&card_fields=name,due,dueComplete,labels,shortUrl,idList,pos`);
+        res.json({ ok: true, lists });
+        return;
+      }
+      if (req.method === "POST") {
+        const d = req.body || {};
+        if (action === "create") {
+          const q = new URLSearchParams({ idList: d.listId, name: d.name || "New card", pos: d.pos || "bottom" });
+          if (d.due) q.set("due", d.due);
+          const card = await call("POST", `/cards?${q.toString()}`);
+          res.json({ ok: true, card });
+          return;
+        }
+        if (action === "move") {
+          const q = new URLSearchParams({ idList: d.destListId });
+          if (d.pos) q.set("pos", String(d.pos));
+          const card = await call("PUT", `/cards/${d.cardId}?${q.toString()}`);
+          res.json({ ok: true, card });
+          return;
+        }
+        if (action === "complete") {
+          const card = await call("PUT", `/cards/${d.cardId}?dueComplete=${d.dueComplete ? "true" : "false"}`);
+          res.json({ ok: true, card });
+          return;
+        }
+        if (action === "archive") {
+          const card = await call("PUT", `/cards/${d.cardId}?closed=${d.closed === false ? "false" : "true"}`);
+          res.json({ ok: true, card });
+          return;
+        }
+        if (action === "rename") {
+          const card = await call("PUT", `/cards/${d.cardId}?name=${encodeURIComponent(d.name || "")}`);
+          res.json({ ok: true, card });
+          return;
+        }
+      }
+      res.status(400).json({ ok: false, error: "unknown action" });
+    } catch (e) {
+      logger.error("trelloApi failed", e);
+      res.status(502).json({ ok: false, error: String((e && e.message) || e) });
     }
   },
 );

@@ -1,6 +1,6 @@
 export type ViewId =
   | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "control" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "system" | "control" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -25,6 +25,7 @@ export const NAV: NavItem[] = [
   { id: "lights", name: "Lights", icon: "💡", ic: "bulb", group: "Home", color: "var(--solar)" },
   { id: "appliances", name: "Appliances", icon: "🔌", ic: "plug", group: "Home", color: "var(--load)" },
   { id: "reminders", name: "Reminders", icon: "⏰", ic: "clock", group: "Home", color: "var(--acc)" },
+  { id: "trello", name: "Trello", icon: "📋", ic: "board", group: "Home", color: "var(--acc)" },
   { id: "system", name: "System", icon: "🖥️", ic: "monitor", group: "Home", color: "var(--muted)" },
   { id: "control", name: "Control", icon: "🎛️", ic: "sliders", group: "Home", color: "var(--acc)" },
 

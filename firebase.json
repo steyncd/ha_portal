@@ -20,6 +20,10 @@
           "function": { "functionId": "parseDocument", "region": "us-central1" }
         },
         {
+          "source": "/api/trello",
+          "function": { "functionId": "trelloApi", "region": "us-central1" }
+        },
+        {
           "source": "/api/refresh-parcels",
           "function": { "functionId": "refreshParcelsNow", "region": "us-central1" }
         },
