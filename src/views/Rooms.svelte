@@ -11,32 +11,54 @@
   type Room = { id: string; label: string; left: number; top: number; w: number; h: number; temps?: TempSrc[]; hum?: string; occ?: string; lights?: Dev[]; appliances?: Dev[] };
 
   const PLAN: Room[] = [
-    { id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3 },
-    { id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27, temps: [{ id: "sensor.patio_sensor_temperature", label: "Braai" }], hum: "sensor.patio_sensor_humidity", lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }] },
+    {
+      id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3, occ: "binary_sensor.helloliam_alarm_zone_023_beam_patio",
+      temps: [{ id: "sensor.back_yard_temperature", label: "Outside" }],
+      lights: [
+        { id: "switch.patio_lamp", label: "Patio Lamp", icon: "🪑" },
+        { id: "light.back_yard_pool_light", label: "Pool", icon: "🏊", power: "sensor.pool_light_power" },
+      ],
+    },
+    {
+      id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27,
+      temps: [{ id: "sensor.patio_sensor_temperature", label: "Braai" }], hum: "sensor.patio_sensor_humidity",
+      lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }],
+    },
     {
       id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27, occ: "binary_sensor.study_occupancy",
-      temps: [
-        { id: "sensor.study_bt_device_scanner_desk_temperature", label: "Desk" },
-        { id: "sensor.study_temperature", label: "Study" },
-      ],
-      hum: "sensor.study_bt_device_scanner_desk_humidity",
+      temps: [{ id: "sensor.study_sensor_temperature", label: "Study" }], hum: "sensor.study_sensor_humidity",
       lights: [
         { id: "light.study_lamp", label: "Study Lamp", icon: "📖", power: "sensor.study_lamp_power" },
         { id: "light.study_light_1", label: "Study Light 1", icon: "💡", power: "sensor.study_light_1_power" },
         { id: "light.study_light_2", label: "Study Light 2", icon: "💡", power: "sensor.study_light_2_power" },
       ],
-      appliances: [{ id: "switch.study_heater", label: "Study Heater", icon: "🔥", power: "sensor.study_heater_current_consumption" }],
+      appliances: [
+        { id: "switch.study_heater", label: "Heater", icon: "🔥", power: "sensor.study_heater_current_consumption" },
+        { id: "switch.work_pc", label: "Work PC", icon: "💻", power: "sensor.work_pc_current_consumption" },
+        { id: "switch.study_router_and_ha", label: "Router & HA", icon: "📶", power: "sensor.study_router_and_ha_power" },
+      ],
     },
-    { id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23, temps: [{ id: "sensor.liam_s_room_temperature", label: "Liam" }], hum: "sensor.liam_s_room_humidity" },
-    { id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23, temps: [{ id: "sensor.adjusted_temperature", label: "Eben" }], lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡", power: "sensor.eben_room_lamp_power" }] },
     {
-      id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23,
+      id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23,
+      temps: [{ id: "sensor.liam_s_room_temperature", label: "Liam" }], hum: "sensor.liam_s_room_humidity",
+      lights: [{ id: "light.liam_study_lamp", label: "Liam's Lamp", icon: "🛏️" }],
+    },
+    {
+      id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23,
+      temps: [{ id: "sensor.eben_s_room_temperature", label: "Eben" }],
+      lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡", power: "sensor.eben_room_lamp_power" }],
+    },
+    {
+      id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23, occ: "binary_sensor.main_bed_occupancy_stable",
       temps: [{ id: "sensor.main_room_temperature", label: "Main" }], hum: "sensor.main_bedroom_lamp_si7021_humidity",
       lights: [
         { id: "switch.main_bedroom_lamp", label: "Bedside", icon: "🛏️", power: "sensor.main_bedroom_lamp_power" },
-        { id: "light.main_bedroom_light", label: "Ceiling", icon: "💡" },
-        { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+        { id: "switch.main_bedroom_light", label: "Ceiling", icon: "💡" },
+        { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+        { id: "switch.bedroom_reading_lamp", label: "Reading", icon: "📖" },
+        { id: "switch.main_bedroom_outdoor_lights", label: "Outdoor", icon: "🌙" },
       ],
+      appliances: [{ id: "switch.main_bedroom_plugs", label: "Plugs", icon: "🔌", power: "sensor.main_bedroom_plugs_current_consumption" }],
     },
     {
       id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8, occ: "binary_sensor.lounge_area_occupancy",
@@ -44,11 +66,17 @@
       lights: [
         { id: "switch.living_room_lamp", label: "Living", icon: "🛋️", power: "sensor.living_room_lamp_power" },
         { id: "switch.tv_room_lamp", label: "TV Lamp", icon: "📺", power: "sensor.tv_room_lamp_power" },
+        { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️" },
       ],
+      appliances: [{ id: "switch.living_room_main_tv_plug", label: "TV", icon: "📺", power: "sensor.living_room_main_tv_plug_power" }],
     },
-    { id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8, temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity", lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️", power: "sensor.dining_room_lamp_power" }] },
     {
-      id: "kitchen", label: "Kitchen", left: 40.9, top: 57.4, w: 15.6, h: 27.7,
+      id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8,
+      temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity",
+      lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️", power: "sensor.dining_room_lamp_power" }],
+    },
+    {
+      id: "kitchen", label: "Kitchen", left: 40.9, top: 57.4, w: 15.6, h: 27.7, occ: "binary_sensor.helloliam_alarm_zone_009_pir_kitchen",
       temps: [{ id: "sensor.kitchen_sensor_temperature", label: "Kitchen" }], hum: "sensor.kitchen_sensor_humidity",
       lights: [
         { id: "switch.kitchen_lights", label: "Ceiling", icon: "💡", power: "sensor.kitchen_lights_power" },
@@ -63,11 +91,21 @@
         { id: "switch.nespresso", label: "Nespresso", icon: "☕", power: "sensor.nespresso_current_consumption" },
       ],
     },
-    { id: "passage", label: "Passage", left: 40.9, top: 51.4, w: 59.1, h: 6.1 },
+    {
+      id: "passage", label: "Passage", left: 40.9, top: 51.4, w: 59.1, h: 6.1, occ: "binary_sensor.hallway_motion_sensor_occupancy",
+      lights: [{ id: "switch.hallway_light", label: "Hallway", icon: "🚶" }],
+    },
     { id: "bath", label: "Bath", left: 56.5, top: 57.4, w: 11.8, h: 27.7 },
-    { id: "bed3", label: "Bed 3", left: 68.3, top: 57.4, w: 16.7, h: 27.7, temps: [{ id: "sensor.guest_room_temperature", label: "Guest" }], hum: "sensor.guest_room_humidity", lights: [{ id: "light.guest_room_guest_room", label: "Guest Lamp", icon: "🛏️", power: "sensor.guest_room_lamp_power" }] },
-    { id: "ensuite", label: "En-suite", left: 85, top: 57.4, w: 15.1, h: 27.7 },
-    { id: "entrance", label: "Entry", left: 0, top: 85.1, w: 15.6, h: 14.9 },
+    {
+      id: "bed3", label: "Guest", left: 68.3, top: 57.4, w: 16.7, h: 27.7, occ: "binary_sensor.helloliam_alarm_zone_002_pir_guest_room",
+      temps: [{ id: "sensor.guest_room_temperature", label: "Guest" }], hum: "sensor.guest_room_humidity",
+      lights: [{ id: "light.guest_room_guest_room", label: "Guest Lamp", icon: "🛏️", power: "sensor.guest_room_lamp_power" }],
+    },
+    { id: "ensuite", label: "En-suite", left: 85, top: 57.4, w: 15.1, h: 27.7, lights: [{ id: "switch.main_bathroom_light", label: "Bathroom", icon: "🚿" }] },
+    {
+      id: "entrance", label: "Entry", left: 0, top: 85.1, w: 15.6, h: 14.9, occ: "binary_sensor.entrance_entrance_sensor",
+      temps: [{ id: "sensor.entrance_entrance_sensor_temperature", label: "Entry" }], hum: "sensor.entrance_entrance_sensor_humidity",
+    },
   ];
 
   // 5-band temperature heat scale (house runs cold; bands per prototype 14/17/21.5/25)
@@ -111,7 +149,7 @@
   // Outdoor actual vs weather-service forecast (48h overlay)
   let outHist = $state<{ t: number; v: number }[]>([]);
   let fcHist = $state<{ t: number; v: number }[]>([]);
-  // Floating (portable) temperature sensor — roams the house, not tied to a room.
+  // Courtyard / back-door outdoor sensor (temp + humidity outside the back door).
   let fhist = $state<{ t: number; v: number }[]>([]);
   onMount(async () => {
     outHist = await ha.history("sensor.outdoor_temperature", 48);
@@ -120,7 +158,7 @@
   });
   const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
 
-  // Floating Temp Sensor (portable Zigbee): temp + humidity + light + battery.
+  // Courtyard / back-door sensor (Zigbee, outdoors): temp + humidity + light + battery.
   const FLOAT_T = "sensor.floating_temp_sensor_temperature";
   const ftemp = $derived(ha.num(FLOAT_T));
   const fhum = $derived(ha.num("sensor.floating_temp_sensor_humidity"));
@@ -219,7 +257,7 @@
 
   {#if ha.available(FLOAT_T)}
     <div class="card pad">
-      <div class="rh"><span class="an">📟 Floating sensor</span><span class="sub">portable{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
+      <div class="rh"><span class="an">🌿 Courtyard / Back door</span><span class="sub">outside{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
       <div class="tr">
         <div class="bigt" style="color:{tempColor(ftemp)}">{n(ftemp, 1)}<span class="deg">°</span></div>
         <div class="pill" style="background:color-mix(in srgb,{fcomfort.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{fcomfort.color} 34%,transparent)">

@@ -162,7 +162,10 @@
   // Personal device batteries (detail lives in the Batteries tab).
   const DEVICE_BATTS = [
     { icon: "📱", name: "iPhone", level: "sensor.hello_battery_level", state: "sensor.hello_battery_state" },
+    { icon: "📲", name: "iPad", level: "sensor.ipad_battery_level", state: "sensor.ipad_battery_state" },
     { icon: "⌚", name: "Watch", level: "sensor.hello_watch_battery_level", state: "sensor.hello_watch_battery_state" },
+    // AirPods: no HA sensor — lowest of the case/L/R input_number helpers (Shortcut-synced).
+    { icon: "🎧", name: "AirPods", subs: ["input_number.airpods_case_battery", "input_number.airpods_left_battery", "input_number.airpods_right_battery"] },
     { icon: "💻", name: "MacBook", level: "sensor.christos_macbook_internal_battery_level", state: "sensor.christos_macbook_internal_battery_state" },
   ];
   const battC = (v: number | null) => (v == null ? "var(--muted)" : v <= 15 ? "var(--error)" : v <= 35 ? "var(--warning)" : "var(--success)");
@@ -194,14 +197,15 @@
     <div class="rh"><span class="lb">🔋 My devices</span><span class="sub">detail in Batteries tab</span></div>
     <div class="dbgrid">
       {#each DEVICE_BATTS as b}
-        {@const lvl = ha.num(b.level)}
-        {@const avail = ha.available(b.level)}
-        {@const st = ha.state(b.state)}
+        {@const subLvls = b.subs ? b.subs.map((s) => ha.num(s)).filter((v) => v != null) : null}
+        {@const lvl = subLvls ? (subLvls.length ? Math.min(...subLvls) : null) : ha.num(b.level ?? "")}
+        {@const avail = subLvls ? subLvls.length > 0 : ha.available(b.level ?? "")}
+        {@const st = b.state ? ha.state(b.state) : undefined}
         <div class="db">
           <span class="dbi">{b.icon}</span>
           <div class="dbm">
             <div class="dbn">{b.name}</div>
-            <div class="dbs">{avail ? (isCharging(st) ? "⚡ charging" : (st ?? "")) : "asleep"}</div>
+            <div class="dbs">{avail ? (b.subs ? "lowest of 3" : isCharging(st) ? "⚡ charging" : (st ?? "")) : b.subs ? "not synced" : "asleep"}</div>
           </div>
           <div class="dbp" style="color:{battC(lvl)}">{avail ? `${n(lvl)}%` : "—"}</div>
         </div>

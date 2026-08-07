@@ -10,12 +10,22 @@
   import Spark from "../lib/components/Spark.svelte";
   import { n } from "../lib/format";
 
-  type Kind = "ios" | "mac" | "oura" | "android";
-  type Dev = { key: string; name: string; icon: string; level: string; state?: string; analysis?: string; health?: string; kind: Kind };
+  type Kind = "ios" | "mac" | "oura" | "android" | "airpods";
+  type Sub = { label: string; id: string };
+  type Dev = { key: string; name: string; icon: string; level: string; state?: string; analysis?: string; health?: string; kind: Kind; subs?: Sub[] };
 
   const DEVICES: Dev[] = [
     { key: "phone", name: "iPhone", icon: "📱", level: "sensor.hello_battery_level", state: "sensor.hello_battery_state", kind: "ios" },
+    { key: "ipad", name: "iPad", icon: "📲", level: "sensor.ipad_battery_level", state: "sensor.ipad_battery_state", kind: "ios" },
     { key: "watch", name: "Apple Watch", icon: "⌚", level: "sensor.hello_watch_battery_level", state: "sensor.hello_watch_battery_state", kind: "ios" },
+    // AirPods aren't exposed to HA — case/L/R are input_number helpers kept fresh
+    // by an iOS Shortcut (webhook: airpods_battery_sync). Headline % = lowest of the three.
+    { key: "airpods", name: "AirPods Pro", icon: "🎧", level: "input_number.airpods_left_battery", kind: "airpods",
+      subs: [
+        { label: "Case", id: "input_number.airpods_case_battery" },
+        { label: "Left", id: "input_number.airpods_left_battery" },
+        { label: "Right", id: "input_number.airpods_right_battery" },
+      ] },
     { key: "ring", name: "Oura Ring", icon: "💍", level: "sensor.oura_ring_battery_level", analysis: "sensor.oura_battery_analysis", kind: "oura" },
     { key: "mac", name: "MacBook", icon: "💻", level: "sensor.christos_macbook_internal_battery_level", state: "sensor.christos_macbook_internal_battery_state", kind: "mac" },
     { key: "kid", name: "Kid's Phone", icon: "📲", level: "sensor.kid_s_phone_battery_level", state: "sensor.kid_s_phone_battery_state", health: "sensor.kid_s_phone_battery_health", kind: "android" },
@@ -51,15 +61,20 @@
 
   const rows = $derived(
     DEVICES.map((d) => {
-      const lvl = ha.num(d.level);
-      const avail = ha.available(d.level);
+      // AirPods: headline % is the lowest of case / L / R; per-sub bars rendered below.
+      const subs = d.subs?.map((s) => ({ ...s, v: ha.num(s.id), avail: ha.available(s.id) })) ?? [];
+      const subAvail = subs.filter((s) => s.avail && s.v != null);
+      const lvl = d.kind === "airpods"
+        ? (subAvail.length ? Math.min(...subAvail.map((s) => s.v as number)) : null)
+        : ha.num(d.level);
+      const avail = d.kind === "airpods" ? subAvail.length > 0 : ha.available(d.level);
       const st = d.state ? ha.state(d.state) : undefined;
       const charging = st ? /charg/i.test(st) && !/not|dis/i.test(st) : false;
       // Freshness: iOS pushes battery sporadically — flag when it hasn't reported in a while.
       const lu = ha.entities[d.level]?.last_updated;
       const staleH = lu ? (Date.now() - Date.parse(lu)) / 3_600_000 : null;
       const stale = avail && staleH != null && staleH > 1;
-      return { d, lvl, avail, st, charging, staleH, stale, series: hist[d.key] ?? [], a: analyse(hist[d.key] ?? []) };
+      return { d, lvl, avail, st, charging, staleH, stale, subs, series: hist[d.key] ?? [], a: d.kind === "airpods" ? null : analyse(hist[d.key] ?? []) };
     }),
   );
 
@@ -85,7 +100,9 @@
             <div class="dn">{r.d.name}</div>
             <div class="ds">
               {#if !r.avail}
-                {r.d.kind === "mac" ? "Asleep / not reporting" : "Unavailable"}
+                {r.d.kind === "mac" ? "Asleep / not reporting" : r.d.kind === "airpods" ? "Not synced yet" : "Unavailable"}
+              {:else if r.d.kind === "airpods"}
+                Synced from Mac / Shortcut
               {:else if r.charging}
                 <span style="color:var(--success)">⚡ Charging</span>
               {:else if r.d.kind === "oura"}
@@ -101,6 +118,17 @@
 
         <div class="bar"><div class="fill" style="width:{r.avail ? r.lvl ?? 0 : 0}%;background:{colr(r.lvl)}"></div></div>
 
+        {#if r.d.kind === "airpods"}
+          <div class="subs">
+            {#each r.subs as s (s.id)}
+              <div class="sub">
+                <div class="subhd"><span class="subl">{s.label}</span><span class="subv" style="color:{colr(s.v)}">{s.avail && s.v != null ? `${n(s.v)}%` : "—"}</span></div>
+                <div class="bar sm"><div class="fill" style="width:{s.avail && s.v != null ? s.v : 0}%;background:{colr(s.v)}"></div></div>
+              </div>
+            {/each}
+          </div>
+          <div class="health note">Not exposed to HA — kept fresh by an iOS Shortcut (AirPods-connect trigger → webhook).</div>
+        {:else}
         {#if r.series.length > 2}
           <div class="spk"><Spark data={r.series} color={colr(r.lvl)} forceMax={100} height={48} /></div>
         {/if}
@@ -116,6 +144,7 @@
           <div class="health">Reported health: <b>{ha.state(r.d.health!)}</b></div>
         {:else if r.d.kind === "ios" || r.d.kind === "mac"}
           <div class="health note">Apple doesn't report battery health to HA — figures above are derived from usage.</div>
+        {/if}
         {/if}
       </div>
     {/each}
@@ -142,6 +171,11 @@
   .bar { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin: 14px 0 4px; }
   .fill { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
   .spk { margin: 6px 0 10px; }
+  .subs { display: flex; flex-direction: column; gap: 9px; margin: 12px 0 4px; }
+  .subhd { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .subl { font-size: 12px; color: var(--muted); }
+  .subv { font-size: 13.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .bar.sm { height: 6px; margin: 0; }
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .s { text-align: center; padding: 9px 4px; border-radius: 11px; background: rgba(255, 255, 255, 0.035); }
   .sv { font-size: 14.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
