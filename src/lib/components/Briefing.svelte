@@ -67,7 +67,7 @@
 </div>
 
 <style>
-  .brief { padding: 18px; }
+  .brief { padding: 18px; margin: 0 0 14px; break-inside: avoid; }
   .bh { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
   .ic { font-size: 20px; }
   .ttl { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; flex: 1; min-width: 0; }

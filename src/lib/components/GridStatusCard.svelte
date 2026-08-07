@@ -54,6 +54,7 @@
 </div>
 
 <style>
+  .grid { padding: 18px; margin: 0 0 14px; break-inside: avoid; }
   .grid.alert { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--error) 55%, transparent); }
   .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .urg { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); background: rgba(255,255,255,0.05); border-radius: 999px; padding: 3px 9px; }

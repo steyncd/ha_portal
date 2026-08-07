@@ -78,10 +78,10 @@
   @media (max-width: 1000px) { .grid { grid-template-columns: repeat(4, 1fr); } }
   @media (max-width: 560px) { .grid { grid-template-columns: repeat(3, 1fr); } }
 
-  .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 15px 8px; border-radius: 16px; background: var(--card, rgba(255,255,255,0.045)); border: 1px solid var(--line, rgba(255,255,255,0.07)); transition: transform 0.12s, background 0.15s, box-shadow 0.15s; min-height: 86px; }
+  .tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 15px 8px; border-radius: var(--r-card, 16px); background: rgba(255,255,255,0.045); box-shadow: inset 0 1px 0 rgba(255,255,255,0.06); transition: transform 0.12s, background 0.15s, box-shadow 0.15s; min-height: 86px; }
   .tile:hover { background: rgba(255,255,255,0.08); transform: translateY(-1px); }
   .tile:active { transform: translateY(0) scale(0.98); }
-  .tile.on { background: color-mix(in srgb, var(--acc) 16%, transparent); border-color: color-mix(in srgb, var(--acc) 45%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--acc) 30%, transparent); }
+  .tile.on { background: color-mix(in srgb, var(--acc) 16%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 42%, transparent); }
   .ic { font-size: 22px; line-height: 1; }
   .nm { font-size: 11.5px; font-weight: 600; color: var(--text, #eef4fc); text-align: center; }
   .st { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }

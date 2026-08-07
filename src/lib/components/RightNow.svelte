@@ -40,7 +40,7 @@
 
     if (away) {
       return {
-        key: "away", icon: "🚪", title: "You're away",
+        key: "away", icon: "🚪", title: "Away",
         chips: keep([
           { icon: "🛡️", label: armed ? "Alarm armed" : "Alarm off" },
           chip(gate, "🚗", `${n(gate)} at gate today`),
@@ -51,7 +51,7 @@
     }
     if (h >= 5 && h < 11) {
       return {
-        key: "morning", icon: "☀️", title: "Good morning",
+        key: "morning", icon: "☀️", title: "Morning",
         chips: keep([
           chip(readiness, "💍", `Readiness ${n(readiness)}`),
           outdoor != null ? { icon: wx, label: `${n(outdoor)}° out` } : null,
@@ -84,7 +84,7 @@
     }
     // night
     return {
-      key: "night", icon: "🌙", title: "Winding down",
+      key: "night", icon: "🌙", title: "Night",
       chips: keep([
         { icon: "🛡️", label: armed ? "Alarm armed" : "Alarm off" },
         chip(soc, "🔋", `${n(soc)}% reserve`),
@@ -110,7 +110,7 @@
 </div>
 
 <style>
-  .rn { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border-radius: 15px; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.07)); }
+  .rn { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border-radius: var(--r-card, 18px); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 40px -28px #000; }
   .pic { font-size: 20px; flex: none; }
   .ttl { font-size: 13.5px; font-weight: 700; color: var(--text); flex: none; }
   .chips { display: flex; flex-wrap: wrap; gap: 7px; flex: 1; min-width: 0; }

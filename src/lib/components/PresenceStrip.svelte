@@ -40,7 +40,7 @@
 {/if}
 
 <style>
-  .who { padding: 18px; }
+  .who { padding: 18px; margin: 0 0 14px; break-inside: avoid; }
   .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .sub { font-size: 12px; color: var(--dim); }
