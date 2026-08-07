@@ -36,6 +36,10 @@
           "function": { "functionId": "kidPayout", "region": "us-central1" }
         },
         {
+          "source": "/api/warehouse-now",
+          "function": { "functionId": "warehouseSnapshotNow", "region": "us-central1" }
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }

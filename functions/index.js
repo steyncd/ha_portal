@@ -16,6 +16,7 @@ const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { Firestore } = require("@google-cloud/firestore");
+const { BigQuery } = require("@google-cloud/bigquery");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -1092,5 +1093,76 @@ exports.kidPayout = onRequest(
       logger.warn("kidPayout finance post failed", { error: String((e && e.message) || e) });
       res.status(200).json({ ok: true, posted: false, note: String((e && e.message) || e) });
     }
+  },
+);
+
+// ---- BigQuery warehouse -----------------------------------------------------
+// A nightly snapshot of the home's key metrics into BigQuery, so months/years
+// of history can be queried in SQL and charted in Looker Studio — the long-term
+// store InfluxDB (operational) doesn't give us for cross-source joins.
+// Dataset/table are auto-created; the function's service account needs BigQuery
+// access (project Editor covers it, else grant roles/bigquery.dataEditor +
+// roles/bigquery.jobUser).
+const BQ_DATASET = "home";
+const BQ_TABLE = "daily";
+// [HA entity_id, BigQuery column] — numeric daily metrics.
+const WAREHOUSE_METRICS = [
+  ["sensor.victron_battery_soc", "battery_soc"],
+  ["sensor.solar_yield_today", "solar_kwh"],
+  ["sensor.victron_grid_import_today", "grid_import_kwh"],
+  ["sensor.grid_independence_today", "grid_independence_pct"],
+  ["sensor.energy_cost_today", "energy_cost"],
+  ["sensor.water_used_today", "water_l"],
+  ["sensor.borehole_pump_water_pumped_today", "borehole_l"],
+  ["sensor.jojo_tank_monitor_tank_water_level", "tank_pct"],
+  ["sensor.indoor_average_temperature", "indoor_temp"],
+  ["sensor.outdoor_temperature", "outdoor_temp"],
+  ["sensor.load_shedding_urgency", "loadshed_urgency"],
+  ["sensor.oura_readiness_score", "oura_readiness"],
+  ["sensor.oura_sleep_score", "oura_sleep"],
+  ["sensor.vehicles_today", "vehicles"],
+  ["sensor.pedestrians_today", "pedestrians"],
+];
+
+async function runWarehouseSnapshot() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const s = sastDate();
+  const row = { date: `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-${String(s.getUTCDate()).padStart(2, "0")}` };
+  for (const [id, col] of WAREHOUSE_METRICS) row[col] = num(id);
+
+  const bq = new BigQuery();
+  const dataset = bq.dataset(BQ_DATASET);
+  const [dsExists] = await dataset.exists();
+  if (!dsExists) await dataset.create();
+  const table = dataset.table(BQ_TABLE);
+  const [tExists] = await table.exists();
+  if (!tExists) {
+    const schema = [{ name: "date", type: "DATE" }, ...WAREHOUSE_METRICS.map(([, col]) => ({ name: col, type: "FLOAT" }))];
+    await table.create({ schema });
+  }
+  await table.insert([row]);
+  logger.info("warehouseSnapshot", { date: row.date, cols: Object.keys(row).length });
+  return row;
+}
+
+exports.warehouseSnapshot = onSchedule(
+  { schedule: "55 23 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runWarehouseSnapshot(); },
+);
+
+exports.warehouseSnapshotNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { const row = await runWarehouseSnapshot(); res.status(200).json({ ok: true, row }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );
