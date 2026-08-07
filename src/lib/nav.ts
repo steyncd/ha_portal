@@ -1,6 +1,6 @@
 export type ViewId =
   | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "system" | "control" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "meals" | "fairplay" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -25,11 +25,15 @@ export const NAV: NavItem[] = [
   { id: "lights", name: "Lights", icon: "💡", ic: "bulb", group: "Home", color: "var(--solar)" },
   { id: "appliances", name: "Appliances", icon: "🔌", ic: "plug", group: "Home", color: "var(--load)" },
   { id: "reminders", name: "Reminders", icon: "⏰", ic: "clock", group: "Home", color: "var(--acc)" },
+  { id: "meals", name: "Meals", icon: "🍽️", ic: "pot", group: "Home", color: "var(--load)" },
+  { id: "fairplay", name: "Fair Play", icon: "🃏", ic: "sliders", group: "Home", color: "var(--health)" },
   { id: "trello", name: "Trello", icon: "📋", ic: "board", group: "Home", color: "var(--acc)" },
   { id: "system", name: "System", icon: "🖥️", ic: "monitor", group: "Home", color: "var(--muted)" },
   { id: "control", name: "Control", icon: "🎛️", ic: "sliders", group: "Home", color: "var(--acc)" },
 
   { id: "me", name: "Me", icon: "👤", ic: "user", group: "You", color: "var(--health)" },
+  { id: "faith", name: "Faith", icon: "🙏", ic: "book", group: "You", color: "var(--acc)" },
+  { id: "kids", name: "Kids", icon: "🧒", ic: "user", group: "You", color: "var(--water)" },
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "You", color: "var(--acc)" },
 
   { id: "insights", name: "Insights", icon: "📈", ic: "trending", group: "Bottom", color: "var(--acc)" },

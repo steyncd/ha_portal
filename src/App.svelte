@@ -8,6 +8,7 @@
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
+  import { sabbath, SABBATH_HIDDEN } from "./lib/sabbath.svelte";
   // Views are lazy-loaded (dynamic import) so only the active view's code ships in
   // the initial parse — Vite emits one chunk per view. Keeps first paint light on
   // low-power devices (TV/phone) where parsing the whole app up front was costly.
@@ -27,9 +28,13 @@
     lights: () => import("./views/Lights.svelte"),
     reminders: () => import("./views/Reminders.svelte"),
     trello: () => import("./views/Trello.svelte"),
+    meals: () => import("./views/Meals.svelte"),
+    fairplay: () => import("./views/FairPlay.svelte"),
     system: () => import("./views/System.svelte"),
     control: () => import("./views/ControlHub.svelte"),
     me: () => import("./views/MeHub.svelte"),
+    faith: () => import("./views/Faith.svelte"),
+    kids: () => import("./views/Kids.svelte"),
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
     insights: () => import("./views/Insights.svelte"),
@@ -109,11 +114,15 @@
   $effect(() => {
     if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
   });
+  // Subscribe to the household Sabbath flag once we're in.
+  $effect(() => { if (mockMode || authStore.status === "ready") sabbath.start(); });
 
   const visible = (id: ViewId) => {
     // Guest ROLE (server-defined): only Overview + the views shared with them;
     // never Settings. Not toggleable by the guest.
     if (authStore.isGuest) return id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
+    // Sabbath mode quietens work/admin/money views (Faith, Overview & Settings stay).
+    if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
     // Members/owners: honour the per-device guest toggle + enabled-views prefs.
     return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
       (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
