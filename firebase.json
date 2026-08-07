@@ -28,6 +28,14 @@
           "function": { "functionId": "refreshParcelsNow", "region": "us-central1" }
         },
         {
+          "source": "/api/briefing",
+          "function": { "functionId": "getBriefing", "region": "us-central1" }
+        },
+        {
+          "source": "/api/kid-payout",
+          "function": { "functionId": "kidPayout", "region": "us-central1" }
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }

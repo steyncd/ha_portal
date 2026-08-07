@@ -25,6 +25,7 @@ type Stored = {
   settingsTab: string;
   viewsOn: Record<string, boolean>;
   widgets: Record<string, boolean>;
+  favourites: string[];
   trelloBoard: string;
   trelloLists: Record<string, boolean>;
 };
@@ -39,12 +40,13 @@ const DEFAULTS: Stored = {
   settingsTab: "account",
   viewsOn: {
     energy: true, powertrends: true, solar: true, water: true, irrigation: true, climate: true, appliances: true,
-    cameras: true, traffic: true, lights: true, reminders: true, trello: true, system: true, control: true, me: true, vitality: true, timeline: true, insights: true, markets: true,
+    cameras: true, traffic: true, lights: true, reminders: true, trello: true, meals: true, fairplay: true, system: true, control: true, me: true, faith: true, kids: true, vitality: true, timeline: true, insights: true, markets: true,
   },
   widgets: {
     scenes: true, lights: true, energyToday: true,
     security: true, activity: true, forecast: true,
   },
+  favourites: ["goodnight", "movie", "morning", "away", "lightsoff", "poolpump"],
   trelloBoard: "",
   trelloLists: {},
 };
@@ -62,6 +64,7 @@ function load(): Stored {
       density: p.density === "wall" ? "wall" : "comfortable",
       viewsOn: { ...DEFAULTS.viewsOn, ...(p.viewsOn ?? {}) },
       widgets: { ...DEFAULTS.widgets, ...(p.widgets ?? {}) },
+      favourites: Array.isArray(p.favourites) ? p.favourites : [...DEFAULTS.favourites],
       trelloBoard: typeof p.trelloBoard === "string" ? p.trelloBoard : "",
       trelloLists: { ...(p.trelloLists ?? {}) },
     };
@@ -80,6 +83,7 @@ class Prefs {
   settingsTab = $state(DEFAULTS.settingsTab);
   viewsOn = $state<Record<string, boolean>>({ ...DEFAULTS.viewsOn });
   widgets = $state<Record<string, boolean>>({ ...DEFAULTS.widgets });
+  favourites = $state<string[]>([...DEFAULTS.favourites]);
   trelloBoard = $state<string>("");
   trelloLists = $state<Record<string, boolean>>({});
 
@@ -94,6 +98,7 @@ class Prefs {
     this.settingsTab = s.settingsTab;
     this.viewsOn = s.viewsOn;
     this.widgets = s.widgets;
+    this.favourites = s.favourites;
     this.trelloBoard = s.trelloBoard;
     this.trelloLists = s.trelloLists;
   }
@@ -103,6 +108,7 @@ class Prefs {
       theme: this.theme, motion: this.motion, density: this.density,
       collapsed: this.collapsed, guest: this.guest, defaultView: this.defaultView,
       settingsTab: this.settingsTab, viewsOn: this.viewsOn, widgets: this.widgets,
+      favourites: this.favourites,
       trelloBoard: this.trelloBoard, trelloLists: this.trelloLists,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore */ }

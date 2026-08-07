@@ -43,6 +43,16 @@ export const E = {
   energyGrade: "sensor.energy_report_card",
   gridLostAlarm: "sensor.victron_grid_lost_alarm",
 
+  // Loadshedding + Eskom time-of-use tariff (SA grid context)
+  loadsheddingStatus: "sensor.loadshedding",
+  loadsheddingActive: "binary_sensor.national_loadshedding_active",
+  loadsheddingUrgency: "sensor.load_shedding_urgency",
+  loadsheddingCost: "sensor.loadshedding_cost_impact",
+  eskomStage: "sensor.eskom_national_stage",
+  eskomTariffPeriod: "sensor.eskom_current_tariff_period",
+  eskomRate: "sensor.eskom_current_rate",
+  eskomNextChange: "sensor.eskom_next_rate_change",
+
   // Water
   tankLevel: "sensor.jojo_tank_monitor_tank_water_level",
   tankVolume: "sensor.jojo_tank_monitor_tank_water_volume",
@@ -306,12 +316,20 @@ export const LIGHT_AREAS: LightArea[] = [
     { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️", members: 3 },
   ] },
   { name: "Bedrooms", icon: "🛏️", lights: [
+    // Main-bedroom ceiling + dresser are switch.* entities (not light.*) — the
+    // old light.* ids didn't exist, so the tiles showed "Unavailable".
     { id: "switch.main_bedroom_lamp", label: "Main Bedroom Lamp", icon: "🛏️" },
-    { id: "light.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
-    { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "switch.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
+    { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "switch.bedroom_reading_lamp", label: "Reading Lamp", icon: "📖" },
     { id: "light.eben_room_lamp", label: "Eben's Room", icon: "🛏️" },
+    { id: "light.liam_study_lamp", label: "Liam's Lamp", icon: "🛏️" },
     { id: "switch.guest_room", label: "Guest Room", icon: "🛏️" },
     { id: "group.room_lamps", label: "Room Lamps", icon: "🗂️", members: 3 },
+  ] },
+  { name: "Bathroom & Hallway", icon: "🚿", lights: [
+    { id: "switch.main_bathroom_light", label: "Main Bathroom", icon: "🚿" },
+    { id: "switch.hallway_light", label: "Hallway", icon: "🚶" },
   ] },
   { name: "Study", icon: "📚", lights: [
     { id: "light.study_lamp", label: "Study Lamp", icon: "📚" },

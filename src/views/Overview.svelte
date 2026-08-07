@@ -13,6 +13,13 @@
   import StatusChip from "../lib/components/StatusChip.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import HomeStatusStrip from "../lib/components/HomeStatusStrip.svelte";
+  import NeedsAttention from "../lib/components/NeedsAttention.svelte";
+  import Favourites from "../lib/components/Favourites.svelte";
+  import RightNow from "../lib/components/RightNow.svelte";
+  import GridStatusCard from "../lib/components/GridStatusCard.svelte";
+  import Briefing from "../lib/components/Briefing.svelte";
+  import PresenceStrip from "../lib/components/PresenceStrip.svelte";
+  import { computeAttention } from "../lib/attention";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -103,20 +110,8 @@
 
   const armed = $derived((ha.state(E.alarmMain) ?? "").startsWith("armed"));
 
-  // attention items — only shown when something needs attention; some carry a
-  // one-tap contextual fix (Aurora recc 5d/5e).
-  type Attn = { text: string; action?: { label: string; run: () => void } };
-  const attention = $derived.by(() => {
-    const items: Attn[] = [];
-    if (ha.state(E.alarmMain) === "triggered") items.push({ text: "Alarm triggered" });
-    if (ha.state(E.tankLowAlert) === "on")
-      items.push({ text: "Water tank low", action: { label: "Start borehole", run: () => { ha.turnOn(E.boreholePump); toast.show("Starting borehole"); } } });
-    const lb = ha.num(E.lowBatteryDevices) ?? 0;
-    if (lb > 0) items.push({ text: `${lb} device${lb === 1 ? "" : "s"} low on battery` });
-    if ((ha.num(E.pvPower) ?? 999) < 40) items.push({ text: "PV asleep — hold heavy appliances" });
-    if (ha.state(E.alarmAcPower) === "off") items.push({ text: "Alarm on backup power" });
-    return items;
-  });
+  // "What needs me now" — the prioritised attention list (rules in lib/attention.ts).
+  const attention = $derived.by(() => computeAttention());
 
 </script>
 
@@ -142,26 +137,21 @@
   </div>
 </div>
 
-{#if attention.length}
-  <div class="attnstrip">
-    {#each attention as a}
-      <div class="attn attn--warn">
-        <span class="attn__badge">!</span>
-        <div class="attn__text">{a.text}</div>
-        {#if a.action}<button class="btn-primary" onclick={a.action.run}>{a.action.label}</button>{/if}
-      </div>
-    {/each}
-  </div>
-{:else}
-  <div class="attn calm">
-    <StatusChip state="ok" label="All clear" />
-    <div class="attn__text">Everything's running smoothly · {ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak</div>
-  </div>
-{/if}
+<NeedsAttention items={attention} {onnav} />
+
+<Favourites />
+
+<RightNow />
 
 <HomeStatusStrip />
 
 <div class="masonry">
+  <!-- daily briefing -->
+  <Briefing />
+
+  <!-- who's home -->
+  <PresenceStrip />
+
   <!-- power flow -->
   <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
     <div class="wh"><span class="lb">Power flow</span><span class="ok">{n(ha.num(E.gridIndepToday))}% independent →</span></div>
@@ -178,6 +168,9 @@
     </div>
     <div style="margin-top:14px"><Spark data={battHist} color="var(--acc)" forceMax={100} height={54} /></div>
   </div>
+
+  <!-- power & grid (loadshedding + TOU tariff) -->
+  <GridStatusCard />
 
   <!-- comfort -->
   <div class="w card">
@@ -327,8 +320,6 @@
   .crow:hover { background: rgba(255, 255, 255, 0.05); }
   .ci { font-size: 15px; width: 20px; text-align: center; }
   .cn { flex: 1; font-size: 12.5px; }
-  .attnstrip { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .attn.calm { margin-bottom: 16px; background: color-mix(in srgb, var(--ok) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 22%, transparent); }
   .ok { color: var(--ok); font-weight: 600; font-size: 12px; }
   .spx { color: var(--muted); font-size: 12px; }
   .spd { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }

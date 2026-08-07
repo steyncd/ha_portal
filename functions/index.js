@@ -836,3 +836,261 @@ exports.refreshParcelsNow = onRequest(
     catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );
+
+// ---- Home watchdog -------------------------------------------------------
+// Scheduled sweep of Home Assistant that pushes a notification the moment an
+// actionable problem appears — the proactive counterpart to the in-app "Needs
+// attention" card. It de-dupes via Firestore `watchdogState/{key}` so each
+// incident alerts once (on appearance), not every run; it re-arms when the
+// condition clears, so the next occurrence alerts again.
+
+// Fan a notification out to every registered device (shared with sendPush).
+async function pushToAll(title, body, tag) {
+  const snap = await db.collection("pushTokens").get();
+  const tokens = snap.docs.map((d) => d.id);
+  if (!tokens.length) return { sent: 0, note: "no devices" };
+  const resp = await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    webpush: { notification: { icon: "/favicon.svg", tag }, fcmOptions: { link: "/" } },
+    data: tag ? { tag } : {},
+  });
+  const dead = [];
+  resp.responses.forEach((r, i) => {
+    if (!r.success && ["messaging/registration-token-not-registered", "messaging/invalid-argument"].includes(r.error && r.error.code)) dead.push(tokens[i]);
+  });
+  await Promise.all(dead.map((t) => db.collection("pushTokens").doc(t).delete()));
+  return { sent: resp.successCount, failed: resp.failureCount, pruned: dead.length };
+}
+
+// Evaluate the ruleset against a fetched HA state map. Returns the list of
+// currently-firing incidents: { key, title, body }.
+function evalWatchdog(states) {
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+  const armed = (st("alarm_control_panel.olarm_alarm") || "").startsWith("armed");
+  // SAST = UTC+2 (no DST).
+  const hour = (new Date().getUTCHours() + 2) % 24;
+  const night = hour >= 21 || hour < 6;
+
+  const out = [];
+  const soc = num("sensor.victron_battery_soc");
+  if (soc != null && soc < 15) out.push({ key: "batt-crit", title: "🔋 Battery critically low", body: `Battery bank at ${Math.round(soc)}% — shed heavy loads.` });
+  else if (soc != null && soc < 30) out.push({ key: "batt-low", title: "🔋 Battery low", body: `Battery bank at ${Math.round(soc)}% — watch heavy appliances.` });
+
+  if (st("binary_sensor.helloliam_alarm_ac_power") === "off")
+    out.push({ key: "alarm-ac", title: "🔌 Alarm on backup power", body: "Mains lost to the alarm panel." });
+
+  const nobodyHome = on("binary_sensor.nobody_home") || st("sensor.home_occupancy") === "Empty";
+  if (nobodyHome && !armed && st("alarm_control_panel.olarm_alarm") !== "triggered")
+    out.push({ key: "alarm-empty", title: "🛡️ Alarm is off", body: "Nobody home and the alarm isn't armed." });
+
+  const doors = [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+    ["binary_sensor.helloliam_alarm_zone_024_door_lounge", "Lounge door"],
+  ].filter(([id]) => on(id)).map(([, label]) => label);
+  if (doors.length && (night || nobodyHome))
+    out.push({ key: "doors-open", title: "🚪 Door open", body: `${doors.join(", ")} open${night ? " after dark" : " while out"}.` });
+
+  if (on("binary_sensor.jojo_tank_monitor_tank_low_water_alert"))
+    out.push({ key: "tank-low", title: "💧 Water tank low", body: "The JoJo tank hit its low-water mark." });
+
+  if (on("binary_sensor.frigate_detection_stalled"))
+    out.push({ key: "frigate", title: "📷 Camera detection stalled", body: "Frigate has stopped processing detections." });
+
+  const sysIssues = num("sensor.system_health_issues");
+  if (sysIssues != null && sysIssues > 0)
+    out.push({ key: "sys", title: "🩺 System health", body: `${sysIssues} system health issue(s) need a look.` });
+
+  return out;
+}
+
+async function runWatchdog() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const firing = evalWatchdog(states);
+  const firingKeys = new Set(firing.map((f) => f.key));
+
+  // Load prior active state.
+  const prior = await db.collection("watchdogState").get();
+  const wasActive = new Set(prior.docs.filter((d) => d.data().active).map((d) => d.id));
+
+  let pushed = 0;
+  for (const f of firing) {
+    if (!wasActive.has(f.key)) {
+      await pushToAll(f.title, f.body, f.key);
+      pushed++;
+    }
+    await db.collection("watchdogState").doc(f.key).set({ active: true, title: f.title, ts: Date.now() });
+  }
+  // Re-arm any rule that has cleared.
+  const cleared = [];
+  for (const key of wasActive) {
+    if (!firingKeys.has(key)) { await db.collection("watchdogState").doc(key).set({ active: false, ts: Date.now() }, { merge: true }); cleared.push(key); }
+  }
+  logger.info("watchdog", { firing: [...firingKeys], pushed, cleared });
+  return { firing: [...firingKeys], pushed, cleared };
+}
+
+exports.homeWatchdog = onSchedule(
+  { schedule: "every 30 minutes", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runWatchdog(); },
+);
+
+exports.homeWatchdogNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { const r = await runWatchdog(); res.status(200).json({ ok: true, ...r }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Daily briefings ------------------------------------------------------
+// A morning ("today at a glance") and evening ("wind-down") digest composed
+// from Home Assistant + the reminders calendar, delivered as an FCM push at
+// 06:30 / 20:30 SAST and shown live in the Overview "briefing" card.
+
+const WX_EMOJI = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", fog: "🌫️", windy: "💨", hail: "🌨️", snowy: "❄️" };
+
+// SAST wall-clock via UTC getters on a +2h-shifted Date.
+const sastDate = () => new Date(Date.now() + 2 * 3600_000);
+function fmtSastTime(iso) {
+  try {
+    const s = new Date(new Date(iso).getTime() + 2 * 3600_000);
+    let h = s.getUTCHours(); const mm = s.getUTCMinutes();
+    const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12;
+    return `${h}${mm ? ":" + String(mm).padStart(2, "0") : ""}${ap}`;
+  } catch { return ""; }
+}
+
+async function haCalendarDay(base, tok, cal, dayOffset) {
+  const s = sastDate();
+  const startUTC = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate() + dayOffset, 0, 0, 0) - 2 * 3600_000);
+  const endUTC = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate() + dayOffset, 23, 59, 59) - 2 * 3600_000);
+  try {
+    const r = await fetch(`${base}/api/calendars/${cal}?start=${startUTC.toISOString()}&end=${endUTC.toISOString()}`, { headers: { Authorization: `Bearer ${tok}` } });
+    if (!r.ok) return [];
+    const ev = await r.json();
+    return (ev || []).map((e) => ({ summary: e.summary || "(busy)", start: (e.start && (e.start.dateTime || e.start.date)) || null, allDay: !(e.start && e.start.dateTime) }))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+  } catch { return []; }
+}
+
+async function composeBriefing(period) {
+  const base = HA_URL.value().replace(/\/+$/, ""); const tok = HA_TOKEN.value();
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${tok}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+
+  const lines = [];
+  const wx = WX_EMOJI[st("weather.home")] || "🌡️";
+  const outdoor = num("sensor.outdoor_temperature");
+  const loadshed = st("sensor.loadshedding");
+  const lsActive = on("binary_sensor.national_loadshedding_active");
+  const soc = num("sensor.victron_battery_soc");
+
+  if (period === "morning") {
+    const events = await haCalendarDay(base, tok, "calendar.reminders", 0);
+    const readiness = num("sensor.oura_readiness_score");
+    const sleep = num("sensor.oura_sleep_score");
+    const solarFc = num("sensor.solcast_forecast_today") ?? num("sensor.energy_production_today");
+    if (outdoor != null) lines.push({ icon: wx, text: `${outdoor.toFixed(0)}° out now${(st("weather.home") || "").includes("rain") ? " · rain about" : ""}` });
+    if (readiness != null) lines.push({ icon: "💍", text: `Readiness ${readiness.toFixed(0)}${sleep != null ? ` · slept ${sleep.toFixed(0)}` : ""}` });
+    if (events.length) {
+      const first = events.find((e) => !e.allDay) || events[0];
+      lines.push({ icon: "📅", text: `${events.length} today · first ${first.allDay ? first.summary : fmtSastTime(first.start) + " " + first.summary}` });
+    } else lines.push({ icon: "📅", text: "Nothing on the calendar today" });
+    if (lsActive) lines.push({ icon: "⚡", text: `Loadshedding — ${loadshed}` });
+    else if (loadshed) lines.push({ icon: "🔌", text: `${loadshed}` });
+    if (solarFc != null) lines.push({ icon: "☀️", text: `${solarFc.toFixed(0)} kWh solar expected` });
+    if (soc != null) lines.push({ icon: "🔋", text: `Battery ${soc.toFixed(0)}%` });
+    const summary = lines.slice(0, 3).map((l) => l.text).join(" · ");
+    return { period, title: "Good morning, Christo", lines, summary, speech: `Good morning. ${lines.map((l) => l.text).join(". ")}.` };
+  }
+
+  // evening
+  const tomorrow = await haCalendarDay(base, tok, "calendar.reminders", 1);
+  const litSwitches = states.filter((e) => (e.entity_id.startsWith("light.") || (e.entity_id.startsWith("switch.") && /light|lamp/.test(e.entity_id))) && e.state === "on").length;
+  const armed = (st("alarm_control_panel.olarm_alarm") || "").startsWith("armed");
+  const tankDays = num("sensor.jojo_tank_days_remaining");
+  if (tomorrow.length) {
+    const first = tomorrow.find((e) => !e.allDay) || tomorrow[0];
+    lines.push({ icon: "📅", text: `Tomorrow: ${tomorrow.length} on · first ${first.allDay ? first.summary : fmtSastTime(first.start) + " " + first.summary}` });
+  } else lines.push({ icon: "📅", text: "Tomorrow's calendar is clear" });
+  lines.push({ icon: "💡", text: `${litSwitches} light${litSwitches === 1 ? "" : "s"} still on` });
+  lines.push({ icon: "🛡️", text: armed ? "Alarm is armed" : "Alarm is off — arm before bed?" });
+  if (soc != null) lines.push({ icon: "🔋", text: `Battery reserve ${soc.toFixed(0)}%${lsActive ? " · loadshedding now" : ""}` });
+  if (tankDays != null && tankDays < 5) lines.push({ icon: "💧", text: `Water tank ~${tankDays.toFixed(1)} days` });
+  const summary = lines.slice(0, 3).map((l) => l.text).join(" · ");
+  return { period, title: "Winding down", lines, summary, speech: `Good evening. ${lines.map((l) => l.text).join(". ")}.` };
+}
+
+// Live briefing for the Overview card (authed). ?period=morning|evening, else auto.
+exports.getBriefing = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 3 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    const q = String((req.query && req.query.period) || "");
+    const period = q === "morning" || q === "evening" ? q : (sastDate().getUTCHours() < 15 ? "morning" : "evening");
+    try { const b = await composeBriefing(period); res.status(200).json({ ok: true, ...b }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+async function pushBriefing(period) {
+  const b = await composeBriefing(period);
+  await pushToAll(b.title, b.summary, `briefing-${period}`);
+  return b;
+}
+
+exports.morningBriefing = onSchedule(
+  { schedule: "30 6 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await pushBriefing("morning"); },
+);
+exports.eveningBriefing = onSchedule(
+  { schedule: "30 20 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await pushBriefing("evening"); },
+);
+
+// ---- Kids' allowance payout → Steyn Finance -------------------------------
+// The portal already recorded the payout + reset the balance client-side; this
+// posts the amount into the finance project so it lands as income there. Writing
+// cross-project needs the function's service account to have roles/datastore.user
+// on steyn-family-finance — if it's missing this returns posted:false (the
+// portal-side payout still stands), so it degrades gracefully.
+exports.kidPayout = onRequest(
+  { region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    let email;
+    try { email = (await admin.auth().verifyIdToken(idToken)).email || null; }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    const { slug, amount } = { ...req.query, ...(req.body || {}) };
+    const amt = Number(amount);
+    if (!slug || !(amt > 0)) { res.status(400).json({ ok: false, error: "slug + positive amount required" }); return; }
+    try {
+      const fin = new Firestore({ projectId: HQ_PROJECT });
+      await fin.collection("portal_allowance_payouts").add({
+        slug, amount: amt, by: email, ts: Date.now(), source: "ha-portal",
+      });
+      res.status(200).json({ ok: true, posted: true });
+    } catch (e) {
+      logger.warn("kidPayout finance post failed", { error: String((e && e.message) || e) });
+      res.status(200).json({ ok: true, posted: false, note: String((e && e.message) || e) });
+    }
+  },
+);
