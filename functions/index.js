@@ -1145,6 +1145,11 @@ async function runWarehouseSnapshot() {
   if (!tExists) {
     const schema = [{ name: "date", type: "DATE" }, ...WAREHOUSE_METRICS.map(([, col]) => ({ name: col, type: "FLOAT" }))];
     await table.create({ schema });
+  } else {
+    // Idempotent per day: clear any existing row for this date first. Best-effort
+    // (a no-op if a prior row is still in the streaming buffer — worst case a dupe).
+    try { await bq.query({ query: `DELETE FROM \`${BQ_DATASET}.${BQ_TABLE}\` WHERE date = DATE(@d)`, params: { d: row.date } }); }
+    catch (e) { logger.warn("warehouse dedup skipped", { error: String((e && e.message) || e) }); }
   }
   await table.insert([row]);
   logger.info("warehouseSnapshot", { date: row.date, cols: Object.keys(row).length });
