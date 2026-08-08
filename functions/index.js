@@ -906,6 +906,16 @@ function evalWatchdog(states) {
   if (sysIssues != null && sysIssues > 0)
     out.push({ key: "sys", title: "🩺 System health", body: `${sysIssues} system health issue(s) need a look.` });
 
+  // Zigbee mesh health — ZHA per-device link quality (LQI 0–255) + reachability.
+  const zname = (e) => (e.attributes && e.attributes.friendly_name || e.entity_id).replace(/ ?(LQI|Lqi|lqi)$/, "").trim();
+  const lqiEnts = states.filter((e) => /_lqi$/.test(e.entity_id));
+  const weakZ = lqiEnts.filter((e) => { const v = parseFloat(e.state); return Number.isFinite(v) && v > 0 && v < 20; }).map(zname);
+  const offlineZ = lqiEnts.filter((e) => e.state === "unavailable").map(zname);
+  if (offlineZ.length)
+    out.push({ key: "zigbee-offline", title: "📡 Zigbee device offline", body: `Not responding: ${offlineZ.join(", ")}` });
+  if (weakZ.length)
+    out.push({ key: "zigbee-weak", title: "📡 Weak Zigbee link", body: `${weakZ.length} device(s) on a failing link (LQI < 20): ${weakZ.join(", ")}` });
+
   return out;
 }
 

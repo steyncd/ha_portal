@@ -85,5 +85,15 @@ export function computeAttention(): AttnItem[] {
   if (ha.state(E.tankLowAlert) !== "on" && tankDays != null && tankDays < 2)
     add({ key: "tank-days", sev: "info", icon: "🚰", title: `Water tank ≈ ${n(tankDays, 1)} days left`, nav: "water" });
 
+  // Zigbee mesh — devices on a failing link (LQI < 20) or dropped off.
+  const zname = (id: string) => (ha.attr(id, "friendly_name") as string | undefined ?? id).replace(/ ?LQI$/i, "").trim();
+  const lqiIds = Object.keys(ha.entities).filter((id) => /_lqi$/.test(id));
+  const weakZ = lqiIds.filter((id) => { const v = ha.num(id); return v != null && v > 0 && v < 20; }).map(zname);
+  const offZ = lqiIds.filter((id) => ha.state(id) === "unavailable").map(zname);
+  if (offZ.length)
+    add({ key: "zigbee-off", sev: "warn", icon: "📡", title: `${offZ.length} Zigbee device${offZ.length === 1 ? "" : "s"} offline`, sub: offZ.slice(0, 3).join(", "), nav: "system" });
+  if (weakZ.length)
+    add({ key: "zigbee-weak", sev: "info", icon: "📡", title: `${weakZ.length} Zigbee device${weakZ.length === 1 ? "" : "s"} on a weak link`, sub: weakZ.slice(0, 3).join(", "), nav: "system" });
+
   return items.sort((a, b) => SEV_RANK[a.sev] - SEV_RANK[b.sev]);
 }
