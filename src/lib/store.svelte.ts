@@ -8,6 +8,7 @@ import {
 } from "./ha";
 import { HASS_URL } from "./config";
 import { loadHaConnection } from "./haConfig";
+import { timeMachine } from "./timeMachine.svelte";
 
 type Status = "connecting" | "connected" | "error";
 
@@ -133,15 +134,23 @@ class HAStore {
   }
 
   // ---- readers ----
+  //
+  // These are the single choke point the time machine hooks into: when it's
+  // active they answer from the historical snapshot instead of live state, so
+  // every view in the app scrubs through history without knowing it exists.
+  // `attr()` deliberately stays live — history is fetched with minimal_response
+  // (no attributes), and the attributes that matter here (friendly_name, unit)
+  // are static anyway.
   exists(id: string) {
     return id in this.entities;
   }
   state(id: string): string | undefined {
+    if (timeMachine.active) return timeMachine.snapshot[id];
     return this.entities[id]?.state;
   }
   /** Numeric state, or null when missing / non-numeric / unavailable. */
   num(id: string): number | null {
-    const s = this.entities[id]?.state;
+    const s = this.state(id);
     if (s == null || s === "unavailable" || s === "unknown") return null;
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
@@ -153,11 +162,11 @@ class HAStore {
     return (this.attr(id, "friendly_name") as string) ?? id;
   }
   isOn(id: string) {
-    return this.entities[id]?.state === "on";
+    return this.state(id) === "on";
   }
   /** True when the entity exists and is reporting a real (non-offline) state. */
   available(id: string) {
-    const s = this.entities[id]?.state;
+    const s = this.state(id);
     return s != null && s !== "unavailable" && s !== "unknown";
   }
   unit(id: string): string {
@@ -394,8 +403,68 @@ class HAStore {
     }
   }
 
+  // ---- time machine ----
+  /**
+   * Load a historical snapshot for `at` (epoch ms) and switch the whole app
+   * over to it. Uses one batched history request: HA returns the state as it
+   * was at the START of the window, so a short window is enough to resolve
+   * every entity — including ones that haven't changed in days.
+   */
+  async timeTravel(at: number, ids: string[]): Promise<void> {
+    timeMachine.loading = true;
+    timeMachine.error = "";
+    try {
+      if (this.#mock) {
+        // Mock mode has no recorder — just freeze the current values so the UI
+        // is still explorable in demo/QA.
+        const snap: Record<string, string> = {};
+        for (const id of ids) { const e = this.entities[id]; if (e) snap[id] = e.state; }
+        timeMachine.snapshot = snap;
+        timeMachine.at = at;
+        timeMachine.active = true;
+        return;
+      }
+      if (!this.#conn) throw new Error("not connected");
+      const start = new Date(at - 60 * 60_000);
+      const end = new Date(at);
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "history/history_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          entity_ids: ids,
+          minimal_response: true,
+          no_attributes: true,
+          include_start_time_state: true,
+        }),
+        25_000,
+        {},
+      )) as Record<string, Array<Record<string, unknown>>>;
+
+      const snap: Record<string, string> = {};
+      for (const [id, arr] of Object.entries(res ?? {})) {
+        if (!Array.isArray(arr) || !arr.length) continue;
+        // Last entry at or before `at` is the state as of that moment.
+        const last = arr[arr.length - 1];
+        const s = (last.s ?? last.state) as string | undefined;
+        if (typeof s === "string") snap[id] = s;
+      }
+      timeMachine.snapshot = snap;
+      timeMachine.at = at;
+      timeMachine.active = true;
+    } catch (e) {
+      timeMachine.error = e instanceof Error ? e.message : "History unavailable";
+    } finally {
+      timeMachine.loading = false;
+    }
+  }
+
   // ---- writers ----
   #svc(domain: string, service: string, data: object) {
+    // Hard interlock: while viewing the past, every write is refused. Without
+    // this you could be looking at 14:00, tap a light that was on then, and
+    // switch something now — acting on a state that hasn't been true for hours.
+    if (timeMachine.active) return;
     if (this.#conn) return callService(this.#conn, domain, service, data);
   }
   #setMock(ids: string | string[], state: string) {

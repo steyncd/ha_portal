@@ -54,6 +54,8 @@
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
+  import TimeMachine from "./lib/components/TimeMachine.svelte";
+  import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
@@ -187,6 +189,14 @@
 
   function go(id: string) {
     if (id === "__palette") { palette = true; return; }
+    if (id === "__live") { timeMachine.reset(); return; }
+    if (id === "__timemachine") {
+      palette = false;
+      // Start an hour back — far enough to be obviously "the past", close
+      // enough that the recorder definitely has it.
+      ha.timeTravel(Date.now() - 3_600_000, TM_IDS);
+      return;
+    }
     // Every navigation counts (not deduped per session) — this is the signal
     // that tells us which features are genuinely used most often.
     if (id !== view) actionLog.recordView(id);
@@ -299,6 +309,7 @@
         <div class="htitle"><span class="hi" style="color:{active.color}"><Icon name={active.ic} size={20} /></span><span class="hn">{active.name}</span></div>
         <div class="hchips">
           <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">⌘K</span></button>
+          <button class="chip tmc" class:on={timeMachine.active} onclick={() => go(timeMachine.active ? "__live" : "__timemachine")} title="Rewind the dashboard through history">🕰️ {timeMachine.active ? "Live" : "Rewind"}</button>
           {#if hAct}<button class="chip hact" onclick={hAct.run}>{hAct.icon} {hAct.label}</button>{/if}
           <button class="chip arm" style="--c:{alarm.color}" onclick={() => go("security")}><span class="ad"></span>{alarm.label}</button>
           <span class="chip">{tempIcon} {weatherTemp != null ? weatherTemp + "°" : "—"}</span>
@@ -361,6 +372,7 @@
       <CommandPalette open={true} onnav={go} onclose={() => (palette = false)} />
     {/await}
   {/if}
+  <TimeMachine />
   <LightSheet />
   <Toast />
   {#if tv}

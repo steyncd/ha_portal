@@ -1446,3 +1446,93 @@ exports.warehouseSnapshotNow = onRequest(
     catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );
+
+// ---- Explain this chart ------------------------------------------------
+// One shared endpoint behind every chart in the portal. Two design choices keep
+// this cheap enough to leave switched on:
+//
+//  1. It is given the RENDERED SERIES ONLY — the handful of points already on
+//     screen — never the warehouse. Small prompt, small bill, and the answer
+//     can only talk about what the user is actually looking at.
+//  2. Answers are cached in Firestore on a hash of (chart + rounded series +
+//     prompt version). For a daily-granularity chart that means ONE model call
+//     per chart per day no matter how many times it's opened, across every
+//     device in the house. Bump PROMPT_V to invalidate everything at once.
+//
+// Deliberately brief: two sentences. A dashboard caption, not an essay.
+
+const PROMPT_V = "v1";
+
+function chartCacheKey(payload) {
+  const rounded = (payload.points || []).map((p) => {
+    const v = typeof p.v === "number" ? Math.round(p.v * 100) / 100 : p.v;
+    return `${p.t}:${v}`;
+  }).join(",");
+  const raw = `${PROMPT_V}|${payload.chartId}|${payload.unit || ""}|${rounded}`;
+  return require("crypto").createHash("sha1").update(raw).digest("hex");
+}
+
+exports.explainChart = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const p = request.data || {};
+    const points = Array.isArray(p.points) ? p.points.slice(0, 200) : [];
+    if (!p.chartId || points.length < 2) {
+      throw new HttpsError("invalid-argument", "Need chartId and at least 2 points.");
+    }
+
+    const key = chartCacheKey({ ...p, points });
+    const ref = db.collection("chartExplain").doc(key);
+    const hit = await ref.get();
+    if (hit.exists) return { text: hit.data().text, cached: true };
+
+    const vals = points.map((x) => Number(x.v)).filter((n) => Number.isFinite(n));
+    const stats = vals.length
+      ? { min: Math.min(...vals), max: Math.max(...vals), first: vals[0], last: vals[vals.length - 1],
+          avg: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 }
+      : {};
+
+    const prompt = `You are explaining one chart on a South African family's home dashboard (solar + battery, borehole, pool).
+
+Chart: ${p.title || p.chartId}
+Unit: ${p.unit || "unknown"}
+Period: ${p.period || "recent"}
+Summary: ${JSON.stringify(stats)}
+Series (time,value): ${points.map((x) => `${x.t},${x.v}`).join(" ")}
+
+Write AT MOST TWO SHORT SENTENCES for a caption under the chart.
+Say what actually happened and, if there is one, the single most likely reason.
+Use the unit. Plain language, no preamble, no bullet points, no markdown.
+If nothing notable happened, say so plainly in one sentence.`;
+
+    const body = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 120 },
+    });
+    // Flash-Lite: this is a small, frequent, low-stakes call — exactly the tier
+    // Google recommends for it, and a fraction of the cost of full Flash.
+    const models = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash"];
+    let lastErr = "no model";
+    for (const model of models) {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body,
+        });
+        const j = await r.json();
+        if (r.ok) {
+          const text = (j?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+          if (text) {
+            await ref.set({ text, chartId: p.chartId, ts: Date.now(), model });
+            return { text, cached: false };
+          }
+        }
+        lastErr = j?.error?.message || `gemini ${r.status}`;
+      } catch (e) { lastErr = String((e && e.message) || e); }
+    }
+    logger.warn("explainChart failed", { lastErr, chartId: p.chartId });
+    throw new HttpsError("unavailable", "Couldn't explain this chart right now.");
+  },
+);

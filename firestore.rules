@@ -66,6 +66,15 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
+    // Explain-this-chart cache: written server-side by the explainChart
+    // Function (Admin SDK bypasses rules). Members may read so a cached
+    // explanation can be shown without another model call; nobody writes
+    // from the client.
+    match /chartExplain/{id} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+
     // Proactive AI nudges: written server-side by the anomalyNudges Function
     // (Admin SDK bypasses rules). Members read them and may only flip them to
     // dismissed from the app — never forge one.

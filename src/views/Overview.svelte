@@ -21,6 +21,7 @@
   import PresenceStrip from "../lib/components/PresenceStrip.svelte";
   import { computeAttention } from "../lib/attention";
   import { stable, sig } from "../lib/stable";
+  import ExplainChart from "../lib/components/ExplainChart.svelte";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -181,6 +182,7 @@
       <div><div class="lb">Battery</div><div class="sub2">{n(ha.num(E.batteryPower))} W · {ha.state(E.batteryState) ?? ""}<br>{n(ha.num(E.batteryVoltage), 1)} V · {n(ha.num(E.batteryTemp))}°C</div></div>
     </div>
     <div style="margin-top:14px"><Spark data={battHist} color="var(--acc)" forceMax={100} height={54} /></div>
+    <ExplainChart chartId="battery_soc_24h" title="Battery state of charge" unit="%" period="last 24 hours" points={battHist.map((d) => ({ t: d.t, v: d.v }))} />
   </div>
 
   <!-- power & grid (loadshedding + TOU tariff) -->
@@ -226,6 +228,7 @@
     <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u"> {power(ha.num(E.pvPower)).unit}</span></div>
     <div class="sub2">{n(ha.num(E.pvYieldToday), 1)} kWh today</div>
     <div style="margin-top:12px"><Spark data={solarHist} color="var(--solar)" height={54} /></div>
+    <ExplainChart chartId="solar_power_24h" title="Solar production" unit="W" period="last 24 hours" points={solarHist.map((d) => ({ t: d.t, v: d.v }))} />
     <span class="drill">Open Energy →</span>
   </div>
 
