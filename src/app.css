@@ -378,3 +378,18 @@ input[type="range"]::-moz-range-thumb {
 .wall .drill {
   display: none;
 }
+
+/* ---- View Transitions (Safari 18+, Chrome 111+) --------------------------
+   A short cross-fade on view switches. Deliberately quick — 180ms reads as
+   responsive; anything slower on a dashboard feels like lag rather than polish.
+   Honours reduce-motion, and browsers without support simply swap as before. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root) { animation: vt-out 140ms ease both; }
+  ::view-transition-new(root) { animation: vt-in 180ms ease both; }
+}
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(4px); } }
+
+/* The reduce-motion class the app sets from prefs must win over the media query. */
+.reduce-motion ::view-transition-old(root),
+.reduce-motion ::view-transition-new(root) { animation: none; }

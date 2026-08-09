@@ -20,6 +20,7 @@
   import Briefing from "../lib/components/Briefing.svelte";
   import PresenceStrip from "../lib/components/PresenceStrip.svelte";
   import { computeAttention } from "../lib/attention";
+  import { stable, sig } from "../lib/stable";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -100,18 +101,27 @@
     { id: E.occupancy, icon: "🏠", color: "var(--acc)", title: (s) => `Home ${s.toLowerCase()}`, sub: "presence" },
     { id: "switch.kitchen_lights", icon: "🍳", color: "var(--warning)", title: (s) => `Kitchen lights ${s}`, sub: "lighting" },
   ];
-  const activity = $derived(
-    LOG_SRC
+  // Memoised — rebuilt on every 300ms entity tick, but the visible five rows
+  // only change when something actually happens.
+  const activityMemo = stable<{ icon: string; color: string; title: string; sub: string; t: string }[]>();
+  const activity = $derived.by(() => {
+    const rows = LOG_SRC
       .filter((e) => ha.exists(e.id) && lc(e.id))
       .map((e) => ({ icon: e.icon, color: e.color, title: e.title(ha.state(e.id) ?? "—"), sub: e.sub, t: lc(e.id)! }))
       .sort((a, b) => Date.parse(b.t) - Date.parse(a.t))
-      .slice(0, 5),
-  );
+      .slice(0, 5);
+    return activityMemo(rows, sig(rows, "title", "t"));
+  });
 
   const armed = $derived((ha.state(E.alarmMain) ?? "").startsWith("armed"));
 
   // "What needs me now" — the prioritised attention list (rules in lib/attention.ts).
-  const attention = $derived.by(() => computeAttention());
+  // Memoised so the NeedsAttention card doesn't re-render on every entity tick.
+  const attnMemo = stable<ReturnType<typeof computeAttention>>();
+  const attention = $derived.by(() => {
+    const items = computeAttention();
+    return attnMemo(items, sig(items, "key", "sev", "title"));
+  });
 
 </script>
 
@@ -325,10 +335,36 @@
   .spd { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
 
+  /* column-count flows top-to-bottom PER COLUMN, so visual order never matches
+     DOM order — which also means keyboard tab order and screen readers walk the
+     cards in the wrong sequence. It's the fallback, not the target. */
   .masonry { column-count: 3; column-gap: 14px; }
   @media (max-width: 1000px) { .masonry { column-count: 2; } }
   @media (max-width: 640px) { .masonry { column-count: 1; } }
+  @media (min-width: 1800px) { .masonry { column-count: 4; } }
+  @media (min-width: 2400px) { .masonry { column-count: 5; } }
+
+  /* Grid Lanes (Safari 26.4+) fixes the reading order AND packs tighter. The
+     whole household is on Apple, so this is the path that actually renders;
+     column-count above stays for the Windows desktop until Chromium finishes
+     renaming its equivalent. auto-fill means wide monitors gain columns on
+     their own rather than needing another breakpoint. */
+  @supports (display: grid-lanes) {
+    .masonry {
+      display: grid-lanes;
+      column-count: unset;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .masonry > .w { margin: 0; }
+  }
+
   .w { break-inside: avoid; margin: 0 0 14px; padding: 18px; }
+  /* Skip layout/paint for cards below the fold. contain-intrinsic-size is
+     mandatory here — without it the browser collapses them to zero height and
+     the scrollbar jumps as you scroll. */
+  .masonry > .w { content-visibility: auto; contain-intrinsic-size: auto 320px; }
   .tap { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
   .tap:hover { box-shadow: inset 0 0 0 1px var(--line); transform: translateY(-1px); }
   .tap:focus-visible { box-shadow: 0 0 0 2px var(--acc); outline: none; }

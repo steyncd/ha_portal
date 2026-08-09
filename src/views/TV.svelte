@@ -3,6 +3,7 @@
   import { ha } from "../lib/store.svelte";
   import { E, ROOMS, CAMERAS } from "../lib/entities";
   import { n, greeting, clock as fmtClock, sastHour } from "../lib/format";
+  import { stable, sig } from "../lib/stable";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
 
   let { onexit }: { onexit: () => void } = $props();
@@ -35,6 +36,9 @@
   const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
 
   type Alert = { sev: "critical" | "warning"; icon: string; text: string };
+  // Memoised: this list changes maybe twice an hour, but without a stable
+  // reference its {#each} re-rendered every 300ms forever on the wall display.
+  const alertsMemo = stable<Alert[]>();
   const alerts = $derived.by<Alert[]>(() => {
     const a: Alert[] = [];
     const soc = ha.num(E.batterySoc);
@@ -48,7 +52,8 @@
       a.push({ sev: "warning", icon: "💧", text: `Water low${water != null ? " — " + Math.round(water) + "%" : ""}${days != null ? " · " + Math.round(days) + "d left" : ""}` });
     if (camsOnline < CAMERAS.length) a.push({ sev: "warning", icon: "📷", text: `${CAMERAS.length - camsOnline} camera${CAMERAS.length - camsOnline > 1 ? "s" : ""} offline` });
     if (nobody && !armed) a.push({ sev: "warning", icon: "🛡️", text: "Nobody home · alarm off" });
-    return a.sort((x, y) => (x.sev === "critical" ? 0 : 1) - (y.sev === "critical" ? 0 : 1));
+    a.sort((x, y) => (x.sev === "critical" ? 0 : 1) - (y.sev === "critical" ? 0 : 1));
+    return alertsMemo(a, sig(a, "sev", "text"));
   });
   const topAlert = $derived(alerts[0] ?? null);
   const health = $derived.by(() => {
@@ -58,7 +63,13 @@
   });
 
   // ---- tiles ----
-  const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
+  // Room order only changes when the ranking actually flips, not on every
+  // temperature decimal — so the signature is the resulting order, not the values.
+  const warmMemo = stable<typeof ROOMS>();
+  const warm = $derived.by(() => {
+    const r = [...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0));
+    return warmMemo(r, r.map((x) => x.id).join(""));
+  });
   const battDir = $derived((ha.num(E.batteryPower) ?? 0) < 0 ? "Discharging" : (ha.num(E.batteryPower) ?? 0) > 0 ? "Charging" : "Idle");
 
   // ---- rotating secondary strip data ----

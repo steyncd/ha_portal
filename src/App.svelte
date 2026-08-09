@@ -174,12 +174,39 @@
   });
 
   const mobileTabs = ["home", "overview", "security", "energy"] as ViewId[];
+  function applyNav(id: string) {
+    view = id as ViewId; palette = false; moreOpen = false;
+  }
+
   function go(id: string) {
     if (id === "__palette") { palette = true; return; }
     // Every navigation counts (not deduped per session) — this is the signal
     // that tells us which features are genuinely used most often.
     if (id !== view) actionLog.recordView(id);
-    view = id as ViewId; palette = false; moreOpen = false;
+
+    // View Transitions (Safari 18+, Chrome 111+) cross-fade the swap instead of
+    // the content snapping. Feature-detected, and skipped under reduce-motion —
+    // the fallback is exactly the previous behaviour, so nothing depends on it.
+    //
+    // The returned promises MUST be caught. Tapping two nav items quickly, or
+    // navigating while the tab is hidden, aborts the in-flight transition and
+    // rejects `.finished`/`.ready` with InvalidStateError — which surfaces as an
+    // unhandled rejection in the console even though the navigation itself is
+    // fine. Swallow it: an interrupted animation is not an error worth raising.
+    type VT = { finished?: Promise<unknown>; ready?: Promise<unknown>; updateCallbackDone?: Promise<unknown> };
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => VT };
+    if (doc.startViewTransition && prefs.motion && document.visibilityState === "visible") {
+      try {
+        const t = doc.startViewTransition(() => applyNav(id));
+        t?.finished?.catch(() => {});
+        t?.ready?.catch(() => {});
+        t?.updateCallbackDone?.catch(() => {});
+      } catch {
+        applyNav(id);
+      }
+    } else {
+      applyNav(id);
+    }
   }
 </script>
 
@@ -389,7 +416,14 @@
   header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: rgba(7, 11, 17, 0.72); backdrop-filter: var(--glass-blur); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   /* Centre content at a comfortable max-width on wide monitors so cards/rows
      don't stretch edge-to-edge. Wall/TV density opts back into full width. */
+  /* 1440px was chosen so cards don't stretch edge-to-edge on a wide monitor.
+     But on a 2K/3K desktop that throws away most of the screen — on a 2560px
+     monitor it leaves ~560px of empty gutter each side. Step it up instead of
+     capping flat, so a big display gets more content rather than more margin,
+     while a laptop keeps a comfortable reading measure. */
   header, .body { width: 100%; max-width: 1440px; margin-inline: auto; }
+  @media (min-width: 1800px) { header, .body { max-width: 1680px; } }
+  @media (min-width: 2200px) { header, .body { max-width: 2000px; } }
   :global(.wall) header, :global(.wall) .body { max-width: none; }
   .htitle { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
   .hi { display: inline-flex; align-items: center; }

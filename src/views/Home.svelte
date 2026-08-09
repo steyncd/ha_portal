@@ -17,6 +17,7 @@
   import { actionById, fireAction, suggestions, topViews } from "../lib/suggest";
   import { actionLog, bucketFor, BUCKET_LABEL } from "../lib/actionLog.svelte";
   import { computeAttention } from "../lib/attention";
+  import { stable, sig } from "../lib/stable";
   import NeedsAttention from "../lib/components/NeedsAttention.svelte";
   import Nudges from "../lib/components/Nudges.svelte";
   import RoomScenes from "../lib/components/RoomScenes.svelte";
@@ -25,7 +26,11 @@
   let { onnav }: { onnav: (id: string) => void } = $props();
 
   const now = new Date();
-  const attention = $derived.by(() => computeAttention());
+  const attnMemo = stable<ReturnType<typeof computeAttention>>();
+  const attention = $derived.by(() => {
+    const items = computeAttention();
+    return attnMemo(items, sig(items, "key", "sev", "title"));
+  });
 
   // ── Trust badge: live/local-first resilience signal (Hubitat pattern) ───────
   const live = $derived(ha.status === "connected");
