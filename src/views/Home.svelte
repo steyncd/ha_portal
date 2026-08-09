@@ -44,7 +44,7 @@
   function toggleSpeak() { speak = !speak; localStorage.setItem("ha_portal_home_speak", speak ? "1" : "0"); }
 
   // ── Scenes row (named by intent) with run→check feedback (Crestron pattern) ──
-  const SCENE_IDS = ["goodnight", "morning", "away", "movie", "braai"];
+  const SCENE_IDS = ["eveningin", "goodnight", "morning", "away", "movie"];
   const scenes = $derived(SCENE_IDS.map(actionById).filter((a): a is NonNullable<typeof a> => !!a));
   let fired = $state<string | null>(null);
   let firedTimer: ReturnType<typeof setTimeout> | undefined;

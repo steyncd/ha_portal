@@ -15,6 +15,7 @@ export type FavTile = {
 
 export const FAV_CATALOGUE: FavTile[] = [
   // Scenes / scripts (momentary)
+  { id: "eveningin", label: "Evening In", icon: "🌆", kind: "script", target: E.scEveningIn },
   { id: "goodnight", label: "Goodnight", icon: "🌙", kind: "script", target: E.scGoodnight },
   { id: "movie", label: "Movie", icon: "🎬", kind: "script", target: E.scMovie },
   { id: "braai", label: "Braai", icon: "🔥", kind: "script", target: "script.braai_mode" },

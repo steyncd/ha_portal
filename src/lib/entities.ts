@@ -155,6 +155,10 @@ export const E = {
   scAway: "script.quick_away_mode",
   scMorning: "script.quick_good_morning_scene",
   scLightsOff: "script.quick_lights_all_off",
+  // "In for the night" — arms Stay + beams but LEAVES the inside lamps on, for
+  // when you're done outside and settling in front of the TV. Distinct from
+  // Goodnight, which arms AND turns everything off.
+  scEveningIn: "script.scene_evening_in_home",
 
   // Irrigation (Wyze)
   irrCurrentZone: "sensor.helloeben_sprinkler_current_zone",
@@ -223,6 +227,7 @@ export const PUMPS: Pump[] = [
 ];
 
 export const SCENES: SceneDef[] = [
+  { id: "script.scene_evening_in_home", label: "Evening In", icon: "🌆" },
   { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
   { id: "script.movie_mode", label: "Movie", icon: "🎬" },
   { id: "script.braai_mode", label: "Braai", icon: "🔥" },

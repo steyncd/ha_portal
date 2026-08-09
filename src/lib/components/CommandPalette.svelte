@@ -28,6 +28,7 @@
     ...NAV.filter((n) => !prefs.guest || !GUEST_HIDDEN.includes(n.id)).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
     { icon: prefs.guest ? "🔓" : "👋", label: prefs.guest ? "Exit guest view" : "Enter guest view", hint: "Mode", run: () => { prefs.guest = !prefs.guest; prefs.save(); toast.show(prefs.guest ? "Guest view on" : "Guest view off"); } },
     ...THEMES.map((t) => ({ icon: "🎨", label: "Theme: " + t.name, hint: "Theme", run: () => { prefs.setTheme(t.key); toast.show(t.name + " theme"); } })),
+    { icon: "🌆", label: "Evening In (arm, keep lights on)", hint: "Scene", run: () => { actionLog.record("eveningin"); ha.script(E.scEveningIn); toast.show("Evening In — armed, lights on"); } },
     { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { actionLog.record("goodnight"); ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
     { icon: "🎬", label: "Movie mode", hint: "Scene", run: () => { actionLog.record("movie"); ha.script(E.scMovie); toast.show("Movie mode"); } },
     { icon: "🚪", label: "Away mode", hint: "Scene", run: () => { actionLog.record("away"); ha.script(E.scAway); toast.show("Away mode"); } },

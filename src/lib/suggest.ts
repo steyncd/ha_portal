@@ -38,6 +38,10 @@ const OUTDOOR = ["light.street_lights", "switch.driveway_lights_switch", "switch
 
 export const ACTIONS: Action[] = [
   // ── Scenes / experiences (named by intent, not device) ────────────────────
+  // "Evening In" is the one people reach for most and it is NOT Goodnight:
+  // it arms Stay + beams while deliberately leaving the inside lamps ON, for
+  // when you're done outside and settling in front of the TV.
+  { id: "eveningin", label: "Evening In", icon: "🌆", kind: "scene", target: E.scEveningIn, seed: ["evening", "afternoon"], do: () => ha.script(E.scEveningIn), say: "Evening in. Alarm armed, lights are staying on." },
   { id: "goodnight", label: "Goodnight", icon: "🌙", kind: "scene", target: E.scGoodnight, seed: ["evening", "late", "night"], do: () => ha.script(E.scGoodnight), say: "Goodnight. Locking up and arming the house." },
   { id: "morning", label: "Good Morning", icon: "☀️", kind: "scene", target: E.scMorning, seed: ["night", "morning"], do: () => ha.script(E.scMorning), say: "Good morning." },
   { id: "away", label: "Leaving", icon: "🚪", kind: "scene", target: E.scAway, seed: ["morning", "midday", "afternoon"], do: () => ha.script(E.scAway), say: "Away mode. Arming up." },
