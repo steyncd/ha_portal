@@ -73,6 +73,13 @@
   onMount(() => {
     prefs.apply();
     authStore.init();
+
+    // Ask the browser to mark our storage persistent, so the HA connection
+    // cache, Firestore's IndexedDB cache and the usage log aren't evicted under
+    // pressure. WebKit grants this heuristically and names home-screen install
+    // as one of the inputs — so on the iPads it usually succeeds. A `false`
+    // answer is normal and not an error; nothing depends on it being granted.
+    navigator.storage?.persist?.().catch(() => {});
     const mq = window.matchMedia("(max-width: 820px)");
     const upd = () => (isMobile = mq.matches);
     upd();

@@ -31,7 +31,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api\//, /firebase-messaging-sw\.js$/],
-        globPatterns: ["**/*.{js,css,html,svg,woff2}"],
+        globPatterns: ["**/*.{js,css,html,svg,woff2,png,ico,webmanifest}"],
         globIgnores: ["firebase-messaging-sw.js"],
         cleanupOutdatedCaches: true,
         maximumFileSizeToCacheInBytes: 3_000_000,

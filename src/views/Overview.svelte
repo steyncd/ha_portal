@@ -56,6 +56,10 @@
     return parts.join(" · ");
   });
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
+  // Hoisted out of the template: `.slice()` in markup allocates a new array on
+  // every render, which defeats the keyed {#each} it feeds.
+  const indoorTop = INDOOR_LIGHTS.slice(0, 6);
+  const roomsTop = ROOMS.slice(0, 5);
 
   const quick = [
     { id: E.poolPump, ic: "waves", name: "Pool Pump" },
@@ -186,7 +190,7 @@
   <div class="w card">
     <div class="lb" style="margin-bottom:12px">Comfort · {n(ha.num(E.indoorAvg), 1)}° avg</div>
     <div class="clist">
-      {#each ROOMS.slice(0, 5) as r}
+      {#each roomsTop as r (r.id)}
         <div class="crow2"><span>{r.label}</span><span style="color:{tempColor(ha.num(r.id))};font-weight:700">{n(ha.num(r.id), 1)}°</span></div>
       {/each}
     </div>
@@ -229,7 +233,7 @@
   <div class="w card">
     <div class="lb" style="margin-bottom:12px">Pumps & heater</div>
     <div class="grid2">
-      {#each quick as q}
+      {#each quick as q (q.id)}
         <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id)}>
           <span class="mi"><Icon name={q.ic} size={16} /></span><span class="mn">{q.name}</span><StatusChip state={ha.isOn(q.id) ? "ok" : "off"} label={ha.isOn(q.id) ? "On" : "Off"} />
         </button>
@@ -242,7 +246,7 @@
     <div class="w card">
       <div class="wh"><span class="lb">Lights</span><button class="seeall" onclick={() => onnav("lights")}>{litCount} on · all →</button></div>
       <div class="grid2" style="margin-top:12px">
-        {#each INDOOR_LIGHTS.slice(0, 6) as l}
+        {#each indoorTop as l (l.id)}
           <div class="ltile" class:on={ha.isOn(l.id)}>
             <div class="ltap" onclick={() => ha.toggle(l.id)} role="button" tabindex="0" onkeydown={() => {}}>
               <span class="mi">{l.icon}</span><span class="mn">{l.label}</span><span class="qs">{ha.isOn(l.id) ? "On" : "Off"}</span>
@@ -284,7 +288,7 @@
   {#if prefs.widgets.activity}
     <div class="w card">
       <div class="lb" style="margin-bottom:6px">Recent activity</div>
-      {#each activity as e}
+      {#each activity as e (e.title + e.t)}
         <div class="log">
           <span class="lic" style="background:color-mix(in srgb,{e.color} 17%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{e.color} 36%,transparent)">{e.icon}</span>
           <div class="lt"><div class="ltt">{e.title}</div><div class="lts">{e.sub}</div></div>
@@ -301,7 +305,7 @@
       <div class="wh"><span class="lb">Next hours</span><span class="sub2">{wxIcon} {wxCond || "—"}{outdoor != null ? ` · ${n(outdoor)}°` : ""}</span></div>
       {#if fc.length}
         <div class="fc">
-          {#each fc as f, i}
+          {#each fc as f, i (f.h + i)}
             <div class="fcc" style="background:{i === 0 ? 'var(--soft)' : 'rgba(255,255,255,.03)'}">
               <span class="fch">{f.h}</span><span class="fci">{f.ic}</span><span class="fct">{f.t}°</span>
             </div>
