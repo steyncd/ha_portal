@@ -26,6 +26,8 @@ type Stored = {
   viewsOn: Record<string, boolean>;
   widgets: Record<string, boolean>;
   favourites: string[];
+  hiddenSuggestions: string[];
+  homeSurfaceV1: boolean;
   trelloBoard: string;
   trelloLists: Record<string, boolean>;
 };
@@ -36,7 +38,7 @@ const DEFAULTS: Stored = {
   density: "comfortable",
   collapsed: false,
   guest: false,
-  defaultView: "overview",
+  defaultView: "home",
   settingsTab: "account",
   viewsOn: {
     energy: true, powertrends: true, solar: true, water: true, irrigation: true, climate: true, appliances: true,
@@ -47,6 +49,8 @@ const DEFAULTS: Stored = {
     security: true, activity: true, forecast: true,
   },
   favourites: ["goodnight", "movie", "morning", "away", "lightsoff", "poolpump"],
+  hiddenSuggestions: [],
+  homeSurfaceV1: false,
   trelloBoard: "",
   trelloLists: {},
 };
@@ -58,16 +62,26 @@ function load(): Stored {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULTS);
     const p = JSON.parse(raw);
-    return {
+    const merged = {
       ...DEFAULTS, ...p,
       theme: isTheme(p.theme) ? p.theme : DEFAULTS.theme,
       density: p.density === "wall" ? "wall" : "comfortable",
       viewsOn: { ...DEFAULTS.viewsOn, ...(p.viewsOn ?? {}) },
       widgets: { ...DEFAULTS.widgets, ...(p.widgets ?? {}) },
       favourites: Array.isArray(p.favourites) ? p.favourites : [...DEFAULTS.favourites],
+      hiddenSuggestions: Array.isArray(p.hiddenSuggestions) ? p.hiddenSuggestions : [],
+      homeSurfaceV1: p.homeSurfaceV1 === true,
       trelloBoard: typeof p.trelloBoard === "string" ? p.trelloBoard : "",
       trelloLists: { ...(p.trelloLists ?? {}) },
     };
+    // One-time upgrade to the Home quick surface: existing users who never
+    // changed their landing (still on the old "overview" default) are moved to
+    // the new "home" front door once. Anyone can pick Dashboard again in Settings.
+    if (!merged.homeSurfaceV1) {
+      if (merged.defaultView === "overview") merged.defaultView = "home";
+      merged.homeSurfaceV1 = true;
+    }
+    return merged;
   } catch {
     return structuredClone(DEFAULTS);
   }
@@ -84,6 +98,8 @@ class Prefs {
   viewsOn = $state<Record<string, boolean>>({ ...DEFAULTS.viewsOn });
   widgets = $state<Record<string, boolean>>({ ...DEFAULTS.widgets });
   favourites = $state<string[]>([...DEFAULTS.favourites]);
+  hiddenSuggestions = $state<string[]>([]);
+  homeSurfaceV1 = $state(false);
   trelloBoard = $state<string>("");
   trelloLists = $state<Record<string, boolean>>({});
 
@@ -99,6 +115,8 @@ class Prefs {
     this.viewsOn = s.viewsOn;
     this.widgets = s.widgets;
     this.favourites = s.favourites;
+    this.hiddenSuggestions = s.hiddenSuggestions;
+    this.homeSurfaceV1 = s.homeSurfaceV1;
     this.trelloBoard = s.trelloBoard;
     this.trelloLists = s.trelloLists;
   }
@@ -109,6 +127,8 @@ class Prefs {
       collapsed: this.collapsed, guest: this.guest, defaultView: this.defaultView,
       settingsTab: this.settingsTab, viewsOn: this.viewsOn, widgets: this.widgets,
       favourites: this.favourites,
+      hiddenSuggestions: this.hiddenSuggestions,
+      homeSurfaceV1: this.homeSurfaceV1,
       trelloBoard: this.trelloBoard, trelloLists: this.trelloLists,
     };
     try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* ignore */ }

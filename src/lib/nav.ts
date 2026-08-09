@@ -1,5 +1,5 @@
 export type ViewId =
-  | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
+  | "home" | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
   | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "meals" | "fairplay" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
@@ -9,7 +9,8 @@ export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" |
 export type NavItem = { id: ViewId; name: string; icon: string; ic: string; group: NavGroup; color: string };
 
 export const NAV: NavItem[] = [
-  { id: "overview", name: "Overview", icon: "🏠", ic: "home", group: "", color: "var(--acc)" },
+  { id: "home", name: "Home", icon: "🏠", ic: "home", group: "", color: "var(--acc)" },
+  { id: "overview", name: "Dashboard", icon: "🧭", ic: "layout", group: "", color: "var(--acc)" },
 
   { id: "energy", name: "Energy", icon: "⚡", ic: "bolt", group: "Energy", color: "var(--energy)" },
 

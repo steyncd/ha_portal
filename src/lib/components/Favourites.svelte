@@ -6,6 +6,7 @@
   import { E } from "../entities";
   import { prefs } from "../prefs.svelte";
   import { toast } from "../toast.svelte";
+  import { actionLog } from "../actionLog.svelte";
   import { FAV_CATALOGUE, favById, type FavTile } from "../favourites";
 
   let editing = $state(false);
@@ -20,6 +21,7 @@
   }
 
   function run(t: FavTile) {
+    actionLog.record(t.id); // feed the "Suggested for now" frecency engine
     if (t.kind === "script") { ha.script(t.target); toast.show(`${t.label}`); }
     else if (t.kind === "toggle") { ha.toggle(t.target); }
     else if (t.kind === "arm") {

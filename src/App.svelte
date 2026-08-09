@@ -14,6 +14,7 @@
   // low-power devices (TV/phone) where parsing the whole app up front was costly.
   import type { Component } from "svelte";
   const VIEWS: Record<string, () => Promise<{ default: Component<any> }>> = {
+    home: () => import("./views/Home.svelte"),
     overview: () => import("./views/Overview.svelte"),
     energy: () => import("./views/EnergyHub.svelte"),
     powertrends: () => import("./views/PowerTrends.svelte"),
@@ -43,7 +44,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (id === "overview" || id === "energy" || id === "powertrends" || id === "insights") return { onnav: go };
+    if (id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights") return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -51,7 +52,7 @@
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
 
-  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "overview") as ViewId;
+  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
   let palette = $state(false);
   // ?tv=1 (or #tv) boots straight into the always-on TV Overview — for wall displays.
@@ -120,16 +121,16 @@
   const visible = (id: ViewId) => {
     // Guest ROLE (server-defined): only Overview + the views shared with them;
     // never Settings. Not toggleable by the guest.
-    if (authStore.isGuest) return id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
+    if (authStore.isGuest) return id === "home" || id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
     // Sabbath mode quietens work/admin/money views (Faith, Overview & Settings stay).
     if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
     // Members/owners: honour the per-device guest toggle + enabled-views prefs.
     return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-      (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+      (["home", "overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
   };
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
   // Never sit on a now-hidden view (entering guest mode, or a guest landing).
-  $effect(() => { if (!visible(view)) view = "overview"; });
+  $effect(() => { if (!visible(view)) view = "home"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
   let logged = false;
   $effect(() => {
@@ -150,7 +151,7 @@
     return { label: "Disarmed", color: "var(--warning)" };
   });
 
-  const mobileTabs = ["overview", "energy", "water", "security"] as ViewId[];
+  const mobileTabs = ["home", "overview", "security", "energy"] as ViewId[];
   function go(id: string) {
     if (id === "__palette") { palette = true; return; }
     view = id as ViewId; palette = false; moreOpen = false;
@@ -210,7 +211,9 @@
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
           <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")}><span class="ni" style="color:var(--acc)"><Icon name="home" size={17} /></span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
+        {#each shown.filter((s) => s.group === "") as it}
+          <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+        {/each}
         {#each groups as g}
           {@const items = shown.filter((s) => s.group === g.key)}
           {#if items.length}
