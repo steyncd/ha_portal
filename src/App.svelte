@@ -4,6 +4,7 @@
   import { authStore } from "./lib/auth.svelte";
   import { logAccess } from "./lib/accessLog";
   import { actionLog } from "./lib/actionLog.svelte";
+  import { computeAttention } from "./lib/attention";
   import { prefs } from "./lib/prefs.svelte";
   import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
@@ -116,6 +117,25 @@
   // Connect to Home Assistant only once the user is signed in and authorised.
   $effect(() => {
     if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
+  });
+
+  // App badge — the one ambient channel iOS actually gives a PWA.
+  //
+  // iOS ignores notification icons, won't render action buttons, and `tag` does
+  // NOT replace an existing notification, so pushes only ever stack. The badge
+  // is the only mutable, zero-cost signal available, which makes it the right
+  // home for "things need you" counts that don't deserve a banner (a low
+  // battery, an offline device). Needs an installed home-screen app; it's a
+  // no-op elsewhere, so this is safe to call unconditionally.
+  $effect(() => {
+    if (ha.status !== "connected") return;
+    const n = computeAttention().length;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (!nav.setAppBadge) return;
+    (n > 0 ? nav.setAppBadge(n) : nav.clearAppBadge?.() ?? Promise.resolve())?.catch(() => {});
   });
   // Subscribe to the household Sabbath flag once we're in.
   $effect(() => { if (mockMode || authStore.status === "ready") sabbath.start(); });
