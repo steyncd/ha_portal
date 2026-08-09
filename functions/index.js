@@ -964,6 +964,271 @@ exports.homeWatchdogNow = onRequest(
   },
 );
 
+// ---- Proactive anomaly nudges --------------------------------------------
+// The watchdog above catches things we could think of in advance (thresholds we
+// hard-coded). This catches the ones we didn't: it hands Gemini a snapshot of
+// the house *in context* — time of day, who's home, what's armed, what's been
+// left running — and asks "is anything here worth interrupting a person about?"
+// That's the Alexa+ "your garage is unlocked and it's after 10pm" pattern.
+//
+// Alert fatigue is the failure mode that kills features like this, so the
+// design copies Alexa Hunches' two-stage split: the model PREDICTS, then a
+// separate deterministic gate decides whether it's allowed to SURFACE.
+// Gate rules: max 1 nudge per run, 6h cooldown per key, 3/day cap, quiet hours
+// 21:30–06:00 (unless the model marks it urgent), and anything the plain
+// watchdog already alerts on is suppressed as a duplicate.
+
+const NUDGE_DAILY_CAP = 3;
+const NUDGE_COOLDOWN_MS = 6 * 3600_000;
+
+// Condense ~5000 entities into the handful of facts that actually carry meaning
+// for "is something off?". Keeping this tight matters: a smaller, cleaner
+// context gives far better judgement than dumping the whole state machine.
+function homeContext(states) {
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+  const fname = (e) => (e.attributes && e.attributes.friendly_name) || e.entity_id;
+  // Minutes since an entity last changed — "how long has it been like this".
+  const mins = (id) => {
+    const lc = m[id] && m[id].last_changed;
+    if (!lc) return null;
+    const d = (Date.now() - Date.parse(lc)) / 60000;
+    return Number.isFinite(d) ? Math.round(d) : null;
+  };
+
+  const sast = new Date(Date.now() + 2 * 3600_000);
+  const hour = sast.getUTCHours();
+  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][sast.getUTCDay()];
+
+  const lightsOn = states
+    .filter((e) => /^(light|switch)\./.test(e.entity_id) && e.state === "on" && /light|lamp|spot/i.test(fname(e)))
+    .map((e) => ({ name: fname(e), onFor: mins(e.entity_id) }));
+
+  const openings = [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+    ["binary_sensor.helloliam_alarm_zone_024_door_lounge", "Lounge door"],
+    ["binary_sensor.helloliam_alarm_zone_030_beam_garage", "Garage"],
+  ].filter(([id]) => on(id)).map(([id, label]) => ({ name: label, openFor: mins(id) }));
+
+  // Power matters more than switch state here. Several of these are always-on
+  // plugs or pressure-driven pumps that sit energised and idle — the water pump
+  // reads "on" for 12h while drawing 3W. Reporting the switch alone made the
+  // model cry leak; reporting watts lets it tell "running" from "merely on".
+  const POWER_OF = {
+    "switch.pool_pump": "sensor.pool_pump_power_now",
+    "switch.borehole_pump": "sensor.borehole_pump_power_now",
+    "switch.water_pump": "sensor.water_pump_power",
+    "switch.kettle": "sensor.kettle_current_consumption",
+    "switch.study_heater": "sensor.study_heater_current_consumption",
+    "switch.tumble_dryer": "sensor.tumble_dryer_energy_power",
+    "switch.washing_machine": "sensor.washing_machine_energy_power",
+    "switch.top_loader": "sensor.top_loader_current_consumption",
+    "switch.dishwasher": "sensor.dishwasher_current_consumption",
+    "switch.air_fryer": "sensor.air_fryer_current_consumption",
+    "switch.microwave": "sensor.microwave_current_consumption",
+    "switch.nespresso": "sensor.nespresso_current_consumption",
+    "switch.work_pc": "sensor.work_pc_current_consumption",
+  };
+  // Above this many watts the device is genuinely doing work, not idling.
+  const RUNNING_W = { "switch.water_pump": 20, "switch.borehole_pump": 40, "switch.pool_pump": 40 };
+  const describe = (id) => {
+    const w = POWER_OF[id] ? num(POWER_OF[id]) : null;
+    const floor = RUNNING_W[id] ?? 5;
+    return {
+      name: fname(m[id]),
+      switchOnFor: mins(id),
+      watts: w,
+      actuallyRunning: w == null ? null : w > floor,
+    };
+  };
+
+  const appliances = states
+    .filter((e) => /^switch\./.test(e.entity_id) && e.state === "on" && /kettle|heater|dryer|washing|dishwasher|air_fryer|microwave|nespresso|top_loader|iron|pc/i.test(e.entity_id))
+    .map((e) => describe(e.entity_id));
+
+  const pumps = ["switch.pool_pump", "switch.borehole_pump", "switch.water_pump"]
+    .filter((id) => on(id))
+    .map(describe);
+
+  return {
+    time: `${String(hour).padStart(2, "0")}:${String(sast.getUTCMinutes()).padStart(2, "0")} SAST`,
+    dayOfWeek: dow,
+    partOfDay: hour < 6 ? "night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "late evening",
+    alarm: st("alarm_control_panel.olarm_alarm") || "unknown",
+    occupancy: st("sensor.home_occupancy") || "unknown",
+    nobodyHome: on("binary_sensor.nobody_home"),
+    batterySoc: num("sensor.victron_battery_soc"),
+    solarNowW: num("sensor.victron_total_pv_power"),
+    gridStatus: st("sensor.victron_grid_lost_alarm") || "unknown",
+    loadshedding: st("sensor.loadshedding") || "unknown",
+    tankLevelPct: num("sensor.jojo_tank_monitor_tank_water_level"),
+    indoorTempC: num("sensor.indoor_average_temperature"),
+    outdoorTempC: num("sensor.outdoor_temperature"),
+    weather: st("weather.home") || "unknown",
+    lightsOn,
+    openings,
+    appliancesOn: appliances,
+    pumpsRunning: pumps,
+  };
+}
+
+const NUDGE_SCHEMA = {
+  type: "object",
+  properties: {
+    nudges: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "short stable slug, e.g. garage-open-late" },
+          title: { type: "string", description: "max 6 words, may start with one emoji" },
+          body: { type: "string", description: "one plain sentence naming the observation and why it matters now" },
+          confidence: { type: "number", description: "0-1, how sure you are this is genuinely worth interrupting a person" },
+          urgent: { type: "boolean", description: "true only if it should break quiet hours (safety/security/damage)" },
+          view: { type: "string", description: "portal view to open: home, security, energy, lights, water, appliances, cameras, climate" },
+        },
+        required: ["key", "title", "body", "confidence", "urgent", "view"],
+      },
+    },
+  },
+  required: ["nudges"],
+};
+
+async function askGeminiForNudges(ctx) {
+  const prompt = `You are the watchful assistant for a family home in Pretoria, South Africa (solar + battery, load-shedding is normal, family of four with two young boys).
+
+Here is the CURRENT state of the house:
+${JSON.stringify(ctx, null, 1)}
+
+Identify anything genuinely ANOMALOUS or worth a gentle heads-up RIGHT NOW, given the time of day, who is home, and how long things have been in their current state.
+
+Good nudges look like: "the garage has been open 40 minutes and everyone's out", "the heater's been on 6 hours in an empty house", "the pool pump has run 11 hours today", "tank is low and no rain forecast".
+
+CRITICAL — "switched on" is NOT "running". Several plugs and pumps sit energised
+and idle all day. For anything with a \`watts\` field, judge by \`actuallyRunning\`
+and \`watts\`, NEVER by \`switchOnFor\` alone:
+- The water pump is pressure-driven: it normally reads on 24/7 at ~3W and only
+  draws real power on demand. \`actuallyRunning: false\` means it is IDLE and fine.
+- The kettle, air fryer and similar are on smart plugs left switched on at 0W.
+- Only flag one of these if \`actuallyRunning\` is true AND it has been so for an
+  unreasonable length of time.
+
+Rules:
+- Only report things a reasonable person would WANT to be interrupted about. Silence is the correct answer most of the time — return an empty array if nothing stands out.
+- Do NOT report: normal daytime lighting, solar/battery behaviour that is expected, pumps that have run a normal amount, anything that is obviously routine for the time of day.
+- Do NOT report a device as "left on" or "running long" when \`actuallyRunning\` is false or \`watts\` is near zero.
+- Do NOT invent state that isn't in the data. Never guess.
+- Be specific and quantitative — name the thing and how long.
+- confidence: below 0.7 means you're speculating; be honest.
+- urgent: reserve for safety, security or property damage.
+- Maximum 3 nudges. Prefer 0 or 1.`;
+
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: NUDGE_SCHEMA },
+  });
+  const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  let lastErr = "no model";
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body,
+      });
+      const j = await r.json();
+      if (r.ok) {
+        const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text;
+        const parsed = JSON.parse(txt || "{}");
+        return Array.isArray(parsed.nudges) ? parsed.nudges : [];
+      }
+      lastErr = (j && j.error && j.error.message) || `gemini ${r.status}`;
+    } catch (e) { lastErr = String((e && e.message) || e); }
+  }
+  logger.warn("nudge gemini failed", { lastErr });
+  return [];
+}
+
+async function runNudgeScan({ dryRun = false } = {}) {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+
+  const ctx = homeContext(states);
+  const candidates = await askGeminiForNudges(ctx);
+
+  // ---- Stage 2: the surfacing gate (deterministic, not the model's call) ----
+  const sast = new Date(Date.now() + 2 * 3600_000);
+  const minsOfDay = sast.getUTCHours() * 60 + sast.getUTCMinutes();
+  const quietHours = minsOfDay >= 21 * 60 + 30 || minsOfDay < 6 * 60;
+
+  // Don't duplicate anything the deterministic watchdog is already shouting about.
+  const wdSnap = await db.collection("watchdogState").where("active", "==", true).get();
+  const watchdogActive = wdSnap.docs.length > 0;
+
+  const since = Date.now() - 86_400_000;
+  const todaySnap = await db.collection("nudges").where("ts", ">=", since).get();
+  const sentToday = todaySnap.docs.length;
+  const recentByKey = new Map(todaySnap.docs.map((d) => [d.data().key, d.data().ts]));
+
+  const rejected = [];
+  const eligible = [];
+  for (const nd of candidates) {
+    if (!nd || !nd.key || !nd.title || !nd.body) { rejected.push({ key: nd && nd.key, why: "malformed" }); continue; }
+    if (typeof nd.confidence !== "number" || nd.confidence < 0.7) { rejected.push({ key: nd.key, why: `low confidence ${nd.confidence}` }); continue; }
+    const last = recentByKey.get(nd.key);
+    if (last && Date.now() - last < NUDGE_COOLDOWN_MS) { rejected.push({ key: nd.key, why: "cooldown" }); continue; }
+    if (quietHours && !nd.urgent) { rejected.push({ key: nd.key, why: "quiet hours" }); continue; }
+    eligible.push(nd);
+  }
+
+  // Highest confidence first; urgent always outranks non-urgent.
+  eligible.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || b.confidence - a.confidence);
+
+  let pushed = 0;
+  const surfaced = [];
+  for (const nd of eligible) {
+    if (sentToday + pushed >= NUDGE_DAILY_CAP) { rejected.push({ key: nd.key, why: "daily cap" }); continue; }
+    if (pushed >= 1) { rejected.push({ key: nd.key, why: "one per run" }); continue; }
+    if (watchdogActive && !nd.urgent) { rejected.push({ key: nd.key, why: "watchdog already alerting" }); continue; }
+    if (!dryRun) {
+      await db.collection("nudges").add({
+        key: nd.key, title: nd.title, body: nd.body, view: nd.view || "home",
+        confidence: nd.confidence, urgent: !!nd.urgent,
+        ts: Date.now(), dismissed: false,
+      });
+      await pushToAll(nd.title, nd.body, `nudge-${nd.key}`);
+    }
+    surfaced.push(nd);
+    pushed++;
+  }
+
+  logger.info("nudgeScan", { candidates: candidates.length, surfaced: surfaced.map((n) => n.key), rejected, quietHours, sentToday });
+  return { context: ctx, candidates, surfaced, rejected, quietHours, sentToday, dryRun };
+}
+
+exports.anomalyNudges = onSchedule(
+  { schedule: "every 2 hours", secrets: [HA_URL, HA_TOKEN, GEMINI_API_KEY], region: "us-central1", maxInstances: 1 },
+  async () => { await runNudgeScan(); },
+);
+
+// Manual trigger — `?dry=1` evaluates and reports without pushing or storing,
+// which is how you tune the prompt without spamming the family's phones.
+exports.anomalyNudgesNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN, GEMINI_API_KEY], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try {
+      const out = await runNudgeScan({ dryRun: req.query.dry === "1" });
+      res.status(200).json({ ok: true, ...out });
+    } catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
 // ---- Daily briefings ------------------------------------------------------
 // A morning ("today at a glance") and evening ("wind-down") digest composed
 // from Home Assistant + the reminders calendar, delivered as an FCM push at

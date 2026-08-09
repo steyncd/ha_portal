@@ -1,6 +1,6 @@
 export type ViewId =
   | "home" | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "meals" | "fairplay" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "meals" | "fairplay" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights" | "usage" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -38,6 +38,7 @@ export const NAV: NavItem[] = [
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "You", color: "var(--acc)" },
 
   { id: "insights", name: "Insights", icon: "📈", ic: "trending", group: "Bottom", color: "var(--acc)" },
+  { id: "usage", name: "Usage", icon: "📊", ic: "chart", group: "Bottom", color: "var(--acc)" },
   { id: "markets", name: "Markets & Rates", icon: "💹", ic: "trending", group: "Bottom", color: "var(--acc)" },
   { id: "settings", name: "Settings", icon: "⚙️", ic: "gear", group: "Bottom", color: "var(--muted)" },
 ];

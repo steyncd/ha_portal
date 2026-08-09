@@ -14,10 +14,12 @@
   import { lightSheet } from "../lib/lightSheet.svelte";
   import { E, ALL_LIGHTS } from "../lib/entities";
   import { greeting, sastHour, dateMedium, n, power } from "../lib/format";
-  import { ACTIONS, actionById, fireAction, suggestions } from "../lib/suggest";
+  import { actionById, fireAction, suggestions, topViews } from "../lib/suggest";
   import { actionLog, bucketFor, BUCKET_LABEL } from "../lib/actionLog.svelte";
   import { computeAttention } from "../lib/attention";
   import NeedsAttention from "../lib/components/NeedsAttention.svelte";
+  import Nudges from "../lib/components/Nudges.svelte";
+  import RoomScenes from "../lib/components/RoomScenes.svelte";
   import Icon from "../lib/components/Icon.svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -63,6 +65,7 @@
     return suggestions(6);
   });
   const learnedYet = $derived(actionLog.total >= 6);
+  const jumps = $derived.by(() => { void actionLog.events; return topViews(5); });
   let menuId = $state<string | null>(null);
 
   function pin(id: string) {
@@ -119,6 +122,8 @@
     <button class="hbtn ghost" onclick={() => onnav("overview")}><Icon name="layout" size={15} /> Dashboard</button>
   </div>
 </div>
+
+<Nudges {onnav} />
 
 <NeedsAttention items={attention} {onnav} />
 
@@ -259,15 +264,22 @@
   </section>
 </div>
 
-<!-- Jump to -->
+<!-- Room-aware scenes -->
 <section class="sec">
-  <div class="sh"><span class="st">Jump to</span></div>
+  <RoomScenes />
+</section>
+
+<!-- Jump to — ranked by the views you actually open most -->
+<section class="sec">
+  <div class="sh">
+    <span class="st">Jump to</span>
+    <span class="scap">{jumps.some((j) => j.learned) ? "your most-used pages" : "popular pages"}</span>
+  </div>
   <div class="jumps">
-    <button class="jump" onclick={() => onnav("overview")}><Icon name="layout" size={16} /> Full Dashboard</button>
-    <button class="jump" onclick={() => onnav("climate")}><Icon name="door" size={16} /> Rooms</button>
-    <button class="jump" onclick={() => onnav("energy")}><Icon name="bolt" size={16} /> Energy</button>
-    <button class="jump" onclick={() => onnav("cameras")}><Icon name="camera" size={16} /> Cameras</button>
-    <button class="jump" onclick={() => onnav("security")}><Icon name="shield" size={16} /> Security</button>
+    {#each jumps as j (j.id)}
+      <button class="jump" onclick={() => onnav(j.id)}><Icon name={j.ic} size={16} /> {j.name}</button>
+    {/each}
+    <button class="jump ghost" onclick={() => onnav("usage")}><Icon name="trending" size={16} /> Usage</button>
   </div>
 </section>
 
@@ -367,4 +379,6 @@
   .jumps { display: flex; flex-wrap: wrap; gap: 9px; }
   .jump { display: inline-flex; align-items: center; gap: 8px; padding: 10px 14px; border-radius: 12px; background: rgba(255,255,255,0.045); font-size: 12.5px; font-weight: 600; color: var(--text-2); }
   .jump:hover { background: rgba(255,255,255,0.09); color: var(--text); }
+  .jump.ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line); color: var(--muted); }
+  .jump.ghost:hover { background: rgba(255,255,255,0.05); color: var(--text-2); }
 </style>

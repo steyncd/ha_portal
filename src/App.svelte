@@ -3,6 +3,7 @@
   import { ha } from "./lib/store.svelte";
   import { authStore } from "./lib/auth.svelte";
   import { logAccess } from "./lib/accessLog";
+  import { actionLog } from "./lib/actionLog.svelte";
   import { prefs } from "./lib/prefs.svelte";
   import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
@@ -39,12 +40,13 @@
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
     insights: () => import("./views/Insights.svelte"),
+    usage: () => import("./views/Usage.svelte"),
     markets: () => import("./views/Markets.svelte"),
     settings: () => import("./views/Settings.svelte"),
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights") return { onnav: go };
+    if (id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights" || id === "usage") return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -154,6 +156,9 @@
   const mobileTabs = ["home", "overview", "security", "energy"] as ViewId[];
   function go(id: string) {
     if (id === "__palette") { palette = true; return; }
+    // Every navigation counts (not deduped per session) — this is the signal
+    // that tells us which features are genuinely used most often.
+    if (id !== view) actionLog.recordView(id);
     view = id as ViewId; palette = false; moreOpen = false;
   }
 </script>

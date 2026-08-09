@@ -466,6 +466,15 @@ class HAStore {
     if (this.#mock) return;
     return this.#svc("scene", "turn_on", { entity_id });
   }
+  /**
+   * Apply a room-aware scene (script.room_scene) — the same verb resolves
+   * differently per room. See packages/feature_room_scenes.yaml for the
+   * per-room bright/soft light sets.
+   */
+  roomScene(room: string, scene: "bright" | "relax" | "off" | "goodnight") {
+    if (this.#mock) return;
+    return this.#svc("script", "room_scene", { room, scene });
+  }
   script(entity_id: string) {
     if (this.#mock) return;
     const svc = entity_id.replace("script.", "");

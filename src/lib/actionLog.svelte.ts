@@ -43,7 +43,9 @@ export const BUCKET_LABEL: Record<Bucket, string> = {
   afternoon: "in the afternoon", evening: "in the evening", late: "late at night",
 };
 
-type Ev = { a: string; t: number; b: Bucket };
+/** kind: "a" = a deliberate quick-action tap, "v" = a view/feature opened.
+ *  Absent on events written before view-tracking existed → treated as "a". */
+type Ev = { a: string; t: number; b: Bucket; k?: "a" | "v" };
 
 class ActionLog {
   // Reactive so the Home suggestion strip recomputes the moment a tap lands.
@@ -70,17 +72,29 @@ class ActionLog {
   /** Record one deliberate quick-action tap. Call on every Home/Favourites/
    *  scene tap. Automation-driven state changes must NEVER be recorded here. */
   record(actionId: string) {
+    this.#push(actionId, "a");
+  }
+
+  /** Record a view/feature being opened. Unlike the old access log this is NOT
+   *  deduped per session — every open counts, because the whole point is to
+   *  measure which features are genuinely reached for most often. */
+  recordView(viewId: string) {
+    this.#push(viewId, "v");
+  }
+
+  #push(id: string, kind: "a" | "v") {
     const now = Date.now();
-    const ev: Ev = { a: actionId, t: now, b: bucketFor(new Date(now)) };
+    const ev: Ev = { a: id, t: now, b: bucketFor(new Date(now)), k: kind };
     this.events = [...this.events, ev].slice(-CAP);
     this.#save();
-    // Best-effort durable mirror (future server-side ranking / cross-device).
+    // Best-effort durable mirror (cross-device + server-side ranking later).
     // Never blocks or throws — a rules denial just means local-only for now.
     const email = authStore.user?.email;
     if (email) {
       addDoc(collection(db, "action_log"), {
         email: email.toLowerCase(),
-        action: actionId,
+        action: id,
+        kind: kind === "v" ? "view" : "action",
         bucket: ev.b,
         ts: serverTimestamp(),
       }).catch(() => {});
@@ -92,11 +106,11 @@ class ActionLog {
    * its weight in the current time bucket, so an action that's rare overall but
    * strong at this hour (e.g. "Goodnight" at 22:00) beats an all-day-common one.
    */
-  score(actionId: string, now = Date.now(), bucket = bucketFor(new Date(now))): number {
+  score(actionId: string, now = Date.now(), bucket = bucketFor(new Date(now)), kind: "a" | "v" = "a"): number {
     let global = 0;
     let ctx = 0;
     for (const e of this.events) {
-      if (e.a !== actionId) continue;
+      if (e.a !== actionId || (e.k ?? "a") !== kind) continue;
       const ageDays = (now - e.t) / 86_400_000;
       const w = Math.exp(-LAMBDA * ageDays);
       global += w;
@@ -105,16 +119,50 @@ class ActionLog {
     return 0.45 * global + 0.55 * ctx;
   }
 
-  /** Raw lifetime tap count for an action (used for the "you've used this N×" hint). */
-  count(actionId: string): number {
+  /** Raw lifetime count for an action (used for the "you've used this N×" hint). */
+  count(actionId: string, kind: "a" | "v" = "a"): number {
     let n = 0;
-    for (const e of this.events) if (e.a === actionId) n++;
+    for (const e of this.events) if (e.a === actionId && (e.k ?? "a") === kind) n++;
     return n;
   }
 
-  /** Total taps recorded — drives the cold-start vs learned distinction. */
+  /** Total quick-action taps recorded — drives cold-start vs learned. */
   get total(): number {
-    return this.events.length;
+    let n = 0;
+    for (const e of this.events) if ((e.k ?? "a") === "a") n++;
+    return n;
+  }
+
+  /**
+   * Everything of one kind, ranked. Returns both the decayed frecency `score`
+   * (what the UI orders by) and the raw `count` + `last` timestamp, so the
+   * Usage panel can show "how often" and "how recently" honestly.
+   */
+  rank(kind: "a" | "v" = "a", now = Date.now()): { id: string; score: number; count: number; last: number }[] {
+    const agg = new Map<string, { score: number; count: number; last: number }>();
+    for (const e of this.events) {
+      if ((e.k ?? "a") !== kind) continue;
+      const w = Math.exp(-LAMBDA * ((now - e.t) / 86_400_000));
+      const cur = agg.get(e.a) ?? { score: 0, count: 0, last: 0 };
+      cur.score += w;
+      cur.count += 1;
+      cur.last = Math.max(cur.last, e.t);
+      agg.set(e.a, cur);
+    }
+    return [...agg.entries()]
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((a, b) => b.score - a.score);
+  }
+
+  /** Oldest retained event timestamp — "tracking since" for the Usage panel. */
+  get since(): number | null {
+    return this.events.length ? this.events[0].t : null;
+  }
+
+  /** Wipe all usage history (privacy control in the Usage panel). */
+  clear() {
+    this.events = [];
+    this.#save();
   }
 }
 

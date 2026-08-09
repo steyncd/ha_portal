@@ -11,6 +11,7 @@ import { ha } from "./store.svelte";
 import { E, ALL_LIGHTS } from "./entities";
 import { toast } from "./toast.svelte";
 import { prefs } from "./prefs.svelte";
+import { NAV, type ViewId } from "./nav";
 import { actionLog, bucketFor, type Bucket } from "./actionLog.svelte";
 
 export type ActionKind = "scene" | "toggle" | "arm" | "action";
@@ -104,4 +105,31 @@ export function suggestions(n = 5, now = Date.now()): { action: Action; learned:
 
   scored.sort((x, y) => y.score - x.score);
   return scored.slice(0, n).map(({ action, learned }) => ({ action, learned }));
+}
+
+// Views always worth offering before we've learned anything, and as filler when
+// the user has only visited a couple of pages.
+const VIEW_SEED: ViewId[] = ["overview", "climate", "energy", "cameras", "security"];
+
+/**
+ * "Jump to" ranking — the features actually reached for most, by view frecency.
+ * Falls back to a sensible seed list on a fresh install, and always tops up to
+ * `n` so the row never looks broken. `home` is excluded (you're already there).
+ */
+export function topViews(n = 5, now = Date.now()): { id: ViewId; name: string; ic: string; learned: boolean }[] {
+  const ranked = actionLog.rank("v", now).filter((r) => r.id !== "home" && r.id !== "settings");
+  const order: ViewId[] = [];
+  for (const r of ranked) {
+    if (NAV.some((v) => v.id === r.id)) order.push(r.id as ViewId);
+    if (order.length >= n) break;
+  }
+  const learnedCount = order.length;
+  for (const s of VIEW_SEED) {
+    if (order.length >= n) break;
+    if (!order.includes(s)) order.push(s);
+  }
+  return order.map((id, i) => {
+    const item = NAV.find((v) => v.id === id);
+    return { id, name: item?.name ?? id, ic: item?.ic ?? "layout", learned: i < learnedCount };
+  });
 }

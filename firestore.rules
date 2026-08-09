@@ -66,6 +66,28 @@ service cloud.firestore {
       allow update, delete: if isOwner();
     }
 
+    // Proactive AI nudges: written server-side by the anomalyNudges Function
+    // (Admin SDK bypasses rules). Members read them and may only flip them to
+    // dismissed from the app — never forge one.
+    match /nudges/{id} {
+      allow read: if isMember();
+      allow update: if isMember()
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['dismissed', 'dismissedAt']);
+      allow create, delete: if isOwner();
+    }
+
+    // Usage log: every deliberate quick-action tap and view open, appended by
+    // the user who performed it. Powers the "Suggested for now" frecency
+    // ranking and the Usage analytics panel. Members read (to see household
+    // usage); only owners prune.
+    match /action_log/{id} {
+      allow read: if isMember();
+      allow create: if isAllowed()
+        && request.resource.data.email == request.auth.token.email.lower();
+      allow update, delete: if isOwner();
+    }
+
     // ---- Watchlist app (separate access model from the portal) ----
     // Bootstrap admins can always manage it (seed + add others); after that the
     // admin/allowed lists in watchlist/access govern access. Fully private:

@@ -42,7 +42,7 @@ const DEFAULTS: Stored = {
   settingsTab: "account",
   viewsOn: {
     energy: true, powertrends: true, solar: true, water: true, irrigation: true, climate: true, appliances: true,
-    cameras: true, traffic: true, lights: true, reminders: true, trello: true, meals: true, fairplay: true, system: true, control: true, me: true, faith: true, kids: true, vitality: true, timeline: true, insights: true, markets: true,
+    cameras: true, traffic: true, lights: true, reminders: true, trello: true, meals: true, fairplay: true, system: true, control: true, me: true, faith: true, kids: true, vitality: true, timeline: true, insights: true, usage: true, markets: true,
   },
   widgets: {
     scenes: true, lights: true, energyToday: true,
