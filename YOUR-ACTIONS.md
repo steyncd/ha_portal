@@ -1,5 +1,9 @@
 # What needs your hands — in order
 
+**Updated 2026-08-10, evening.** Items 1, 3 and 4 are now done and are struck
+through below rather than deleted, so the record of what changed survives. Item 2
+was answered and its original advice was DANGEROUS — read the correction.
+
 Everything else in the redesign is built, deployed and verified. This is the list
 that needs a person, ordered so the cheap-and-important things come first.
 
@@ -9,7 +13,9 @@ output of `vainfo`.
 
 ---
 
-## 1 · Merge `portal-vision` into `main` — 2 minutes
+## ~~1 · Merge `portal-vision` into `main`~~ — DONE
+
+Merged and pushed. `main` is now the only copy that matters and hosting serves it.
 
 The whole redesign lives on `portal-vision`: **37 commits**. `main` has not moved
 since before any of it. Hosting already serves the built output, so this changes
@@ -30,37 +36,59 @@ call, not mine.
 
 ---
 
-## 2 · Check the InfluxDB retention policy — 1 minute
+## 2 · The InfluxDB retention policy — ANSWERED, and my advice was wrong
 
-This is I5, and it is the one unanswered investigation. Retention lives on the
-InfluxDB **server**, which I cannot see from the config mount, so "no retention
-policy set" is currently unverified rather than confirmed.
+**Do not run the `ALTER RETENTION POLICY ... DURATION 400d` command that used to
+be in this section.** I queried the server directly on 2026-08-10 and it would
+have deleted about three and a half years of your history.
 
-**Settings → Add-ons → InfluxDB → open the Web UI**, then in the query console:
+What is actually true:
 
-```sql
-SHOW RETENTION POLICIES ON homeassistant
+```
+SHOW RETENTION POLICIES ON home_assistant
+name     duration  shardGroupDuration  replicaN  default
+autogen  0s        168h0m0s            1         true
 ```
 
-**How to read it:**
+- `duration 0s` — so yes, **there is no retention policy and the database grows
+  forever.** That part of the original suspicion was right.
+- But the oldest point in the database is **2021-09-29**, across **4,950
+  series**. A
+  400-day policy deletes everything before roughly July 2025.
+- And there is no pressure to decide: the disk is **39.8% used with 253.6 GiB
+  free**.
 
-- `duration 0s` on `autogen` → **no retention. The database grows forever.**
-- Anything else → you already have a policy and there is nothing to do.
+I recommended 400 days without knowing how far back the data went. That was a
+guess dressed as a recommendation, and acting on it would have been irreversible.
 
-If it is `0s`, set 400 days — long enough for the 90-day baselines and a
-year-on-year comparison, short enough to stop unbounded growth:
+**What I did instead.** System Monitor was installed but all 85 of its sensors
+were disabled — this house had no disk, memory or CPU reading anywhere. Eight are
+now enabled, Diagnostics has a "The machine" card, and an automation warns at 85%
+and 93%. The growth is now visible, which is the part that should not wait.
 
-```sql
-ALTER RETENTION POLICY autogen ON homeassistant DURATION 400d
-```
+**What is left for you — a decision, not a task.** Three honest options:
 
-**Why it matters more than it sounds:** InfluxDB feeds the ten `90d_baseline`
-sensors, which feed the Insights view, which is the only thing in the house that
-notices standby power creeping up. A full disk takes that out silently.
+1. **Leave it.** At 40% full and this growth rate you have years. You now get
+   warned before it matters. This is a perfectly good answer.
+2. **Keep everything, cap the future** — e.g. `DURATION 1825d` (five years).
+   Deletes nothing today; the 2021 data starts expiring around September 2026.
+3. **Trim hard** — 400d or similar, accepting the loss of pre-2025 history.
+
+If you want option 2 or 3, tell me which and I will run it. I am not choosing how
+much of your home's history to delete.
 
 ---
 
-## 3 · Add the beams sun-follow helpers — 5 minutes
+## ~~3 · Add the beams sun-follow helpers~~ — DONE
+
+Built in `packages/feature_portal_gaps.yaml`:
+`input_boolean.alarm_beams_follow_sun` and
+`input_number.alarm_beams_sun_offset` (default +30 min, range −60 to +120), plus
+the automation and the Settings › Alarm rows that were already waiting for them.
+It is **off** — turning it on is yours. The fixed 22:10 schedule is untouched and
+acts as a backstop.
+
+Original instructions, now redundant:
 
 The Settings → Alarm screen already has the Clock/Sun toggle built, rendering
 **disabled with the reason** because the helper does not exist yet. This is the
@@ -144,7 +172,18 @@ nothing to change on my side.
 
 ---
 
-## 4 · Clear the garage beam bypass — 1 minute
+## ~~4 · Clear the garage beam bypass~~ — ALREADY CLEAR
+
+Checked against the panel on 2026-08-10: zone 030 is **not** bypassed. Its bypass
+button was last pressed on 6 August and has been cleared since.
+`sensor.alarm_bypassed_zones_2` reads **1** — zone 022 (Beam · Back Garden), which
+is the deliberate standing bypass for the faulty beam.
+
+You can now see and change all of this yourself: **Security → Zones** lists all 32
+with live status and a bypass/restore control on each. The cheatsheet has been
+corrected too.
+
+Original text, which was true when written:
 
 `binary_sensor.helloliam_alarm_zone_030_beam_garage` is bypassed with **no
 expiry**. The Security hub reports it, and it is the exact thing the new
@@ -164,9 +203,13 @@ The second is the honest option if the beam is genuinely faulty. The point is th
 
 ---
 
-## 5 · Verify the two new nightly jobs — tomorrow morning, 2 minutes
+## 5 · Verify the two nightly jobs — still worth a look
 
-They run at **02:10** and **02:20** for the first time tonight.
+I could not check these myself: `firebase functions:log` returns "Failed to
+retrieve log entries from Google Cloud" with the CLI's current credentials, so
+the Firestore docs are the only evidence and they need the console.
+
+They run at **02:10** and **02:20**.
 
 `cadenceJob` is the one that matters: it computes the observed p95 interval per
 entity from 14 days of recorder history, and those become the freshness

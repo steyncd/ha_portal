@@ -1,5 +1,11 @@
 # Cloud services review — what I did, and what needs you
 
+**Updated 2026-08-10, evening.** Item 2 (Remote Config) is now done — I created
+all four parameters from the CLI, so it is struck through below. Items 1, 3, 4, 5
+and 6 still need you: `gcloud` is not installed on this Mac and the Firebase CLI
+has no command for Firestore TTL, budgets, uptime checks or API keys, so those are
+genuinely console jobs.
+
 Worked through `Steyn Cloud Services Review.html`. Its central claim checked out:
 `@firebase/remote-config`, `performance`, `storage`, `analytics` and `ai` are all
 in `package-lock.json` and none were imported anywhere in `src/`. So three of the
@@ -61,7 +67,25 @@ manage a bill, it is there to tell you the moment one starts.
 
 ---
 
-## 2 · Create the Remote Config parameters — 10 minutes
+## ~~2 · Create the Remote Config parameters~~ — DONE
+
+Created from the CLI and live as version 1, via a committed
+`remoteconfig.template.json` (so the parameters are in git rather than only in the
+console, and `firebase deploy --only remoteconfig` re-applies them):
+
+| Parameter | Default | What it is for |
+|---|---|---|
+| `default_views` | the ten current views | what a FRESH install sees; your own prefs still win |
+| `gemini_model` | `gemini-3.5-flash` | change the model with no redeploy — the trap that bit twice |
+| `kill_switches` | empty | hide a misbehaving widget at 22:00 |
+| `notice` | empty | one line at the top of Home for the household |
+
+The app already had real in-app defaults for all four, so this changed nothing
+about how it behaves — it just means the switches now exist where you can reach
+them. Nothing safety-critical is remotely configurable: a kill switch can hide a
+widget, never touch the alarm.
+
+Original instructions, now redundant:
 
 The app already works without these. Creating them is what makes the console
 useful.

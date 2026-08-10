@@ -47,10 +47,19 @@
     const num = (id: string) => ha.num(id);
     const st = (id: string) => ha.state(id);
 
+    // The machine. Added 2026-08-10, when System Monitor's sensors were enabled —
+    // all 85 had been disabled since it was installed, so this house had no disk,
+    // memory or CPU reading anywhere. Disk is the one that matters: InfluxDB has
+    // no retention policy and keeps data back to 2021, so it grows forever, and
+    // nothing was watching it.
+    const disk = num("sensor.system_monitor_disk_usage");
+    const diskFree = num("sensor.system_monitor_disk_free");
+    const cpuTemp = num("sensor.system_monitor_processor_temperature");
+
     // 1 · HA core
-    // The sensor holds WHEN HA started, so it has to be turned into elapsed
-    // time here. It also reads 'unknown' until the first restart stamps it, and
-    // since() returns null for that rather than a bogus duration.
+    // The sensor holds WHEN HA started (or when the machine booted, whichever it
+    // could establish), so it is turned into elapsed time here rather than
+    // HA-side — a duration sensor would rewrite itself every minute.
     const uptime = since(st("sensor.home_assistant_uptime"));
     out.push({
       id: "core",
@@ -72,6 +81,37 @@
               : ha.status === "connected" ? "connected" : "reconnecting"),
       feeds: `Feeds ${depsEntityCount} referenced entities`,
     });
+
+    // The thresholds match the HA-side warning automation (85 / 93) on purpose:
+    // two places disagreeing about what "nearly full" means is how you end up
+    // trusting neither.
+    if (disk != null) {
+      out.push({
+        id: "machine",
+        name: "The machine",
+        glyph: "🖥️",
+        // No "bad" tier exists in this view; "care" is the top severity here and
+        // the HA-side notification is what escalates past 93%.
+        health: disk >= 85 ? "care" : "ok",
+        detail: [
+          `disk ${n(disk, 0)}%`,
+          diskFree != null ? `${n(diskFree, 0)} GiB free` : null,
+          cpuTemp != null ? `${n(cpuTemp, 0)}°C` : null,
+        ].filter(Boolean).join(" · "),
+        feeds:
+          disk >= 85
+            ? "Everything. InfluxDB has no retention policy and holds data back to 2021, so it is the likeliest cause of the growth."
+            : "Everything — the recorder, InfluxDB and every automation run on this box. InfluxDB grows without a retention policy, so this is the number that notices.",
+        keys: [
+          "sensor.system_monitor_disk_usage",
+          "sensor.system_monitor_disk_free",
+          "sensor.system_monitor_memory_use",
+          "sensor.system_monitor_processor_use",
+          "sensor.system_monitor_processor_temperature",
+          "sensor.system_monitor_load_1_min",
+        ],
+      });
+    }
 
     // 2 · Zigbee mesh — the two weak links are the whole story here.
     const weak = Object.keys(ha.entities).filter((id) => {
