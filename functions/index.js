@@ -75,14 +75,24 @@ exports.waInbound = onRequest(
     const sd = (sender.match(/\d+/g) || []).join("") || "unknown";
     try {
       const ref = db.collection("waRate").doc(sd);
-      // Same TTL story: a rate-limit window for a past day has no readers.
+      // Same TTL story: a rate-limit window for a past day has no readers. The
+      // expiresAt below is what makes that true rather than aspirational — a
+      // Firestore TTL policy on waRate.expiresAt now deletes these, and a policy
+      // on a field nothing writes silently does nothing at all.
+      //
+      // Two days rather than one window: long enough that a clock skew or a late
+      // retry still finds its window, short enough that nothing accumulates.
       const ok = await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
         const nowMs = Date.now();
         let { count = 0, windowStart = nowMs } = snap.exists ? snap.data() : {};
         if (nowMs - windowStart > WINDOW_MS) { count = 0; windowStart = nowMs; }
         count += 1;
-        tx.set(ref, { count, windowStart });
+        tx.set(ref, {
+          count,
+          windowStart,
+          expiresAt: new Date(nowMs + 2 * 86400_000),
+        });
         return count <= RATE_LIMIT;
       });
       if (!ok) {
@@ -2219,26 +2229,72 @@ async function runApplianceDrift() {
   if (!r0.ok) throw new Error(`HA ${r0.status}`);
   const states = await r0.json();
 
-  // Every power sensor that looks like a metered plug.
+  // METERED APPLIANCES AND CIRCUITS ONLY.
+  //
+  // The first version of this filter was `(current_consumption|_power)` minus
+  // `victron|solar|grid|battery`, which matched 67 entities — including
+  // multiplus_inverters_dc_power, venus_pv_power and every inverter input/output
+  // leg. Two problems, one of which hid the other:
+  //
+  //   1. Drift on an inverter's internal power leg is not an appliance getting
+  //      worse, it is the sun moving. Meaningless findings.
+  //   2. Those are the highest-cardinality series in the recorder, so they were
+  //      also the slowest — and 67 sequential 30-day history fetches blew the
+  //      540-second timeout. The job returned HTTP 504 every night and wrote
+  //      nothing (confirmed 2026-08-10: latency 540.001s, no document created).
+  //
+  // `current_consumption` is the convention the Tapo and Matter plugs use, which
+  // is exactly the set of things that CAN drift in a way worth telling someone
+  // about. NAMED adds the handful of circuit meters that use `_power` instead.
+  // 18 entities today, down from 67, and every one is a real load.
+  const NAMED = new Set([
+    "sensor.living_room_main_tv_plug_power",
+    "sensor.hallway_bedroom_and_living_room_lights_power",
+    "sensor.study_router_and_ha_power",
+    "sensor.dining_room_alarm_cctv_power_monitor_power",
+    "sensor.street_lights_street_lights_power",
+    "sensor.pool_pump_power_now",
+    "sensor.borehole_pump_power_now",
+  ]);
+  const EXCLUDE = /multiplus|venus|inverter|mppt|smartsolar|victron|apparent|reactive|avg_power|_factor$/;
   const plugs = states
     .map((e) => e.entity_id)
-    .filter((id) => /^sensor\..*(current_consumption|_power)$/.test(id) && !/victron|solar|grid|battery/.test(id));
+    .filter(
+      (id) =>
+        (/^sensor\.[a-z0-9_]+_current_consumption$/.test(id) || NAMED.has(id)) &&
+        !EXCLUDE.test(id),
+    );
 
   const end = new Date();
   const start = new Date(end.getTime() - 30 * 86_400_000);
   const findings = [];
 
+  // Fetched a few at a time rather than one after another. Sequential was the
+  // other half of the timeout; unbounded Promise.all would just move the problem
+  // onto the recorder, which is a single SQLite/MariaDB connection pool.
+  const CONCURRENCY = 4;
+  const history = new Map();
+  for (let i = 0; i < plugs.length; i += CONCURRENCY) {
+    const batch = plugs.slice(i, i + CONCURRENCY);
+    await Promise.all(
+      batch.map(async (id) => {
+        try {
+          const r = await fetch(
+            `${base}/api/history/period/${start.toISOString()}?end_time=${end.toISOString()}&filter_entity_id=${id}&minimal_response&no_attributes`,
+            { headers: { Authorization: `Bearer ${tok}` } },
+          );
+          if (!r.ok) return;
+          const j = await r.json();
+          if (Array.isArray(j[0])) history.set(id, j[0]);
+        } catch {
+          // A single plug failing must not take the run with it.
+        }
+      }),
+    );
+  }
+
   for (const id of plugs) {
-    let arr;
-    try {
-      const r = await fetch(
-        `${base}/api/history/period/${start.toISOString()}?end_time=${end.toISOString()}&filter_entity_id=${id}&minimal_response&no_attributes`,
-        { headers: { Authorization: `Bearer ${tok}` } },
-      );
-      if (!r.ok) continue;
-      const j = await r.json();
-      arr = j[0];
-    } catch { continue; }
+    const arr = history.get(id);
     if (!Array.isArray(arr) || arr.length < 50) continue;
 
     // Daily means, then compare the last 7 days against the 30-day trailing

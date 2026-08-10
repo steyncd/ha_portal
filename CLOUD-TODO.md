@@ -1,10 +1,10 @@
 # Cloud services review — what I did, and what needs you
 
-**Updated 2026-08-10, evening.** Item 2 (Remote Config) is now done — I created
-all four parameters from the CLI, so it is struck through below. Items 1, 3, 4, 5
-and 6 still need you: `gcloud` is not installed on this Mac and the Firebase CLI
-has no command for Firestore TTL, budgets, uptime checks or API keys, so those are
-genuinely console jobs.
+**Updated 2026-08-10, later.** I was wrong that `gcloud` was not installed — it is
+at `~/google-cloud-sdk/bin/gcloud` and my non-login shell simply did not have it on
+PATH. Correcting that, items **1, 2, 4 and 5 are now all done** and struck through
+below. Only item 3 (the Maps key) and item 6 (Cloud Storage) still need you, plus a
+decision on an account-wide budget.
 
 Worked through `Steyn Cloud Services Review.html`. Its central claim checked out:
 `@firebase/remote-config`, `performance`, `storage`, `analytics` and `ai` are all
@@ -48,7 +48,26 @@ working immediately with no backfill.
 
 ---
 
-## 1 · A billing budget alert — 5 minutes, do this first
+## ~~1 · A billing budget alert~~ — DONE, and the gap was worse than described
+
+Five budgets already existed, all scoped to individual projects — and **none
+covered `helloliam-ha-dashboard` or `steyn-family-finance`**, which are the two
+this portal actually runs on. That is precisely the failure mode this item
+predicted.
+
+Created: **"Steyn Home portal (helloliam + finance)"**, $5 USD/month, both project
+numbers, alerting at 50% / 90% / 100%, all credits included. Matches the pattern of
+the existing five, which notify billing admins by email.
+
+**One decision left for you.** There is still no *account-wide* catch-all, and
+several other projects (steyn-hindsight, steyn-waypoint, steyn-homestead,
+steyn-vault, ha-dashboard-steyncd, gen-lang-client) have no budget at all. I did
+not create one because the amount would have been a guess: there is no billing
+export to BigQuery, so I cannot see actual spend from here, and a figure set too
+low alerts constantly while one set too high never fires. Tell me your rough
+monthly total and I will add it.
+
+Original instructions, now redundant:
 
 The document is right that this is what makes everything else safe to try, and it
 is the only mechanism that will actually tell you.
@@ -155,7 +174,25 @@ About 250 calls a month against a 10 000 free allowance.
 
 ---
 
-## 4 · The uptime check — 10 minutes
+## ~~4 · The uptime check~~ — DONE
+
+- **Uptime check** "Home Assistant reachable": HTTPS, `ha.helloliam.co.za`, path
+  `/`, port 443, **5-minute** period, 30-second timeout, three regions (Europe,
+  Asia-Pacific, US-Virginia — the API requires at least three). About 26 000
+  executions/month against a free million. I used 5 minutes rather than the 1
+  minute below because `healthProbe` already covers this from the inside every 5
+  minutes; this is the outside-in view, and it does not need to be finer.
+- **Email notification channel** for steyncd@gmail.com.
+- **Alert policy** "Home Assistant unreachable": fires when the check fails from
+  **more than one region for 10 minutes**, auto-closes after 30. More than one
+  region deliberately — a single probe location failing is usually the probe.
+
+The webhook half is NOT done. It needs `MONITORING_TOKEN` pasted into a URL, and I
+would rather not put a shared secret into a query string on your behalf. Email
+alerting works today; add the webhook yourself if you want the findings to become
+Diagnostics cards too.
+
+Original instructions:
 
 `healthProbe` already covers HA reachability every 5 minutes, so this is the
 belt-and-braces layer plus function-error alerting.
@@ -185,7 +222,19 @@ metric references no sooner than **1 September 2027**. Cheap, but not free forev
 
 ---
 
-## 5 · Firestore TTL policies — 5 minutes
+## ~~5 · Firestore TTL policies~~ — DONE, both of them
+
+| Collection | Field | State |
+|---|---|---|
+| `interruptLog` | `expiresAt` | ACTIVE |
+| `waRate` | `expiresAt` | CREATING → settles on its own |
+
+`waRate` needed a code change first: it wrote `{count, windowStart}` and no
+`expiresAt`, so the policy would have been a no-op exactly as this section warned.
+`waInbound` now writes `expiresAt` two days out — long enough that a clock skew or
+a late retry still finds its window, short enough that nothing accumulates.
+
+Original instructions:
 
 Free, server-side, and removes cleanup code you would otherwise have to write and
 remember.

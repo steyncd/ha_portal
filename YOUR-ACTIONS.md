@@ -203,13 +203,51 @@ The second is the honest option if the beam is genuinely faulty. The point is th
 
 ---
 
-## 5 · Verify the two nightly jobs — still worth a look
+## ~~5 · Verify the two nightly jobs~~ — DONE, and one was broken
 
-I could not check these myself: `firebase functions:log` returns "Failed to
-retrieve log entries from Google Cloud" with the CLI's current credentials, so
-the Firestore docs are the only evidence and they need the console.
+I triggered both early with `gcloud scheduler jobs run` rather than leaving you to
+check in the morning. `firebase functions:log` does fail, but `gcloud logging read`
+works fine — my earlier "credentials" explanation was wrong.
 
-They run at **02:10** and **02:20**.
+**`cadenceJob` works.** `measured=109 skipped=158`, `config/cadence` written. But
+my expectation in this section was wrong: I said skipped "should be small" and it
+is the majority. 109 entities is still 109 real p95 thresholds where there were
+none, so the freshness badges are now measured rather than guessed for those — but
+the skip rate is worth a look sometime.
+
+**`applianceDrift` was failing every night and writing nothing.** HTTP **504 after
+exactly 540.001 seconds** — it timed out. Two causes, and the first hid the second:
+
+1. Its filter, `(current_consumption|_power)` minus `victron|solar|grid|battery`,
+   matched **67 entities** including `multiplus_inverters_dc_power` and
+   `venus_pv_power`. Drift on an inverter leg is the sun moving, not an appliance
+   getting worse.
+2. Those are the largest series in the recorder, and 67 sequential 30-day history
+   fetches could not finish in nine minutes.
+
+Fixed: the filter is now `current_consumption` (the Tapo/Matter convention) plus
+seven named circuit meters, minus everything inverter-side — **18 entities, all
+real loads** — and the fetches run four at a time. It now returns **200 in 235
+seconds** with `checked=18 flagged=6`.
+
+The six findings, for what they are worth:
+
+| Entity | Baseline | Last 7 days | Change |
+|---|---|---|---|
+| living room TV plug | 28 W | 55 W | **+101%** |
+| study router + HA | 229 W | 54 W | **−76%** |
+| hallway/bedroom/living lights | 66 W | 32 W | −52% |
+| borehole pump | 955 W | 469 W | −51% |
+| microwave | 7 W | 10 W | +35% |
+| kettle | 1 128 W | 1 499 W | +33% |
+
+**The study router + HA one is worth your eyes** — a 229 W circuit dropping to
+54 W is either something unplugged or a meter problem. The kettle and microwave are
+probably artefacts: these are daily *means*, so for something used in bursts the
+number tracks how often you used it, not its condition. Worth refining if the noise
+bothers you.
+
+They run nightly at **02:10** and **02:20**.
 
 `cadenceJob` is the one that matters: it computes the observed p95 interval per
 entity from 14 days of recorder history, and those become the freshness
