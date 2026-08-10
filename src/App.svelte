@@ -25,7 +25,8 @@
     water: () => import("./views/WaterHub.svelte"),
     waterdetail: () => import("./views/Water.svelte"),
     irrigation: () => import("./views/Irrigation.svelte"),
-    climate: () => import("./views/Rooms.svelte"),
+    climate: () => import("./views/RoomsHub.svelte"),
+    roomsdetail: () => import("./views/Rooms.svelte"),
     appliances: () => import("./views/Appliances.svelte"),
     security: () => import("./views/SecurityHub.svelte"),
     securitydetail: () => import("./views/Security.svelte"),
@@ -74,6 +75,7 @@
   import Sheet from "./lib/components/Sheet.svelte";
   import LinkBar from "./lib/components/LinkBar.svelte";
   import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
+  import { loadCachedCadence, refreshCadence } from "./lib/cadence";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
@@ -93,6 +95,12 @@
   onMount(() => {
     prefs.apply();
     authStore.init();
+
+    // Freshness thresholds. The cached blob goes in synchronously so the first
+    // paint uses real thresholds rather than domain defaults; the refresh then
+    // catches last night's job.
+    loadCachedCadence();
+    refreshCadence();
 
     // Ask the browser to mark our storage persistent, so the HA connection
     // cache, Firestore's IndexedDB cache and the usage log aren't evicted under

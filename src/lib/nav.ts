@@ -20,7 +20,7 @@ export type ViewId =
   | "usage" | "markets" | "solar" | "settings"
   // Spokes: routed and deep-linkable, never in the rail.
   | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server"
-  | "waterdetail" | "securitydetail" | "diagnostics";
+  | "waterdetail" | "securitydetail" | "diagnostics" | "roomsdetail";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -113,6 +113,7 @@ export const NAV: NavItem[] = [
   { id: "traffic", name: "Traffic", icon: "🚗", ic: "car", group: "Bottom", color: "var(--security)" },
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "Bottom", color: "var(--acc)" },
   { id: "lights", name: "Lights", icon: "💡", ic: "bulb", group: "Bottom", color: "var(--energy)" },
+  { id: "roomsdetail", name: "Floor plan", icon: "🚪", ic: "door", group: "Bottom", color: "var(--climate)" },
   { id: "vitality", name: "Vitality", icon: "🌡️", ic: "waves", group: "Bottom", color: "var(--health)" },
   { id: "kids", name: "Kids", icon: "🧒", ic: "user", group: "Bottom", color: "var(--water)" },
   { id: "meals", name: "Meals", icon: "🍽️", ic: "pot", group: "Bottom", color: "var(--load)" },

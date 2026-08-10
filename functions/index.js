@@ -2070,3 +2070,215 @@ Plain language, no preamble, no markdown. If the rows don't answer it, say so.`,
     };
   },
 );
+
+// ---- cadenceJob — the freshness thresholds the portal is blocked on ---------
+//
+// PLATFORM-CONCEPTS puts this in BigQuery as a scheduled query. IT CANNOT LIVE
+// THERE: the warehouse holds ONE ROW PER DAY with 29 aggregate columns, so it has
+// no per-entity state-change history to take a p95 of. The original HA brief B
+// was right that the data is in the time-series store, not the warehouse.
+//
+// So this reads HA's own recorder over 14 days, with `minimal_response` and
+// `no_attributes` — we need timestamps, not values, and asking for attributes on
+// 304 entities over a fortnight is the difference between a few MB and a few
+// hundred.
+//
+// What it produces: for each curated entity, the p95 interval between state
+// changes. That becomes the freshness threshold (×2.5, clamped 60s–26h), which is
+// the number every "14 min old" badge in the app is currently guessing at from a
+// per-domain default.
+const CURATED = require("./curated-entities.json").ids;
+
+/** p95 by nearest rank — an interpolated percentile is an interval that never occurred. */
+function p95(sorted) {
+  if (sorted.length < 3) return null;
+  const i = Math.min(sorted.length - 1, Math.ceil(0.95 * sorted.length) - 1);
+  return sorted[i];
+}
+
+async function runCadenceJob() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const tok = HA_TOKEN.value();
+  const end = new Date();
+  const start = new Date(end.getTime() - 14 * 86_400_000);
+
+  // Chunked: a filter_entity_id with 304 ids is a URL nothing will accept, and
+  // one request per entity would be 304 round trips.
+  const CHUNK = 20;
+  const cadence = {};
+  const skipped = [];
+
+  for (let i = 0; i < CURATED.length; i += CHUNK) {
+    const batch = CURATED.slice(i, i + CHUNK);
+    const url =
+      `${base}/api/history/period/${start.toISOString()}` +
+      `?end_time=${end.toISOString()}` +
+      `&filter_entity_id=${batch.join(",")}` +
+      `&minimal_response&no_attributes`;
+    let series;
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${tok}` } });
+      if (!r.ok) { skipped.push(...batch); continue; }
+      series = await r.json();
+    } catch { skipped.push(...batch); continue; }
+
+    for (const arr of series) {
+      if (!Array.isArray(arr) || arr.length < 4) continue;
+      const id = arr[0].entity_id;
+      if (!id) continue;
+
+      // Intervals between CHANGES, ignoring unavailable/unknown: an entity that
+      // drops out and returns has not "changed" in any sense the reader cares
+      // about, and counting those would make a flaky sensor look chatty.
+      const stamps = [];
+      let prev = null;
+      for (const s of arr) {
+        const st = s.state;
+        if (st === "unavailable" || st === "unknown") continue;
+        const t = Date.parse(s.last_changed || s.last_updated || "");
+        if (!Number.isFinite(t)) continue;
+        if (prev !== null && st === prev.state) continue;
+        stamps.push(t);
+        prev = { state: st };
+      }
+      if (stamps.length < 4) { skipped.push(id); continue; }
+
+      const gaps = [];
+      for (let k = 1; k < stamps.length; k++) {
+        const d = (stamps[k] - stamps[k - 1]) / 1000;
+        if (d > 0) gaps.push(d);
+      }
+      gaps.sort((a, b) => a - b);
+      const v = p95(gaps);
+      if (v == null) { skipped.push(id); continue; }
+      // Clamp 60s–26h. The ceiling matters: an event-driven entity that genuinely
+      // changes twice a month would otherwise get a threshold of weeks, and never
+      // be reported stale even when its integration had died.
+      cadence[id] = Math.round(Math.min(26 * 3600, Math.max(60, v)));
+    }
+  }
+
+  await db.collection("config").doc("cadence").set({
+    generatedAt: Date.now(),
+    windowDays: 14,
+    measured: Object.keys(cadence).length,
+    skipped: skipped.length,
+    cadence,
+  });
+  logger.info("cadenceJob", { measured: Object.keys(cadence).length, skipped: skipped.length });
+  return { measured: Object.keys(cadence).length, skipped: skipped.length };
+}
+
+exports.cadenceJob = onSchedule(
+  { schedule: "10 2 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async () => { await runCadenceJob(); },
+);
+
+exports.cadenceJobNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, ...(await runCadenceJob()) }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- applianceDrift — each metered plug against its own baseline ------------
+//
+// Same correction as cadenceJob: the warehouse has no per-appliance columns, so
+// this reads the recorder too.
+//
+// STEP CHANGES ONLY. A drift detector that reports 8% wobble is one nobody reads,
+// and the useful signal is a compressor that started drawing a third more on a
+// particular day and never went back — not the daily variation around it.
+async function runApplianceDrift() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const tok = HA_TOKEN.value();
+  const r0 = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${tok}` } });
+  if (!r0.ok) throw new Error(`HA ${r0.status}`);
+  const states = await r0.json();
+
+  // Every power sensor that looks like a metered plug.
+  const plugs = states
+    .map((e) => e.entity_id)
+    .filter((id) => /^sensor\..*(current_consumption|_power)$/.test(id) && !/victron|solar|grid|battery/.test(id));
+
+  const end = new Date();
+  const start = new Date(end.getTime() - 30 * 86_400_000);
+  const findings = [];
+
+  for (const id of plugs) {
+    let arr;
+    try {
+      const r = await fetch(
+        `${base}/api/history/period/${start.toISOString()}?end_time=${end.toISOString()}&filter_entity_id=${id}&minimal_response&no_attributes`,
+        { headers: { Authorization: `Bearer ${tok}` } },
+      );
+      if (!r.ok) continue;
+      const j = await r.json();
+      arr = j[0];
+    } catch { continue; }
+    if (!Array.isArray(arr) || arr.length < 50) continue;
+
+    // Daily means, then compare the last 7 days against the 30-day trailing
+    // baseline. Means rather than totals so a day with a gap does not read as a
+    // drop in consumption.
+    const byDay = new Map();
+    for (const s of arr) {
+      const v = parseFloat(s.state);
+      if (!Number.isFinite(v)) continue;
+      const t = Date.parse(s.last_changed || s.last_updated || "");
+      if (!Number.isFinite(t)) continue;
+      const day = new Date(t).toISOString().slice(0, 10);
+      const cur = byDay.get(day) || { sum: 0, n: 0 };
+      cur.sum += v; cur.n += 1;
+      byDay.set(day, cur);
+    }
+    const days = [...byDay.entries()].sort().map(([d, x]) => ({ d, mean: x.sum / x.n }));
+    if (days.length < 14) continue;
+
+    const recent = days.slice(-7);
+    const baseline = days.slice(0, -7);
+    const mAvg = (xs) => xs.reduce((a, b) => a + b.mean, 0) / xs.length;
+    const rec = mAvg(recent);
+    const bas = mAvg(baseline);
+    if (!(bas > 1)) continue; // a plug averaging under a watt has nothing to drift
+
+    const change = (rec - bas) / bas;
+    // 25%: below that it is seasonal and load variation.
+    if (Math.abs(change) < 0.25) continue;
+    findings.push({
+      entity: id,
+      baselineW: Math.round(bas),
+      recentW: Math.round(rec),
+      changePct: Math.round(change * 100),
+    });
+  }
+
+  findings.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+  await db.collection("config").doc("applianceDrift").set({
+    generatedAt: Date.now(),
+    checked: plugs.length,
+    findings: findings.slice(0, 12),
+  });
+  logger.info("applianceDrift", { checked: plugs.length, flagged: findings.length });
+  return { checked: plugs.length, findings };
+}
+
+exports.applianceDrift = onSchedule(
+  { schedule: "20 2 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async () => { await runApplianceDrift(); },
+);
+
+exports.applianceDriftNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, ...(await runApplianceDrift()) }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
