@@ -47,18 +47,30 @@
     return `${h}h ${mins % 60}m`;
   }
 
-  // The source field is what HA can honestly know. `panel` means the change came
-  // from the keypad or the Olarm app — real, but not attributable to a person,
-  // because the Olarm integration does not expose the acting user. Saying "the
-  // panel" is the truthful answer; inventing a name would not be.
+  // The source field is what HA can honestly know: the Olarm integration does
+  // not expose the acting user, so a keypad or Olarm-app change can be placed
+  // but not attributed.
+  //
+  // NAME THE PLACE, THEN THE LIMIT — and `panel` MUST LOOK NORMAL. It is normal
+  // life: it is Christo at the keypad or Mandri in the Olarm app. An earlier
+  // version read "the panel — keypad, remote or the Olarm app", which is
+  // accurate but reads like a list of excuses and puts the least useful word
+  // first. Worse, if `panel` carried any amber then within a week nobody would
+  // read the hero at all, and the one state that IS alarming — `flap` — would be
+  // lost in the noise.
   const actorWords = $derived.by(() => {
     if (!prov) return "no record yet";
-    if (prov.s === "flap") return "a reload, not a person";
-    if (prov.s === "ui") return `${prov.a || "someone"} from the portal`;
-    if (prov.s === "auto") return prov.a && prov.a !== "automation" ? `${prov.a} (automation)` : "an automation";
-    if (prov.s === "panel") return "the panel — keypad, remote or the Olarm app";
+    if (prov.s === "flap") return "with no actor";
+    if (prov.s === "ui") return `by ${prov.a || "someone"}`;
+    if (prov.s === "auto") return prov.a && prov.a !== "automation" ? `by ${prov.a}` : "by schedule";
+    if (prov.s === "panel") return "at the panel";
     return "unattributed";
   });
+
+  // The limit, on its own muted second line, only where there is one to state.
+  const actorLimit = $derived(
+    prov?.s === "panel" ? "keypad, remote or the Olarm app · not attributable to a person" : "",
+  );
 
   // Unexplained: protection dropped and nothing a person did explains it. This
   // is the state the Security screen existed to catch and could not.
@@ -71,14 +83,23 @@
       return {
         line: armed ? "Armed" : "Disarmed",
         sub: "No provenance recorded yet — the first transition after the restart will fill this in.",
+        limit: "",
         warn: false,
       };
     }
     const since = sinceMs ? clock(sinceMs) : "?";
+    // Only `flap` is alarming, and it earns the amber by naming the machine
+    // event it followed — "one second after a config reload" is the sentence
+    // that would have solved the August incident in a glance.
     if (unexplained) {
+      const gap = machineGapSeconds();
       return {
-        line: `${prov.ar === "beams" ? "Beams" : "House"} disarmed · unexplained`,
-        sub: `since ${since}, ${actorWords}. Nothing a person did explains this.`,
+        line: "State changed with no actor",
+        sub:
+          gap != null && gap < 120
+            ? `${since}, ${Math.round(gap)} seconds after a config reload`
+            : `${since} · nothing a person did explains this`,
+        limit: "",
         warn: true,
       };
     }
@@ -86,10 +107,20 @@
       line: armed
         ? `Continuously armed for ${forWords(sinceMs)}`
         : `Disarmed for ${forWords(sinceMs)}`,
-      sub: `since ${since}, ${actorWords}`,
+      sub: `since ${since} · ${prov.t === "disarmed" ? "disarmed" : "armed"} ${actorWords}`,
+      limit: actorLimit,
       warn: false,
     };
   });
+
+  // Seconds between the last machine event and the transition. This is brief D
+  // paying off: without it "no actor" is a mystery, with it it is a diagnosis.
+  function machineGapSeconds(): number | null {
+    const me = ha.state(MACHINE);
+    if (!me || me === "unknown" || me === "unavailable" || sinceMs == null) return null;
+    const t = Date.parse(me);
+    return Number.isFinite(t) ? Math.abs(sinceMs - t) / 1000 : null;
+  }
 
   let sheet = $state<{ kind: string } | null>(null);
   // historyStates, not history: history coerces to numbers, and both of these
@@ -144,6 +175,7 @@
       key: "House",
       value: hero.line,
       units: hero.sub,
+      note: hero.limit || undefined,
       warn: hero.warn,
       open: () => (sheet = { kind: "log" }),
     },

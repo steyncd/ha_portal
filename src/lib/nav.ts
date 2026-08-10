@@ -52,9 +52,9 @@ export const NAV: NavItem[] = [
 
   {
     id: "energy", name: "Energy", icon: "⚡", ic: "nav-energy", group: "", color: "var(--energy)",
-    collapsed: ["energydetail", "solar", "powertrends", "batteries", "appliances"],
+    collapsed: ["energydetail", "solar", "powertrends", "batteries"],
     collapsedNote:
-      "Energy, Solar, Power trends, Batteries and Appliances all answered the same question with different chrome. One board, one time axis, detail expands where you clicked.",
+      "Energy, Solar, Power trends and Batteries answered the same question with different chrome. One board, one time axis, detail expands where you clicked. Appliances lives under Rooms — a metered appliance is a thing in a room that happens to draw power.",
   },
   {
     id: "water", name: "Water", icon: "💧", ic: "nav-water", group: "", color: "var(--water)",
@@ -70,9 +70,13 @@ export const NAV: NavItem[] = [
   },
   {
     id: "climate", name: "Rooms", icon: "🚪", ic: "nav-rooms", group: "", color: "var(--climate)",
-    collapsed: ["lights", "vitality"],
+    // Rooms is the "things in the house" hub: the inventory, not the flow.
+    // Appliances, Devices, Automations and System all answer "what is in this
+    // house and is it working" — you look for the dishwasher where the
+    // dishwasher is, not on a page about money.
+    collapsed: ["lights", "appliances", "devices", "automations", "system"],
     collapsedNote:
-      "The floor plan already knows which room a light is in, so Lights stopped being a separate list of switches with no places attached.",
+      "The inventory of the house. The floor plan already knows which room a light is in, so Lights stopped being a list of switches with no places attached — and a metered appliance, a device, the automation that drives it and the box it all runs on are the same question asked four ways.",
   },
   {
     id: "household", name: "Household", icon: "👪", ic: "nav-household", group: "", color: "var(--health)",
@@ -82,7 +86,7 @@ export const NAV: NavItem[] = [
   },
   {
     id: "me", name: "Me", icon: "👤", ic: "nav-me", group: "", color: "var(--health)",
-    collapsed: ["medetail", "focus", "usage", "insights"],
+    collapsed: ["medetail", "focus", "vitality", "usage", "insights"],
     collapsedNote:
       "Sleep, focus, what you actually used and the long-term patterns. Owner-only, and excluded from the family export.",
   },

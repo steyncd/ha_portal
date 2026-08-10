@@ -1,175 +1,211 @@
 <script lang="ts">
-  // Kids — per-child daily routines, chores (family contributions + paid extras),
-  // a running allowance balance, and an owner "pay out" that banks it to Steyn
-  // Finance. Firestore-backed so both parents and the boys see the same thing.
+  // The kids' shells. Phase 5.2 / D.1, D.2.
+  //
+  // Two children, two different designs, and the difference is the point.
+  //
+  // LIAM (11) sees the machinery: which level he is on, the countdown, the trust
+  // meter, and money that moves the moment it is real. The reward for
+  // reliability is BEING ASKED LESS — the meter is not a score, it is a countdown
+  // to being left alone.
+  //
+  // EBEN (8) sees none of it. Tap, tick, the count drops. There is no pending
+  // state, no "waiting for Dad", no timer, no money and no streaks. Approval
+  // still happens — it appears in the parent's 21:00 digest exactly like Liam's —
+  // but it is INVISIBLE to him, because an eight-year-old cannot act on "your
+  // chore was rejected 14 hours ago". He can act on his dad telling him.
   import { onMount } from "svelte";
-  import { authStore } from "../lib/auth.svelte";
-  import { toast } from "../lib/toast.svelte";
-  import {
-    KIDS, CHORES, ROUTINE, watchKid, toggleChore, toggleRoutine, payout,
-    choresToday, routineToday, type KidState,
-  } from "../lib/kids";
+  import { chores, ledger, levelFor, trustCopy, TRUST_TARGET } from "../lib/household.svelte";
+  import { money, t } from "../lib/lang";
 
-  const isMock = typeof location !== "undefined" && new URLSearchParams(location.search).get("mock") === "1";
-  const isOwner = $derived(isMock || authStore.role === "owner" || authStore.isOwner);
+  let who = $state<"liam" | "eben">("liam");
+  const L = "af" as const;
 
-  let kidStates = $state<Record<string, KidState>>({});
-  let activeKid = $state(KIDS[0].slug);
-
+  // Drives the visible countdown and lets expired timers land.
+  let tick = $state(0);
   onMount(() => {
-    if (isMock) {
-      kidStates = {
-        liam: { balance: 18, paidTotal: 240, todayDate: todayLocal(), choresDone: ["pets", "dishes"], routineDone: ["m_wake", "m_dress", "m_teeth"] },
-        eben: { balance: 6, paidTotal: 95, todayDate: todayLocal(), choresDone: ["table"], routineDone: ["m_wake"] },
-      };
-      return;
-    }
-    const unsubs = KIDS.map((k) => watchKid(k.slug, (s) => (kidStates = { ...kidStates, [k.slug]: s })));
-    return () => unsubs.forEach((u) => u());
+    const i = setInterval(() => { chores.tick(); tick++; }, 20_000);
+    return () => clearInterval(i);
   });
 
-  function todayLocal() { const s = new Date(Date.now() + 2 * 3600_000); return `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-${String(s.getUTCDate()).padStart(2, "0")}`; }
+  const liam = $derived(ledger.person("liam"));
+  const mine = $derived.by(() => { void tick; return chores.forWho(who); });
+  const left = $derived(mine.filter((c) => c.state !== "done").length);
+  const trust = $derived(liam.trust);
+  const copy = $derived(trustCopy(trust));
+  const level = $derived(levelFor(trust));
 
-  const kid = $derived(KIDS.find((k) => k.slug === activeKid)!);
-  const ks = $derived(kidStates[activeKid] ?? {});
-  const cDone = $derived(choresToday(ks));
-  const rDone = $derived(routineToday(ks));
-  const morning = ROUTINE.filter((r) => r.period === "morning");
-  const evening = ROUTINE.filter((r) => r.period === "evening");
-  const routineProgress = $derived(Math.round((rDone.length / ROUTINE.length) * 100));
+  const greeting = () => {
+    const h = new Date().getHours();
+    return h < 12 ? "Goeiemôre" : h < 18 ? "Goeiemiddag" : "Goeienaand";
+  };
 
-  async function chore(c: (typeof CHORES)[number]) {
-    if (isMock) {
-      const done = cDone.includes(c.id);
-      const nd = done ? cDone.filter((x) => x !== c.id) : [...cDone, c.id];
-      kidStates = { ...kidStates, [activeKid]: { ...ks, todayDate: todayLocal(), choresDone: nd, balance: Math.max(0, (ks.balance ?? 0) + (done ? -c.rand : c.rand)) } };
-      return;
-    }
-    await toggleChore(activeKid, ks, c);
-  }
-  async function routine(id: string) {
-    if (isMock) {
-      const done = rDone.includes(id);
-      kidStates = { ...kidStates, [activeKid]: { ...ks, todayDate: todayLocal(), routineDone: done ? rDone.filter((x) => x !== id) : [...rDone, id] } };
-      return;
-    }
-    await toggleRoutine(activeKid, ks, id);
-  }
-  async function pay() {
-    const amt = ks.balance ?? 0;
-    if (amt <= 0) { toast.show("Nothing to pay out yet"); return; }
-    if (isMock) { kidStates = { ...kidStates, [activeKid]: { ...ks, balance: 0, lastPayout: Date.now() } }; toast.show(`Paid out R${amt} to ${kid.name}`); return; }
-    try { await payout(activeKid, ks); toast.show(`Paid out R${amt} to ${kid.name} → Steyn Finance`); }
-    catch (e) { toast.show(e instanceof Error ? e.message : String(e)); }
-  }
+  const LEVEL_WORD = { photo: "foto", timed: "timer", self: "op jou woord" } as const;
 </script>
 
-<div class="col">
-  <div class="hdr">
-    <div><h2>Kids</h2><p>Daily routines, chores and pocket money for Liam &amp; Eben.</p></div>
-    <div class="tabs">
-      {#each KIDS as k (k.slug)}
-        <button class="tab" class:sel={activeKid === k.slug} onclick={() => (activeKid = k.slug)} style="--kc:{k.color}">
-          <span class="ti">{k.icon}</span>{k.name}
+<div class="wrap">
+  <div class="who" role="tablist">
+    <button class="wb" class:on={who === "liam"} role="tab" aria-selected={who === "liam"} onclick={() => (who = "liam")}>Liam · 11</button>
+    <button class="wb" class:on={who === "eben"} role="tab" aria-selected={who === "eben"} onclick={() => (who = "eben")}>Eben · 8</button>
+  </div>
+
+  {#if who === "eben"}
+    <!-- ── Eben ──────────────────────────────────────────────────────────── -->
+    <h1 class="hi">{greeting()}, Eben</h1>
+    <!-- A small number that reaches zero. Never a percentage, never a streak. -->
+    <p class="count">{left === 0 ? "Alles klaar vandag!" : `Nog ${left} ${left === 1 ? "takie" : "takies"} vandag`}</p>
+
+    <div class="big-grid">
+      {#each mine as c (c.id)}
+        {@const done = c.state === "done"}
+        <button class="big-tile" class:done onclick={() => chores.tap(c.id)} disabled={done}>
+          <span class="big-ic">{done ? "✓" : "•"}</span>
+          <span class="big-lb">{c.label}</span>
         </button>
       {/each}
     </div>
-  </div>
-
-  <!-- balance -->
-  <div class="card bal" style="--kc:{kid.color}">
-    <span class="glow"></span>
-    <div class="balx">
-      <div class="lb">{kid.name}'s pocket money</div>
-      <div class="amt">R{ks.balance ?? 0}</div>
-      <div class="sub">{(ks.paidTotal ?? 0) > 0 ? `R${ks.paidTotal} earned all-time` : "Earn by doing paid jobs"}</div>
-    </div>
-    {#if isOwner}
-      <button class="payout" onclick={pay} disabled={(ks.balance ?? 0) <= 0}>Pay out →</button>
+    {#if left === 0}
+      <p class="well">Lekker gedaan.</p>
     {/if}
-  </div>
-
-  <!-- routine -->
-  <div class="card">
-    <div class="rh"><span class="lb">Today's routine</span><span class="sub">{rDone.length}/{ROUTINE.length} done · {routineProgress}%</span></div>
-    <div class="bar"><div class="fill" style="width:{routineProgress}%;background:{kid.color}"></div></div>
-    <div class="rgrid">
-      <div class="period">
-        <div class="ph">🌅 Morning</div>
-        {#each morning as r (r.id)}
-          <button class="ritem" class:on={rDone.includes(r.id)} onclick={() => routine(r.id)}>
-            <span class="rc">{rDone.includes(r.id) ? "✓" : ""}</span><span class="ri">{r.icon}</span><span class="rl">{r.label}</span>
-          </button>
-        {/each}
-      </div>
-      <div class="period">
-        <div class="ph">🌙 Evening</div>
-        {#each evening as r (r.id)}
-          <button class="ritem" class:on={rDone.includes(r.id)} onclick={() => routine(r.id)}>
-            <span class="rc">{rDone.includes(r.id) ? "✓" : ""}</span><span class="ri">{r.icon}</span><span class="rl">{r.label}</span>
-          </button>
-        {/each}
-      </div>
+  {:else}
+    <!-- ── Liam ──────────────────────────────────────────────────────────── -->
+    <h1 class="hi">{greeting()}, Liam</h1>
+    <div class="bal">
+      <span class="bk">{t("Balance", L)}</span>
+      <!-- Moves on approval, not on payday. Money that appears only on Friday is
+           not a consequence of today's work. -->
+      <span class="bv">{money(liam.balance, L)}</span>
+      <span class="bs">betaaldag Vrydag</span>
     </div>
-  </div>
 
-  <!-- chores -->
-  <div class="card">
-    <div class="rh"><span class="lb">Chores</span><span class="sub">💛 = family job · green = paid</span></div>
-    <div class="cgrid">
-      {#each CHORES as c (c.id)}
-        {@const done = cDone.includes(c.id)}
-        <button class="chore" class:on={done} class:paid={c.rand > 0} onclick={() => chore(c)}>
-          <span class="chi">{c.icon}</span>
-          <span class="chl">{c.label}</span>
-          <span class="chr">{c.rand > 0 ? `R${c.rand}` : "💛"}</span>
-          {#if done}<span class="chd">✓</span>{/if}
+    <p class="divider">{t("Chores", L)} · {LEVEL_WORD[level]}</p>
+    <div class="list">
+      {#each mine as c (c.id)}
+        {@const mins = chores.minutesLeft(c)}
+        <button
+          class="ch"
+          class:sent={c.state === "sent"}
+          class:counting={c.state === "counting"}
+          class:done={c.state === "done"}
+          onclick={() => chores.tap(c.id)}
+          disabled={c.state !== "todo"}
+        >
+          <span class="ci">
+            {c.state === "done" ? "✓" : c.state === "sent" ? "⏳" : c.state === "counting" ? "⏳" : "•"}
+          </span>
+          <span class="cb">
+            <span class="cl">{c.label}</span>
+            <span class="cs">
+              {#if c.state === "done"}
+                klaar · {money(c.value, L)} bygetel
+              {:else if c.state === "sent"}
+                foto gestuur · wag vir Pappa
+              {:else if c.state === "counting"}
+                <!-- A NUMBER, not a progress ring. A ring says "wait"; a number
+                     says "you are done, this is just paperwork" — and he IS done.
+                     "Mamma kan keer" is what makes the timer read as trust
+                     rather than as nobody watching. -->
+                goedgekeur oor {mins} min · Mamma kan keer
+              {:else if c.level === "photo"}
+                stuur 'n foto
+              {:else if c.level === "timed"}
+                tik as jy klaar is
+              {:else}
+                tik as jy klaar is
+              {/if}
+            </span>
+          </span>
+          <span class="cv">{money(c.value, L)}</span>
         </button>
       {/each}
     </div>
-  </div>
+
+    <!-- The trust meter. Amber ONLY here, because this is the one place in the
+         kids' shell where something has actually gone backwards. -->
+    <section class="trust" class:warn={copy.tone === "warn"}>
+      <p class="tk">{t("Trust", L)}</p>
+      <div class="bar" role="img" aria-label={`${trust} van ${TRUST_TARGET}`}>
+        <span
+          class="fill"
+          class:ok={copy.tone === "ok"}
+          class:warn={copy.tone === "warn"}
+          style="width:{(trust / TRUST_TARGET) * 100}%"
+        ></span>
+      </div>
+      <p class="tc">{copy.text}</p>
+      <p class="tn">
+        {trust} van {TRUST_TARGET}. Die belonging vir betroubaarheid is dat dit
+        minder vra — nie 'n telling nie.
+      </p>
+    </section>
+  {/if}
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 14px; }
-  .hdr { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-  .hdr h2 { font-size: 20px; font-weight: 800; margin: 0; }
-  .hdr p { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
-  .tabs { display: flex; gap: 8px; }
-  .tab { display: flex; align-items: center; gap: 7px; padding: 9px 15px; border-radius: 12px; background: rgba(255,255,255,0.05); font-size: 13px; font-weight: 600; color: var(--text-2); }
-  .tab.sel { background: color-mix(in srgb, var(--kc) 18%, transparent); color: var(--text); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--kc) 45%, transparent); }
-  .ti { font-size: 16px; }
+  .wrap { display: flex; flex-direction: column; max-width: 560px; margin: 0 auto; width: 100%; }
+  .who { display: flex; gap: 6px; padding: 4px; border-radius: var(--r-control); background: var(--s1); margin-bottom: 14px; }
+  .wb { flex: 1; padding: 9px; border-radius: 8px; font-size: 13px; font-weight: 700; color: var(--mut); background: none; min-height: 44px; }
+  .wb.on { background: var(--fill-strong); color: var(--tx); }
 
-  .card { position: relative; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; padding: 18px; overflow: hidden; }
-  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
-  .sub { font-size: 12px; color: var(--dim); }
-  .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  .hi { font-size: 20px; font-weight: 750; letter-spacing: -0.02em; color: var(--tx); margin: 4px 2px 6px; }
+  .count { font-size: 14px; font-weight: 700; color: var(--tx2); margin: 0 2px 16px; }
 
-  .bal { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-  .bal .glow { position: absolute; inset: 0; background: radial-gradient(120% 90% at 85% -20%, color-mix(in srgb, var(--kc) 22%, transparent), transparent 60%); pointer-events: none; }
-  .amt { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; margin: 4px 0 2px; }
-  .payout { position: relative; padding: 12px 20px; border-radius: 13px; background: var(--grad, var(--acc)); color: #05070c; font-weight: 800; font-size: 14px; flex: none; }
-  .payout:disabled { opacity: 0.4; }
+  /* Eben: ~150px targets, one screen, icon-led. */
+  .big-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .big-tile {
+    min-height: 150px;
+    border-radius: var(--r-surface);
+    background: var(--s1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+  }
+  .big-tile.done { background: color-mix(in srgb, var(--ok) 16%, var(--s1)); }
+  .big-ic { font-size: 40px; line-height: 1; color: var(--mut); }
+  .big-tile.done .big-ic { color: var(--ok); }
+  .big-lb { font-size: 15px; font-weight: 700; color: var(--tx); text-align: center; line-height: 1.3; }
+  .well { font-size: 16px; font-weight: 700; color: var(--ok); text-align: center; margin: 18px 0 0; }
 
-  .bar { height: 7px; border-radius: 999px; background: rgba(255,255,255,0.08); overflow: hidden; margin-bottom: 14px; }
-  .fill { height: 100%; border-radius: 999px; transition: width 0.4s ease; }
-  .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-  @media (max-width: 640px) { .rgrid { grid-template-columns: 1fr; } }
-  .ph { font-size: 12px; font-weight: 700; color: var(--text-2); margin-bottom: 8px; }
-  .period { display: flex; flex-direction: column; gap: 6px; }
-  .ritem { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; background: rgba(255,255,255,0.03); text-align: left; }
-  .ritem.on { background: color-mix(in srgb, var(--success) 12%, transparent); }
-  .ritem.on .rl { color: var(--muted); text-decoration: line-through; }
-  .rc { width: 18px; height: 18px; border-radius: 6px; border: 2px solid var(--line, rgba(255,255,255,0.2)); font-size: 11px; color: var(--success); display: grid; place-items: center; flex: none; }
-  .ritem.on .rc { background: var(--success); border-color: var(--success); color: #05070c; }
-  .ri { font-size: 15px; } .rl { font-size: 12.5px; font-weight: 600; color: var(--text); }
+  /* Liam */
+  .bal { background: var(--s1); border-radius: var(--r-surface); padding: 14px 16px; margin-bottom: 16px; }
+  .bk { display: block; font-size: 11px; font-weight: 700; color: var(--mut); }
+  .bv { display: block; font-size: 27px; font-weight: 800; letter-spacing: -0.03em; color: var(--tx); font-variant-numeric: tabular-nums; margin-top: 4px; }
+  .bs { display: block; font-size: 11.5px; color: var(--mut); margin-top: 3px; }
 
-  .cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
-  .chore { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; padding: 13px; border-radius: 14px; background: rgba(255,255,255,0.04); text-align: left; }
-  .chore .chr { font-size: 12px; font-weight: 800; color: var(--muted-2, var(--muted)); }
-  .chore.paid .chr { color: var(--success); }
-  .chore.on { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--success) 55%, transparent); background: color-mix(in srgb, var(--success) 10%, transparent); }
-  .chi { font-size: 20px; }
-  .chl { font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.25; }
-  .chd { position: absolute; top: 10px; right: 11px; width: 20px; height: 20px; border-radius: 50%; background: var(--success); color: #05070c; font-size: 12px; font-weight: 800; display: grid; place-items: center; }
+  .divider { margin: 0 2px 8px; }
+  .list { display: grid; gap: 7px; margin-bottom: 16px; }
+  .ch {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    padding: 13px 14px;
+    border-radius: var(--r-surface);
+    background: var(--s1);
+    text-align: left;
+    min-height: 44px;
+  }
+  .ch.done { background: color-mix(in srgb, var(--ok) 12%, var(--s1)); }
+  .ci { flex: none; font-size: 17px; width: 22px; text-align: center; color: var(--mut); }
+  .ch.done .ci { color: var(--ok); }
+  .ch.sent .ci, .ch.counting .ci { color: var(--acc); }
+  .cb { flex: 1; min-width: 0; }
+  .cl { display: block; font-size: 14px; font-weight: 700; color: var(--tx); }
+  .cs { display: block; font-size: 11.5px; color: var(--mut); margin-top: 2px; }
+  .ch.sent .cs, .ch.counting .cs { color: var(--acc); }
+  .ch.done .cs { color: var(--ok); }
+  .cv { flex: none; font-size: 12.5px; font-weight: 700; color: var(--tx2); font-variant-numeric: tabular-nums; }
+
+  .trust { background: var(--s1); border-radius: var(--r-surface); padding: 15px 16px; }
+  .trust.warn { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warn) 34%, transparent); }
+  .tk { font-size: 11px; font-weight: 700; color: var(--mut); margin: 0 0 9px; }
+  .bar { height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
+  .fill { display: block; height: 100%; background: var(--acc); transition: width 0.22s; }
+  .fill.ok { background: var(--ok); }
+  .fill.warn { background: var(--warn); }
+  :global(.reduce-motion) .fill { transition: none; }
+  .tc { font-size: 13.5px; font-weight: 700; color: var(--tx); margin: 10px 0 0; line-height: 1.4; text-wrap: pretty; }
+  .trust.warn .tc { color: var(--warn); }
+  .tn { font-size: 11.5px; color: var(--mut); margin: 6px 0 0; line-height: 1.5; text-wrap: pretty; }
 </style>

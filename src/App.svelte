@@ -223,9 +223,11 @@
     return { label: "Disarmed", color: "var(--warning)" };
   });
 
-  // Phase 3.1: four phone tabs, no sidebar. Household points at Fair Play until
-  // Phase 5.2 splits House (systems) from Household (people) properly.
-  const mobileTabs = ["now", "climate", "fairplay", "kids"] as ViewId[];
+  // Four phone tabs, no sidebar. Tab three is Household — the PLACE — and it
+  // points at the real Household screen even while that screen is partial. A tab
+  // that renames itself when a feature lands teaches the family that the
+  // navigation moves, which is the one thing the whole IA argument is against.
+  const mobileTabs = ["now", "climate", "household", "kids"] as ViewId[];
   function applyNav(id: string) {
     view = id as ViewId; palette = false; moreOpen = false;
   }

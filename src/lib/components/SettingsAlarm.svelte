@@ -84,7 +84,8 @@
   // between June and December in Pretoria, so a beam schedule pinned to the
   // clock either arms in daylight or leaves the perimeter open after dark for
   // half the year.
-  const SUN_MODE = "input_boolean.beams_follow_sun";
+  const SUN_MODE = "input_boolean.alarm_beams_follow_sun";
+  const SUN_OFFSET = "input_number.alarm_beams_sun_offset";
   const followSun = $derived(ha.exists(SUN_MODE) ? ha.isOn(SUN_MODE) : false);
   const sunAvailable = $derived(ha.exists(SUN_MODE));
 
@@ -131,19 +132,34 @@
     {/if}
   </p>
 
-  {#if sunAvailable}
-    <SettingRow
-      label="Follow the sun"
-      explain="Sunset −15 / sunrise +15 instead of a fixed clock time · {SUN_MODE}"
-    >
-      {#snippet control()}
-        <div class="seg" role="group" aria-label="Beam schedule mode">
-          <button class="sg" class:on={!followSun} onclick={() => ha.setBoolean(SUN_MODE, false)}>Clock</button>
-          <button class="sg" class:on={followSun} onclick={() => ha.setBoolean(SUN_MODE, true)}>Sun</button>
+  <!-- Shown even when the helper does not exist, DISABLED with the reason. A
+       missing capability the user can see is better than one they cannot: hiding
+       it means the correctness fix silently never happens. The portal must never
+       create the helper itself — the automation is the single source of truth and
+       the portal only writes what already exists. -->
+  <SettingRow
+    label="Follow the sun"
+    explain={sunAvailable
+      ? `Arms at sunset + offset, disarms at sunrise − offset. The fixed times are ignored while this is on · ${SUN_MODE}`
+      : `Needs ${SUN_MODE} in Home Assistant. Until it exists the fixed times below apply all year.`}
+    warn={!sunAvailable}
+  >
+    {#snippet control()}
+      {#if sunAvailable}
+        <div class="pair">
+          <div class="seg" role="group" aria-label="Beam schedule mode">
+            <button class="sg" class:on={!followSun} onclick={() => ha.setBoolean(SUN_MODE, false)}>Clock</button>
+            <button class="sg" class:on={followSun} onclick={() => ha.setBoolean(SUN_MODE, true)}>Sun</button>
+          </div>
+          {#if ha.exists(SUN_OFFSET) && followSun}
+            <span class="off">{ha.num(SUN_OFFSET) ?? "—"} min</span>
+          {/if}
         </div>
-      {/snippet}
-    </SettingRow>
-  {/if}
+      {:else}
+        <span class="missing">Not in HA</span>
+      {/if}
+    {/snippet}
+  </SettingRow>
 
   {#each BEAMS as s (s.onOff)}
     <SettingRow
@@ -202,4 +218,6 @@
   .seg { display: inline-flex; gap: 2px; background: var(--fill); border-radius: var(--r-control); padding: 2px; }
   .sg { padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; color: var(--mut); background: none; min-height: 34px; }
   .sg.on { background: var(--fill-strong); color: var(--tx); }
+  .off { font-size: 12px; font-weight: 700; color: var(--tx2); font-variant-numeric: tabular-nums; }
+  .missing { font-size: 11.5px; font-weight: 700; color: var(--mut); }
 </style>

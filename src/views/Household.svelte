@@ -1,119 +1,146 @@
 <script lang="ts">
-  // Household — Phase 3.2 / 5.2.
+  // Household — the people half. Phase 3.2 / 5.2.
   //
-  // Split from House on purpose. Systems and family answer different questions
-  // and have different readers: House is "is the pump running", Household is
-  // "did Liam do his chores and what did the month cost us". Mixing them meant
-  // every family screen sat behind a wall of plumbing.
+  // Split from House on purpose. House is "is the pump running"; Household is
+  // "did the boys do their chores and what did the month cost". Different
+  // readers, different questions — mixing them buried every family screen behind
+  // plumbing.
   //
-  // The month in review ARRIVES in the digest; it is not a destination. It is
-  // here because it has to live somewhere you can go back to, not because
-  // anyone will come looking for it.
+  // The four stats are Design's, replacing two of mine. Water and Die maand came
+  // out: Water is a hub of its own, and repeating a number here teaches people
+  // that the same figure lives in two places, which is how you get two sources
+  // of truth. Die maand is a GENERATED REVIEW THAT ARRIVES IN THE DIGEST — it is
+  // a message, not a metric, so it keeps its own card below rather than a stat.
+  //
+  // Every one of the four is about a person doing something. That is the test for
+  // whether something belongs on this board at all.
   import { ha } from "../lib/store.svelte";
+  import { money, num as afNum, t, type Lang } from "../lib/lang";
   import HubBoard, { type Stat, type Row } from "../lib/components/HubBoard.svelte";
   import Sheet from "../lib/components/Sheet.svelte";
+  import TvAudit from "../lib/components/TvAudit.svelte";
+  import ChoreApproval from "../lib/components/ChoreApproval.svelte";
+  import { chores, ledger, tvWeek } from "../lib/household.svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();
 
-  // af-ZA everywhere money appears: R48,50 and 4 623, not R48.50 and 4,623.
-  const afMoney = (v: number | null | undefined, dp = 2) =>
-    v == null ? "—" : `R${new Intl.NumberFormat("af-ZA", { minimumFractionDigits: dp, maximumFractionDigits: dp }).format(v)}`;
-  const afNum = (v: number | null | undefined, dp = 0) =>
-    v == null ? "—" : new Intl.NumberFormat("af-ZA", { minimumFractionDigits: dp, maximumFractionDigits: dp }).format(v);
+  // Household reads in Afrikaans: Mandri and the boys are its readers.
+  const L: Lang = "af";
 
-  let sheet = $state<{ title: string; sub: string; kind: string } | null>(null);
-  const open = (title: string, sub: string, kind: string) => (sheet = { title, sub, kind });
+  let sheet = $state<{ kind: string } | null>(null);
+  const open = (kind: string) => (sheet = { kind });
 
-  const monthCost = $derived(ha.num("sensor.energy_cost_this_month"));
-  const monthKwh = $derived(ha.num("sensor.victron_grid_import_energy"));
-  const waterMonth = $derived(ha.num("sensor.water_used_this_month") ?? ha.num("sensor.water_used_today"));
-
-  // Bin day the night before, not on the morning: a reminder that arrives after
-  // the truck is a notification about a thing you can no longer do.
-  const binDay = $derived(ha.state("sensor.bin_collection_day") ?? ha.state("sensor.next_bin_day"));
+  const pending = $derived(chores.pending);
+  const pendingValue = $derived(pending.reduce((s, c) => s + c.value, 0));
+  const prayersNew = $derived(ha.num("sensor.gebedslys_new") ?? null);
+  const prayersAnswered = $derived(ha.num("sensor.gebedslys_answered_month") ?? null);
 
   const stats = $derived<Stat[]>([
     {
-      key: "Die maand",
-      value: afMoney(monthCost, 0),
-      units: monthKwh != null ? `${afNum(monthKwh)} kWh` : undefined,
-      note: "krag tot vandag toe",
-      open: () => open("Die maand", "krag, water en takies", "month"),
-    },
-    {
-      key: "Water",
-      value: waterMonth != null ? `${afNum(waterMonth)} ℓ` : "—",
-      note: "hierdie maand",
-      open: () => open("Water", "verbruik en die boorgat", "water"),
-    },
-    {
-      key: "Takies",
-      value: "—",
-      note: "wag vir goedkeuring",
-      open: () => open("Takies", "wat klaar is en wat wag", "chores"),
-    },
-    {
-      key: "Bin day",
-      value: binDay ?? "—",
-      note: binDay ? "reminder goes the night before" : "no bin sensor",
+      key: t("Chores", L),
+      value: pending.length ? `${pending.length} wag` : "Alles klaar",
+      units: pending.length ? `${money(pendingValue, L)} uitstaande` : undefined,
+      note: pending.length ? "keur die dag in een tik goed" : "niks wag nie",
       warn: false,
+      open: () => open("chores"),
+    },
+    {
+      key: "Sakgeld",
+      value: money(ledger.total, L),
+      units: "Liam + Eben",
+      note: "betaaldag Vrydag",
+      open: () => open("ledger"),
+    },
+    {
+      key: t("Prayer list", L),
+      value: prayersNew != null ? `${afNum(prayersNew, L)} nuut` : "—",
+      units: prayersAnswered != null ? `${afNum(prayersAnswered, L)} verhoor dié maand` : undefined,
+      open: () => onnav("faith"),
+    },
+    {
+      key: "Die week",
+      value: tvWeek.total != null ? `${tvWeek.total} u TV` : "—",
+      units: tvWeek.delta != null ? `${tvWeek.delta >= 0 ? "+" : ""}${tvWeek.delta} u op verlede week` : undefined,
+      open: () => open("tv"),
     },
   ]);
 
   const rows = $derived<Row[]>([
-    { key: "Liam · 11", sub: "ledger, chores, two lights", value: "Open", tint: "var(--water)", open: () => onnav("kids") },
-    { key: "Eben · 8", sub: "chores only — no money, no streaks", value: "Open", tint: "var(--water)", open: () => onnav("kids") },
-    { key: "Gebedslys & oordenking", sub: "prayer board and the daily devotion", value: "Open", tint: "var(--acc)", open: () => onnav("faith") },
-    { key: "Kos & inkopies", sub: "meal plan into the shopping list", value: "Open", tint: "var(--load)", open: () => onnav("meals") },
-    { key: "Fair Play", sub: "who owns which task", value: "Open", tint: "var(--health)", open: () => onnav("fairplay") },
-    { key: "Herinneringe", sub: "announce, WhatsApp, or both", value: "Open", tint: "var(--acc)", open: () => onnav("reminders") },
-    { key: "Trello", sub: "the shared boards", value: "Open", tint: "var(--acc)", open: () => onnav("trello") },
+    { key: "Liam · 11", sub: "grootboek, takies, twee ligte", value: "Oop", tint: "var(--water)", open: () => onnav("kids") },
+    { key: "Eben · 8", sub: "net takies — geen geld, geen strepe", value: "Oop", tint: "var(--water)", open: () => onnav("kids") },
+    { key: "Gebedslys & oordenking", sub: "die gebedsbord en die daaglikse oordenking", value: "Oop", tint: "var(--acc)", open: () => onnav("faith") },
+    { key: "Kos & inkopies", sub: "die menu tot in die inkopielys", value: "Oop", tint: "var(--load)", open: () => onnav("meals") },
+    { key: "Fair Play", sub: "wie is verantwoordelik vir wat", value: "Oop", tint: "var(--health)", open: () => onnav("fairplay") },
+    { key: "Herinneringe", sub: "oor die luidsprekers, op WhatsApp, of beide", value: "Oop", tint: "var(--acc)", open: () => onnav("reminders") },
   ]);
 </script>
 
 <HubBoard
   hub="household"
-  sub="the people half — systems live in House"
+  sub="die mense-helfte — stelsels bly in House"
   {stats}
   listTitle="Wie en wat"
   {rows}
-  noteTitle="Why it is split"
-  note="House is 'is the pump running'. Household is 'did the boys do their chores and what did the month cost'. They have different readers, so mixing them buried every family screen behind plumbing."
+  noteTitle="Hoekom dit geskei is"
+  note="House is 'loop die pomp'. Household is 'het die seuns hul takies gedoen en wat het die maand gekos'. Verskillende lesers, verskillende vrae — saam begrawe dit elke gesinskerm agter pype."
   {onnav}
 />
 
+<!-- Die maand keeps its own card, below the stats: it is a generated review that
+     ARRIVES in the 21:00 digest. It is a message, not a metric. -->
+<section class="review">
+  <p class="kicker">Julie · die maand</p>
+  <p class="rbody">
+    {money(ha.num("sensor.energy_cost_this_month"), L, 0)} krag ·
+    {afNum(ha.num("sensor.water_used_this_month") ?? ha.num("sensor.water_used_today"), L)} ℓ water ·
+    {afNum(ledger.approvedThisMonth, L)} takies
+  </p>
+  <p class="rnote">Kom elke maand in die 21:00 opsomming. Dit is nie 'n plek om te gaan kyk nie.</p>
+</section>
+
+<TvAudit week={tvWeek} lang={L} onopen={() => open("tv")} />
+
 <Sheet
   open={!!sheet}
-  title={sheet?.title ?? ""}
-  subtitle={sheet?.sub ?? ""}
+  title={sheet?.kind === "chores" ? "Takies" : sheet?.kind === "ledger" ? "Sakgeld" : "Op die TV"}
+  subtitle={sheet?.kind === "chores" ? "wag vir goedkeuring" : sheet?.kind === "ledger" ? "Liam en Eben" : "hierdie week"}
   onclose={() => (sheet = null)}
 >
-  {#if sheet?.kind === "month"}
+  {#if sheet?.kind === "chores"}
+    <ChoreApproval lang={L} />
+  {:else if sheet?.kind === "ledger"}
     <div class="rows">
-      <div class="r"><span>Krag</span><span>{afMoney(monthCost, 0)}</span></div>
-      <div class="r"><span>Eenhede</span><span>{monthKwh != null ? `${afNum(monthKwh)} kWh` : "—"}</span></div>
-      <div class="r"><span>Water</span><span>{waterMonth != null ? `${afNum(waterMonth)} ℓ` : "—"}</span></div>
+      {#each ledger.people as p (p.id)}
+        <div class="r"><span>{p.name}</span><span>{money(p.balance, L)}</span></div>
+      {/each}
+      <div class="r tot"><span>Altesaam</span><span>{money(ledger.total, L)}</span></div>
     </div>
-    <p class="note">
-      Hierdie opsomming kom elke maand in die 21:00 opsomming. Dit is nie 'n plek
-      om te gaan kyk nie — dit kom na jou toe.
+    <p class="rnote">
+      Die balans skuif sodra 'n takie goedgekeur is, nie op Vrydag nie. Geld wat
+      eers Vrydag verskyn, is nie 'n gevolg van vandag se werk nie.
     </p>
-  {:else if sheet?.kind === "chores"}
-    <p class="note">
-      Goedkeuring werk in drie vlakke: foto-bewys, dan 'n timer wat self goedkeur
-      met die aftelling wat die kind sien, dan self-sertifisering na vyf
-      goedkeurings op 'n streep. Die vertroue-meter wys waar hulle is.
-    </p>
-    <p class="note">Keur die hele dag in een tik goed uit die 21:00 opsomming.</p>
-  {:else if sheet?.kind === "water"}
+  {:else if sheet?.kind === "tv"}
     <div class="rows">
-      <div class="r"><span>Vandag</span><span>{afNum(ha.num("sensor.water_used_today"))} ℓ</span></div>
-      <div class="r"><span>Boorgat vandag</span><span>{afNum(ha.num("sensor.borehole_pump_water_pumped_today"))} ℓ</span></div>
+      {#each tvWeek.people as p (p.name)}
+        <div class="r"><span>{p.name}</span><span>{p.hours} u · {p.titles.join(", ")}</span></div>
+      {/each}
     </div>
+    <p class="rnote">
+      Hierdie week teenoor verlede week. Geen limiete, geen voorstelle — die
+      oomblik dit 'n limiet voorstel, word dit iets om oor te stry.
+    </p>
   {/if}
 </Sheet>
 
 <style>
+  .review {
+    background: var(--s1);
+    border-radius: var(--r-surface);
+    padding: 15px 16px;
+    margin-top: 14px;
+  }
+  .rbody { font-size: 15px; font-weight: 700; color: var(--tx); margin: 8px 0 0; text-wrap: pretty; }
+  .rnote { font-size: 11.5px; color: var(--mut); line-height: 1.5; margin: 9px 0 0; text-wrap: pretty; }
   .rows { display: grid; gap: 2px; }
   .r {
     display: flex;
@@ -124,6 +151,7 @@
     font-size: 13px;
     color: var(--tx);
   }
+  .r:last-child { border-bottom: 0; }
   .r span:first-child { color: var(--mut); }
-  .note { font-size: 12.5px; color: var(--tx2); line-height: 1.55; margin: 12px 0 0; text-wrap: pretty; }
+  .r.tot span { color: var(--tx); font-weight: 800; }
 </style>
