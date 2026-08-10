@@ -1381,22 +1381,55 @@ exports.kidPayout = onRequest(
 const BQ_DATASET = "home";
 const BQ_TABLE = "daily";
 // [HA entity_id, BigQuery column] — numeric daily metrics.
+//
+// Two rules, both learned the hard way:
+//
+// 1. EVERY ID HERE MUST EXIST. `num()` silently returns null for an entity that
+//    isn't there, so a typo doesn't fail — it writes a NULL column for months
+//    and looks like a working warehouse. Five of the original fifteen were
+//    wrong (victron_battery_soc, solar_yield_today, victron_grid_import_today,
+//    vehicles_today, pedestrians_today), which is a third of the table empty.
+//    Verify against .storage/core.entity_registry before adding a row here.
+//
+// 2. ONLY CUMULATIVE-OR-DAILY SOURCES. The snapshot reads /api/states at 23:55,
+//    so an instantaneous sensor lands as "its value at five to midnight" — a
+//    column called battery_soc that can't answer "how low did it get". Those
+//    now read the ratcheted daily extremes from feature_warehouse_daily.yaml.
 const WAREHOUSE_METRICS = [
-  ["sensor.victron_battery_soc", "battery_soc"],
-  ["sensor.solar_yield_today", "solar_kwh"],
-  ["sensor.victron_grid_import_today", "grid_import_kwh"],
+  // --- energy ---------------------------------------------------------------
+  ["sensor.battery_soc_clean", "battery_soc"], // end-of-day level
+  ["sensor.battery_soc_min_today", "battery_soc_min"], // the useful one
+  ["sensor.battery_soc_max_today", "battery_soc_max"],
+  ["sensor.victron_total_pv_yield_today", "solar_kwh"],
+  ["sensor.victron_grid_import_daily", "grid_import_kwh"],
   ["sensor.grid_independence_today", "grid_independence_pct"],
+  ["sensor.self_consumption", "self_consumption_pct"],
   ["sensor.energy_cost_today", "energy_cost"],
+  ["sensor.house_load_min_today", "base_load_w"], // always-on floor
+  ["sensor.house_load_peak_today", "peak_load_w"], // day's ceiling
+  ["sensor.battery_runtime_off_grid_today", "off_grid_hours"],
+  ["sensor.load_shedding_urgency", "loadshed_urgency"],
+  // --- water ----------------------------------------------------------------
   ["sensor.water_used_today", "water_l"],
   ["sensor.borehole_pump_water_pumped_today", "borehole_l"],
-  ["sensor.jojo_tank_monitor_tank_water_level", "tank_pct"],
-  ["sensor.indoor_average_temperature", "indoor_temp"],
-  ["sensor.outdoor_temperature", "outdoor_temp"],
-  ["sensor.load_shedding_urgency", "loadshed_urgency"],
+  ["sensor.water_pump_runtime_today", "water_pump_min"],
+  ["sensor.jojo_tank_monitor_tank_water_level", "tank_pct"], // end-of-day level
+  ["sensor.tank_level_min_today", "tank_pct_min"],
+  ["sensor.tank_level_max_today", "tank_pct_max"],
+  // --- climate --------------------------------------------------------------
+  ["sensor.indoor_average_temperature", "indoor_temp"], // end-of-day reading
+  ["sensor.indoor_temp_min_today", "indoor_temp_min"],
+  ["sensor.indoor_temp_max_today", "indoor_temp_max"],
+  ["sensor.outdoor_temperature", "outdoor_temp"], // end-of-day reading
+  ["sensor.outdoor_temp_min_today", "outdoor_temp_min"],
+  ["sensor.outdoor_temp_max_today", "outdoor_temp_max"],
+  // --- security -------------------------------------------------------------
+  ["sensor.alarm_armed_hours_today", "alarm_armed_hours"],
+  ["input_number.sidewalk_vehicles_total_today", "vehicles"],
+  ["input_number.sidewalk_pedestrians_total_today", "pedestrians"],
+  // --- health ---------------------------------------------------------------
   ["sensor.oura_readiness_score", "oura_readiness"],
   ["sensor.oura_sleep_score", "oura_sleep"],
-  ["sensor.vehicles_today", "vehicles"],
-  ["sensor.pedestrians_today", "pedestrians"],
 ];
 
 async function runWarehouseSnapshot() {
@@ -1409,7 +1442,14 @@ async function runWarehouseSnapshot() {
 
   const s = sastDate();
   const row = { date: `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-${String(s.getUTCDate()).padStart(2, "0")}` };
-  for (const [id, col] of WAREHOUSE_METRICS) row[col] = num(id);
+  const missing = [];
+  for (const [id, col] of WAREHOUSE_METRICS) {
+    row[col] = num(id);
+    if (row[col] === null) missing.push(id);
+  }
+  // Loud, every night. A null column is indistinguishable from a healthy one in
+  // BigQuery, which is exactly how five wrong entity IDs survived for months.
+  if (missing.length) logger.warn("warehouseSnapshot: no value for", { missing, count: missing.length });
 
   const bq = new BigQuery();
   const dataset = bq.dataset(BQ_DATASET);
@@ -1421,6 +1461,22 @@ async function runWarehouseSnapshot() {
     const schema = [{ name: "date", type: "DATE" }, ...WAREHOUSE_METRICS.map(([, col]) => ({ name: col, type: "FLOAT" }))];
     await table.create({ schema });
   } else {
+    // Additive schema migration. BigQuery rejects an insert containing a field
+    // the table doesn't have, so growing WAREHOUSE_METRICS has to grow the table
+    // too. Adding NULLABLE columns is free and non-destructive — existing rows
+    // read as null for the new columns, which is the truth: we weren't
+    // measuring them yet. Nothing is ever renamed or dropped here; a column
+    // whose meaning changes gets a NEW name so a series never silently shifts
+    // definition mid-history.
+    const [md] = await table.getMetadata();
+    const have = new Set((md.schema.fields || []).map((f) => f.name));
+    const add = WAREHOUSE_METRICS.map(([, col]) => col).filter((c) => !have.has(c));
+    if (add.length) {
+      md.schema.fields = [...(md.schema.fields || []), ...add.map((name) => ({ name, type: "FLOAT", mode: "NULLABLE" }))];
+      await table.setMetadata(md);
+      logger.info("warehouseSnapshot: schema extended", { added: add });
+    }
+
     // Idempotent per day: clear any existing row for this date first. Best-effort
     // (a no-op if a prior row is still in the streaming buffer — worst case a dupe).
     try { await bq.query({ query: `DELETE FROM \`${BQ_DATASET}.${BQ_TABLE}\` WHERE date = DATE(@d)`, params: { d: row.date } }); }
