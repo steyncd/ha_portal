@@ -139,8 +139,104 @@ service cloud.firestore {
       allow write: if waAdmin();
     }
 
+    // ---- Visitor passes ----------------------------------------------------
+    // OWNER-ONLY to issue or revoke. The handover is explicit that owner is the
+    // only role that issues passes, and without this block the catch-all below
+    // would let any member issue themselves one — which is precisely the "a role
+    // that only hides views is tidiness, not security" failure. Members may READ,
+    // so the family can see who currently has access to the house.
+    //
+    // Scope enforcement lives here and in HA's own token permissions. The client
+    // filters the vocabulary as a convenience; this is the gate.
+    match /passes/{id} {
+      allow read: if isMember();
+      allow create, update, delete: if isOwner();
+      // Audit trail is append-only from the Admin SDK; nothing writes it here.
+      match /audit/{entry} {
+        allow read: if isOwner();
+        allow write: if false;
+      }
+    }
+
+    // ---- Maintenance windows -----------------------------------------------
+    // A window suppresses alarms, digest lines and staleness badges for its
+    // target, so opening one is a security-adjacent act: owner-only. Members read,
+    // because a suppression nobody can see is indistinguishable from a system
+    // that stopped working.
+    //
+    // The "must have an end time" rule is enforced HERE as well as in the client,
+    // since a client-only check is a suggestion.
+    match /maintenance/{id} {
+      allow read: if isMember();
+      allow create: if isOwner()
+        && request.resource.data.endsAt is int
+        && request.resource.data.endsAt > request.time.toMillis()
+        && request.resource.data.reason is string
+        && request.resource.data.reason.size() > 0;
+      allow update: if isOwner()
+        && request.resource.data.endsAt is int
+        && request.resource.data.endsAt > request.time.toMillis();
+      allow delete: if isOwner();
+    }
+
+    // ---- Alarm objects -----------------------------------------------------
+    // Raised and cleared server-side. A member may acknowledge or snooze — that
+    // is the whole point of the ack loop — but may not forge, retitle or clear
+    // one, because "I know" must never be able to masquerade as "it is fixed".
+    match /alarms/{id} {
+      allow read: if isMember();
+      allow create: if isMember();
+      // Two legitimate updates, and the invariant sits between them:
+      //   (a) acknowledging or snoozing — only those three keys move;
+      //   (b) RE-RAISING a condition that is still true, which refreshes the
+      //       title or severity and must not be blocked, or the ack loop breaks
+      //       the first time the page reloads with the doc already in Firestore.
+      // In case (b) the ack fields must be UNCHANGED. That is what stops a
+      // re-raise from quietly wiping "Christo said he knows about this".
+      allow update: if isMember() && (
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['ackBy', 'ackAt', 'snoozeUntil'])
+        || (request.resource.data.ackBy == resource.data.ackBy
+            && request.resource.data.ackAt == resource.data.ackAt)
+      );
+      allow delete: if isOwner();
+      match /audit/{entry} {
+        allow read: if isMember();
+        allow create: if isMember();
+        allow update, delete: if false;
+      }
+    }
+
+    // ---- Generated config: cadence, appliance drift -------------------------
+    // Written ONLY by the nightly Functions (Admin SDK bypasses rules). Client
+    // writes are refused outright: a forged cadence blob would silently change
+    // every freshness threshold in the app, which is the quietest possible way to
+    // make the whole staleness system lie.
+    match /config/{doc} {
+      allow read: if isAllowed();
+      allow write: if false;
+    }
+
+    // Badge count + digest bookkeeping: server-owned, member-readable.
+    match /badge/{doc} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+    match /digestState/{doc} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+    match /interruptLog/{doc} {
+      allow read: if isOwner();
+      allow write: if false;
+    }
+
     // Everything else (logged data, messages, etc.): household members only.
     // Guests are intentionally excluded here — they get no broad Firestore read.
+    //
+    // NOTE: this catch-all is why every block above matters. Anything not named
+    // explicitly is member-read-write, so a new collection is permissive by
+    // default rather than closed. Add the rule when you add the collection.
     match /{document=**} {
       allow read, write: if isMember();
     }
