@@ -19,7 +19,8 @@ export type ViewId =
   | "household" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights"
   | "usage" | "markets" | "solar" | "settings"
   // Spokes: routed and deep-linkable, never in the rail.
-  | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server";
+  | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server"
+  | "waterdetail" | "securitydetail";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -57,13 +58,13 @@ export const NAV: NavItem[] = [
   },
   {
     id: "water", name: "Water", icon: "💧", ic: "nav-water", group: "", color: "var(--water)",
-    collapsed: ["irrigation"],
+    collapsed: ["waterdetail", "irrigation"],
     collapsedNote:
       "Water and Irrigation were one system pretending to be two — the same borehole, the same tank, the same pump hours.",
   },
   {
     id: "security", name: "Security", icon: "🛡️", ic: "nav-security", group: "", color: "var(--security)",
-    collapsed: ["cameras", "traffic", "timeline"],
+    collapsed: ["securitydetail", "cameras", "traffic", "timeline"],
     collapsedNote:
       "Zones, cameras, the road outside and the timeline are one question asked four ways: what happened, and was anyone here for it.",
   },
@@ -97,6 +98,8 @@ export const NAV: NavItem[] = [
   { id: "batteries", name: "Batteries", icon: "🔋", ic: "plug", group: "Bottom", color: "var(--battery)" },
   { id: "appliances", name: "Appliances", icon: "🔌", ic: "plug", group: "Bottom", color: "var(--load)" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", ic: "leaf", group: "Bottom", color: "var(--water)" },
+  { id: "waterdetail", name: "Water detail", icon: "💧", ic: "droplet", group: "Bottom", color: "var(--water)" },
+  { id: "securitydetail", name: "Security detail", icon: "🛡️", ic: "shield", group: "Bottom", color: "var(--security)" },
   { id: "cameras", name: "Cameras", icon: "📷", ic: "camera", group: "Bottom", color: "var(--security)" },
   { id: "traffic", name: "Traffic", icon: "🚗", ic: "car", group: "Bottom", color: "var(--security)" },
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "Bottom", color: "var(--acc)" },
