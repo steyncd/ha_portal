@@ -154,6 +154,7 @@
 
 <HubBoard
   hub="energy"
+  scopes={rows.map((r) => r.key).slice(0, 4)}
   sub="five views collapsed · one board, one time axis"
   {stats}
   listTitle="Where the money is going"

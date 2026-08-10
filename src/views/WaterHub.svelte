@@ -124,6 +124,7 @@
 
 <HubBoard
   hub="water"
+  scopes={["Borehole", "Irrigation", "Pump", "Tank"].filter((s) => rows.some((r) => `${r.key} ${r.sub ?? ""}`.toLowerCase().includes(s.toLowerCase())))}
   sub="tank, borehole and irrigation on one axis"
   {stats}
   listTitle="The system"

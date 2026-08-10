@@ -16,6 +16,9 @@
   import SettingsAlarm from "../lib/components/SettingsAlarm.svelte";
   import SettingsCheatsheet from "../lib/components/SettingsCheatsheet.svelte";
   import SettingsAutomations from "../lib/components/SettingsAutomations.svelte";
+  import SettingsTwins from "../lib/components/SettingsTwins.svelte";
+  import SettingsCalendars from "../lib/components/SettingsCalendars.svelte";
+  import SettingsCloud from "../lib/components/SettingsCloud.svelte";
   import { onMount } from "svelte";
 
   // ---- Home Assistant connection (direct vs built-in Nabu Casa) ----
@@ -267,6 +270,9 @@
     { id: "notify", name: "Notify", sub: "Three classes, two digests, and the badge" },
     { id: "health", name: "Health", sub: "Oura, and who can see it" },
     { id: "views", name: "Views", sub: "What appears in nav, and what Home opens on" },
+    { id: "twins", name: "Twins", sub: "Five shapes, sixty-five things — design once, deploy many" },
+    { id: "calendars", name: "Calendars", sub: "Schedules attached to things, and what each one changes" },
+    { id: "cloud", name: "Cloud & AI", sub: "What runs off the box, and what it costs" },
     { id: "cheat", name: "Cheatsheet", sub: "The things you forget, written down once" },
     { id: "system", name: "System", sub: "Home Assistant, data, and the things that break" },
   ];
@@ -286,6 +292,9 @@
   {#if tab === "alarm"}<SettingsAlarm />{/if}
   {#if tab === "cheat"}<SettingsCheatsheet />{/if}
   {#if tab === "autos"}<SettingsAutomations />{/if}
+  {#if tab === "twins"}<SettingsTwins />{/if}
+  {#if tab === "calendars"}<SettingsCalendars />{/if}
+  {#if tab === "cloud"}<SettingsCloud />{/if}
 
   {#if tab === "account"}
   <!-- profile -->

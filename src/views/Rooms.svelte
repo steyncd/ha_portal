@@ -125,6 +125,40 @@
     if (t == null) return "rgba(255,255,255,.03)";
     return `color-mix(in srgb, var(${heatVar(t)}) 26%, transparent)`;
   }
+  // ── Overlay (PLATFORM-CONCEPTS §7) ────────────────────────────────────────
+  // One drawing, several questions. The plan is the real percentage-positioned
+  // floor plan; the overlay re-reads it as watts and occupancy instead of
+  // temperature.
+  //
+  // THE LEGEND MUST SWAP WITH IT. In power mode blue means occupied and amber
+  // means drawing power, so leaving the temperature ramp underneath would
+  // describe a scale the drawing is no longer using — and since colour is never
+  // the only signal, the legend is part of the signal.
+  type Overlay = "temp" | "power";
+  let overlay = $state<Overlay>("temp");
+
+  function roomWatts(r: Room): number {
+    return [...(r.lights ?? []), ...(r.appliances ?? [])].reduce(
+      (sum, d) => sum + (d.power && ha.isOn(d.id) ? (ha.num(d.power) ?? 0) : 0),
+      0,
+    );
+  }
+
+  // Fill for power mode. Amber scaled by draw, blue when occupied and drawing
+  // nothing — the two questions the overlay exists to answer at once.
+  function powerFill(r: Room): string {
+    const w = roomWatts(r);
+    const occ = r.occ ? ha.isOn(r.occ) : false;
+    if (w > 0) {
+      // 0–600 W maps to 8–34% — a scale, not a threshold, so a kettle and a
+      // standby LED do not look the same.
+      const pct = Math.min(34, 8 + (Math.min(w, 600) / 600) * 26);
+      return `color-mix(in srgb, var(--warn) ${pct.toFixed(0)}%, transparent)`;
+    }
+    if (occ) return "color-mix(in srgb, var(--ok) 20%, transparent)";
+    return "rgba(255,255,255,.03)";
+  }
+
   const HEAT_LEGEND = [
     { c: "var(--heat-1)", l: "<14°" },
     { c: "var(--heat-2)", l: "14–17°" },
@@ -202,25 +236,47 @@
 
 <div class="grid">
   <div class="card pad">
-    <div class="rh"><span class="lb">302 Wyoming · tap a room</span><span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span></div>
+    <div class="rh">
+      <span class="lb">302 Wyoming · tap a room</span>
+      <span class="ovl" role="group" aria-label="Plan overlay">
+        <button class="ob" class:on={overlay === "temp"} onclick={() => (overlay = "temp")}>Temperature</button>
+        <button class="ob" class:on={overlay === "power"} onclick={() => (overlay = "power")}>Power &amp; people</button>
+      </span>
+      <span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span>
+    </div>
     <div class="plan">
       {#each PLAN as r}
         {@const t = r.temps?.[0] ? ha.num(r.temps[0].id) : null}
         {@const lit = (r.lights ?? []).some((l) => ha.isOn(l.id)) || (r.appliances ?? []).some((a) => ha.isOn(a.id))}
         {@const occ = r.occ ? ha.isOn(r.occ) : false}
-        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : heat(t)}" onclick={() => (activeId = r.id)}>
+        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : overlay === 'power' ? powerFill(r) : heat(t)}" onclick={() => (activeId = r.id)}>
           <span class="rn">{r.label}</span>
-          {#if t != null}<span class="rt">{n(t, 1)}°</span>{/if}
+          {#if overlay === "power"}
+            {@const w = roomWatts(r)}
+            {#if w > 0}<span class="rt">{power(w).val}{power(w).unit}</span>{/if}
+          {:else if t != null}
+            <span class="rt">{n(t, 1)}°</span>
+          {/if}
           {#if lit}<span class="dot"></span>{/if}
           {#if occ}<span class="odot"></span>{/if}
         </button>
       {/each}
     </div>
-    <div class="legend">
-      <span class="ll2">Cool</span>
-      {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
-      <span class="ll2">Warm</span>
-    </div>
+    <!-- Swaps with the overlay: a ramp legend under a drawing that is no longer
+         using the ramp is worse than no legend. -->
+    {#if overlay === "power"}
+      <div class="legend">
+        <span class="lg2"><span class="lcd" style="background:color-mix(in srgb, var(--ok) 45%, transparent)"></span>Occupied</span>
+        <span class="lg2"><span class="lcd" style="background:color-mix(in srgb, var(--warn) 45%, transparent)"></span>Drawing power</span>
+        <span class="ll2">deeper amber is more watts</span>
+      </div>
+    {:else}
+      <div class="legend">
+        <span class="ll2">Cool</span>
+        {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
+        <span class="ll2">Warm</span>
+      </div>
+    {/if}
   </div>
 
   <div class="card pad">
@@ -319,6 +375,11 @@
 </div>
 
 <style>
+  .ovl { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-control); background: var(--fill); }
+  .ob { padding: 6px 11px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: var(--mut); background: none; min-height: 32px; }
+  .ob.on { background: var(--fill-strong); color: var(--tx); }
+  .lg2 { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--mut); }
+  .lcd { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
   .wide { grid-column: 1 / -1; }

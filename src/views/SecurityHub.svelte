@@ -218,6 +218,7 @@
 
 <HubBoard
   hub="security"
+  scopes={["Cameras", "Timeline", "Open now"].filter((s) => rows.some((r) => `${r.key} ${r.sub ?? ""}`.toLowerCase().includes(s.toLowerCase())))}
   sub="two independently scheduled areas · every transition attributed"
   {stats}
   listTitle="What else is watching"

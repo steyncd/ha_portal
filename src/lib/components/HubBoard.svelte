@@ -42,6 +42,7 @@
   let {
     hub,
     sub = "",
+    scopes = [],
     stats = [],
     listTitle = "",
     rows = [],
@@ -52,6 +53,9 @@
   }: {
     hub: ViewId;
     sub?: string;
+    /** Context-filter chips. Only pass scopes that match something on THIS
+     *  board — see the derivation rule below. */
+    scopes?: string[];
     stats?: Stat[];
     listTitle?: string;
     rows?: Row[];
@@ -61,6 +65,26 @@
     multiples?: Snippet;
     onnav: (id: string) => void;
   } = $props();
+
+  // ── Context filter (PLATFORM-CONCEPTS §6) ────────────────────────────────
+  // One control, whole board. Two rules, both learned in review:
+  //
+  // 1. DERIVE THE CHIPS PER BOARD. Only offer a scope that matches something
+  //    here — Kitchen must not appear on Me or Security. Same philosophy as the
+  //    nav: never offer a destination that goes nowhere.
+  // 2. NEVER LET A FILTER EMPTY THE BOARD. The stat row stays WHOLE (scope
+  //    narrows the detail list only), and the header states the count so the
+  //    effect is visible rather than asserted.
+  let scope = $state("Whole house");
+  // Switching boards with a scope active falls back to Whole house: a scope
+  // carried across boards silently hides rows on a screen you have not looked at.
+  $effect(() => { void hub; scope = "Whole house"; });
+
+  const scoped = $derived(
+    scope === "Whole house"
+      ? rows
+      : rows.filter((r) => `${r.key} ${r.sub ?? ""}`.toLowerCase().includes(scope.toLowerCase())),
+  );
 
   const item = $derived(NAV.find((n) => n.id === hub));
   const count = $derived(collapsedCount(hub));
@@ -74,6 +98,15 @@
     <h1>{item?.name ?? ""}</h1>
     {#if sub}<p class="bsub">{sub}</p>{/if}
   </header>
+
+  {#if scopes.length}
+    <div class="scoperow" role="group" aria-label="Narrow this board">
+      <span class="slb">Scope</span>
+      {#each ["Whole house", ...scopes] as sc (sc)}
+        <button class="chipbtn" class:on={scope === sc} onclick={() => (scope = sc)}>{sc}</button>
+      {/each}
+    </div>
+  {/if}
 
   <div class="cols">
     <div class="main">
@@ -98,8 +131,13 @@
 
       {#if rows.length}
         <section class="list">
-          {#if listTitle}<h2>{listTitle}</h2>{/if}
-          {#each rows as r (r.key)}
+          <div class="lh">
+            {#if listTitle}<h2>{listTitle}</h2>{/if}
+            {#if scope !== "Whole house"}
+              <span class="count">{scoped.length} of {rows.length} rows</span>
+            {/if}
+          </div>
+          {#each scoped as r (r.key)}
             <button class="row" class:warn={r.warn} onclick={() => r.open?.()} disabled={!r.open}>
               <span class="r-bar" style={r.tint ? `background:${r.tint}` : ""}></span>
               <span class="r-body">
@@ -165,7 +203,23 @@
   .s-n.warn { color: var(--warn); }
 
   .list { background: var(--s1); border-radius: var(--r-surface); padding: 14px 15px; }
-  .list h2 { font-size: 13px; font-weight: 700; color: var(--tx); margin: 0 0 10px; }
+  .lh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .list h2 { font-size: 13px; font-weight: 700; color: var(--tx); margin: 0; }
+  /* States the effect rather than asserting it. */
+  .count { font-size: 11.5px; color: var(--mut); font-variant-numeric: tabular-nums; }
+
+  .scoperow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+  .slb { font-size: 11px; font-weight: 700; color: var(--mut); margin-right: 4px; }
+  .chipbtn {
+    padding: 5px 11px;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+    color: var(--mut);
+    font-size: 11.5px;
+    font-weight: 700;
+    min-height: 32px;
+  }
+  .chipbtn.on { background: var(--fill-strong); color: var(--tx); }
   .row {
     display: flex;
     align-items: center;

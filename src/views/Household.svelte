@@ -77,6 +77,7 @@
 
 <HubBoard
   hub="household"
+  scopes={["Liam", "Eben", "Gebedslys", "Kos"].filter((s) => rows.some((r) => `${r.key} ${r.sub ?? ""}`.toLowerCase().includes(s.toLowerCase())))}
   sub="die mense-helfte — stelsels bly in House"
   {stats}
   listTitle="Wie en wat"
