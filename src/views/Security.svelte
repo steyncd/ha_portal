@@ -61,17 +61,21 @@
   // a press is recorded here as an intention, the row says it is waiting, and
   // NOTHING IS RE-SENT — re-sending is what flapped this panel historically.
   //
-  // 60 seconds, from measurement rather than guesswork: zone 022's history shows
-  // its bypass button pressed at 17:08:28 and the sensor reading 'on' at
-  // 17:08:42, so the panel confirms a zone bypass in about 14 seconds. (That is
-  // much faster than arm/disarm read-back, which has run over an hour late.) A
-  // minute is four times the observed worst case; past that, saying so is more
-  // useful than waiting longer.
+  // FIVE minutes, and the number is measured, twice, because the first
+  // measurement was misleading:
   //
-  // The most likely reason for a bypass never confirming is a zone the panel does
-  // not have configured — pressing bypass on zone 032 returns HTTP 200 and
-  // changes nothing, because there is no zone 032 wired up.
-  const PANEL_WAIT = 60_000;
+  //   zone 022  press 17:08:28 -> sensor 'on' 17:08:42      14 seconds
+  //   zone 032  press 18:23:12 -> sensor 'on' 18:26:31   3m 19 seconds
+  //
+  // I set this to 60s on the first figure alone, watched zone 032 for a minute,
+  // saw nothing, and concluded the zone was not configured on the panel. It was:
+  // the bypass landed two minutes after I stopped looking. The fast case is a
+  // press that happens while the integration is already polling; the slow case is
+  // the honest worst case to design for.
+  //
+  // So the timeout is generous, and running out of it means "the panel has not
+  // said yes" — NOT "it failed". Nothing is re-sent either way.
+  const PANEL_WAIT = 300_000;
   type Waiting = { want: boolean; at: number };
   let waiting = $state<Record<string, Waiting>>({});
   let now = $state(Date.now());
@@ -79,6 +83,15 @@
     const t = setInterval(() => (now = Date.now()), 2_000);
     return () => clearInterval(t);
   });
+
+  /** Elapsed time on a pending press. A button disabled for up to five minutes
+   *  with a static label reads as broken; a counter reads as waiting. */
+  function waited(z: Zone): string {
+    const w = waiting[z.n];
+    if (!w) return "";
+    const secs = Math.max(0, Math.round((now - w.at) / 1000));
+    return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m${String(secs % 60).padStart(2, "0")}`;
+  }
 
   /** "pending" while the panel has not caught up, "stale" once it has given up. */
   function pendingState(z: Zone): "none" | "pending" | "stale" {
@@ -341,15 +354,16 @@
               disabled={pend === "pending" || !(bypassed ? z.unbypassBtn : z.bypassBtn)}
               onclick={() => tapZone(z)}
             >
-              {#if pend === "pending"}Waiting…
+              {#if pend === "pending"}Waiting {waited(z)}
               {:else if bypassed}Restore
               {:else if confirmZone === z.n}Confirm bypass
               {:else}Bypass{/if}
             </button>
             {#if pend === "stale"}
               <span class="zwarn">
-                The panel did not confirm this within a minute. The usual cause is
-                a zone number the panel has no zone wired to — check the keypad.
+                The panel has not confirmed this after five minutes. The command
+                was sent and has not been re-sent; check the keypad for the real
+                state rather than pressing again.
               </span>
             {/if}
           </div>
@@ -360,8 +374,8 @@
     <div class="note">
       A bypassed zone is excluded while the alarm is armed — it will not report and
       will not trigger. Bypass asks twice; restoring does not. Both press the
-      panel's own per-zone controls, which usually confirm in about fifteen
-      seconds.
+      panel's own per-zone controls, which confirm in anything from fifteen
+      seconds to about three minutes — measured on this panel, not estimated.
       <!-- The auto-restore rule is not optional information. Without it you
            bypass a zone, come back, and find it un-bypassed with no explanation
            on this screen. The behaviour differs by armed state, so the sentence

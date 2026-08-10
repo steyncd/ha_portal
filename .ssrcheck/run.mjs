@@ -128,7 +128,7 @@ t("has a Restore all for the one bypassed zone", has(view, "Restore all 1"));
 // Attribute text, so it is checked in the raw HTML — strip() removes tags.
 t("search placeholder counts the real zones", view.includes("Search 32 zones"));
 t("explains that a bypassed zone will not trigger", has(view, "will not trigger"));
-t("says how long the panel takes to confirm", has(view, "fifteen seconds"));
+t("states the measured confirmation range", has(view, "fifteen seconds to about three minutes"));
 // The auto-restore rule differs by armed state, and getting it backwards would
 // tell Christo a bypass is temporary when it will actually last all night.
 t("armed: says the bypass lasts the whole armed session", has(view, "stays for this whole armed session"));
