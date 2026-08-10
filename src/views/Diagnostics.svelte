@@ -17,7 +17,7 @@
   import { ha } from "../lib/store.svelte";
   import { E } from "../lib/entities";
   import { dependentCount, groupedDependents, depsEntityCount, depsGeneratedAt } from "../lib/deps";
-  import { n } from "../lib/format";
+  import { n, since } from "../lib/format";
   import Sheet from "../lib/components/Sheet.svelte";
   import { health } from "../lib/health.svelte";
   import { onMount } from "svelte";
@@ -48,7 +48,10 @@
     const st = (id: string) => ha.state(id);
 
     // 1 · HA core
-    const uptime = st("sensor.home_assistant_uptime") ?? st("sensor.uptime");
+    // The sensor holds WHEN HA started, so it has to be turned into elapsed
+    // time here. It also reads 'unknown' until the first restart stamps it, and
+    // since() returns null for that rather than a bogus duration.
+    const uptime = since(st("sensor.home_assistant_uptime"));
     out.push({
       id: "core",
       name: "Home Assistant core",
@@ -57,7 +60,12 @@
       // They disagree in the case that matters most — the portal open on a phone
       // with a working cache while the house is actually off the internet.
       health: ha.status === "connected" && health.haReachable !== false ? "ok" : "care",
-      detail: [st("sensor.home_assistant_version") ?? st("update.home_assistant_core_update"), uptime ? `up ${uptime}` : null]
+      // NOT a fallback to update.home_assistant_core_update: that entity's STATE
+      // is "off"/"on" for whether an update is pending, so the old fallback
+      // printed the word "off" where a version belonged. The version now comes
+      // from sensor.home_assistant_version (built from that entity's
+      // installed_version attribute, HA-side).
+      detail: [st("sensor.home_assistant_version"), uptime ? `up ${uptime}` : null]
         .filter(Boolean).join(" · ")
         || (health.haReachable === false
               ? `unreachable — ${health.data.ha?.consecutiveFails ?? 0} failed probes`

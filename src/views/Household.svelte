@@ -21,6 +21,7 @@
   import TvAudit from "../lib/components/TvAudit.svelte";
   import ChoreApproval from "../lib/components/ChoreApproval.svelte";
   import { KIDS, watchKid, choresToday, type KidState } from "../lib/kids";
+  import { watchPrayers, prayedToday, type Prayer } from "../lib/faith";
   import { trust } from "../lib/trust.svelte";
   import { onMount } from "svelte";
 
@@ -34,12 +35,16 @@
 
   // Real Firestore state, live. No local ledger.
   let kidStates = $state<Record<string, KidState>>({});
+  let prayers = $state<Prayer[]>([]);
   let tick = $state(0);
   onMount(() => {
-    const stops = KIDS.flatMap((k) => [
-      watchKid(k.slug, (st) => { kidStates = { ...kidStates, [k.slug]: st }; }),
-      trust.watch(k.slug),
-    ]);
+    const stops = [
+      ...KIDS.flatMap((k) => [
+        watchKid(k.slug, (st) => { kidStates = { ...kidStates, [k.slug]: st }; }),
+        trust.watch(k.slug),
+      ]),
+      watchPrayers((p) => { prayers = p; }),
+    ];
     const t = setInterval(() => tick++, 30_000);
     return () => { stops.forEach((f) => f()); clearInterval(t); };
   });
@@ -57,9 +62,12 @@
     return KIDS.reduce((n, k) => n + choresToday(kidStates[k.slug] ?? {}).length, 0);
   });
 
-  // Gebedslys has no HA sensor. Rather than a fabricated count, the stat reads
-  // em-dash and drills through to the real board.
-  const prayersNew = $derived(ha.num("sensor.gebedslys_new") ?? null);
+  // The prayer list lives in FIRESTORE, not Home Assistant. This read a
+  // sensor.gebedslys_new that never existed and never could — HA has no way to
+  // know what is on the board. Reading the real collection means the number is
+  // both correct and actionable: how many are still waiting to be prayed today.
+  const openPrayers = $derived(prayers.filter((p) => !p.answered && !prayedToday(p)).length);
+  const livePrayers = $derived(prayers.filter((p) => !p.answered).length);
 
   const stats = $derived<Stat[]>([
     {
@@ -79,8 +87,8 @@
     },
     {
       key: t("Prayer list", L),
-      value: prayersNew != null ? `${afNum(prayersNew, L)} nuut` : "—",
-      units: prayersNew == null ? "geen sensor — oop die bord" : undefined,
+      value: livePrayers === 0 ? "Leeg" : openPrayers === 0 ? "Almal gebid" : `${afNum(openPrayers, L)} oop`,
+      units: livePrayers === 0 ? "niks op die bord nie" : `${afNum(livePrayers, L)} op die lys`,
       open: () => onnav("faith"),
     },
     {

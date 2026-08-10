@@ -58,6 +58,28 @@ export function dur(v: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
+/**
+ * Elapsed time since an ISO timestamp, for uptime rows: "3d 4h", "6h", "18m".
+ *
+ * Returns null rather than a string when it cannot tell, so the caller can drop
+ * the row instead of printing "—" next to a version number. A timestamp before
+ * 2020 is treated as no answer: sensor.home_assistant_uptime holds a 1970
+ * sentinel until the first restart stamps it, and rendering that literally would
+ * claim an uptime of twenty thousand days.
+ */
+export function since(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t) || t < Date.parse("2020-01-01")) return null;
+  const mins = Math.floor((Date.now() - t) / 60_000);
+  if (mins < 0) return null;
+  const d = Math.floor(mins / 1440);
+  const h = Math.floor((mins % 1440) / 60);
+  if (d > 0) return h > 0 ? `${d}d ${h}h` : `${d}d`;
+  if (h > 0) return `${h}h`;
+  return `${mins}m`;
+}
+
 /** Compact thousands (e.g. 3582 → "3,582"). */
 export function thousands(v: number | null): string {
   if (v == null) return "—";

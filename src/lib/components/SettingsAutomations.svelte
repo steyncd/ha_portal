@@ -159,11 +159,13 @@
       : "no helper"}
     warn={!ha.exists("input_number.battery_reserve_percent")}
   />
-  <SettingRow
-    label="Exported while a load waited"
-    explain="The number to hunt: energy sold to the grid while something was queued for surplus."
-    value={ha.num("sensor.victron_grid_export_energy") != null ? `${ha.num("sensor.victron_grid_export_energy")} kWh` : "—"}
-  />
+  <!-- REMOVED 2026-08-10: "Exported while a load waited" read
+       sensor.victron_grid_export_energy, which does not exist. Nor does any
+       sensor answer that question — it is a correlation between export and a
+       queued load that nothing computes. Both venus_*_feed_in_excess switches
+       are off, so this system may not export at all. Pointing the row at
+       sensor.victron_grid_total_energy_to would have filled the gap with a
+       number that answers something else, which is worse than no row. -->
 </section>
 
 <section class="grp">

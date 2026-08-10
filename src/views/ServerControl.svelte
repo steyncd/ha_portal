@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { since } from "../lib/format";
   // Server control — restart HA core and reload individual YAML domains without
   // opening Home Assistant. Restart is guarded by an inline two-step confirm.
   import { ha } from "../lib/store.svelte";
@@ -54,8 +55,12 @@
     }
   }
 
-  const uptime = $derived(ha.state("sensor.uptime") ?? ha.state("sensor.home_assistant_uptime"));
-  const version = $derived(ha.state("sensor.home_assistant_version") ?? ha.state("update.home_assistant_core_update"));
+  // sensor.uptime never existed here; the one sensor holds a start time, which
+  // since() turns into elapsed and returns null for the pre-restart sentinel.
+  const uptime = $derived(since(ha.state("sensor.home_assistant_uptime")));
+  // update.home_assistant_core_update's state is "off" when no update is
+  // pending, so the old fallback showed "off" as the version number.
+  const version = $derived(ha.state("sensor.home_assistant_version") ?? null);
 </script>
 
 <div class="wrap">

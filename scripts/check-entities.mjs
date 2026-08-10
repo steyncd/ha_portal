@@ -87,16 +87,32 @@ try {
   process.exit(2);
 }
 
+// Entities that do not exist YET, on purpose, with the reason. This list is
+// short and each line has to justify itself — a checker that always prints two
+// known items is a checker you learn to skim past, and then you skim past the
+// third.
+const EXPECTED = new Map([
+  ["sensor.study_bt_device_scanner_desk_temperature",
+   "ESP32-S3 desk scanner not flashed yet (same hardware as the desk LED)"],
+  ["sensor.study_bt_device_scanner_desk_humidity",
+   "ESP32-S3 desk scanner not flashed yet"],
+]);
+
 // mock.ts describes a fake house for dev mode. Its entities are SUPPOSED not to
 // exist; reporting them as missing would be reporting the point of the file.
 const isMock = (where) => where.every((w) => w.startsWith("src/lib/mock.ts"));
 
 const missing = [...refs].filter(([id]) => !live.has(id));
-const real = missing.filter(([, w]) => !isMock(w));
 const mocked = missing.filter(([, w]) => isMock(w));
+const notMock = missing.filter(([, w]) => !isMock(w));
+const pending = notMock.filter(([id]) => EXPECTED.has(id));
+const real = notMock.filter(([id]) => !EXPECTED.has(id));
 
 console.log(`${refs.size} entity ids in src/ · ${live.size} live in HA`);
-console.log(`${real.length} do not resolve (plus ${mocked.length} mock-only, ignored)\n`);
+console.log(`${real.length} unexplained · ${pending.length} known pending · ${mocked.length} mock-only\n`);
+
+for (const [id] of pending.sort()) console.log(`· ${id}\n    expected: ${EXPECTED.get(id)}`);
+if (pending.length && real.length) console.log("");
 
 for (const [id, where] of real.sort()) {
   // Suggest a live entity in the same domain with a similar object_id — most of
@@ -123,5 +139,7 @@ for (const [id, where] of real.sort()) {
 if (real.length) {
   console.log(`\n${real.length} to sort out. A reference that does not resolve renders`);
   console.log(`as "—" rather than crashing, which is why these can sit for months.`);
+} else {
+  console.log("Every entity the portal references exists in Home Assistant.");
 }
 process.exit(0);
