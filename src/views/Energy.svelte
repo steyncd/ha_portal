@@ -141,7 +141,7 @@
     <div class="heroglow"></div>
     <div class="hmain">
       <div class="hbig">{n(indep)}<span class="hpct">%</span></div>
-      <div class="hlbl">self-powered today</div>
+      <div class="hlbl">Self-powered today</div>
     </div>
     <div class="hstats">
       <div class="hs"><span class="hv" style="color:var(--solar)">{power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</span><span class="hk">☀️ Solar now</span></div>
@@ -350,7 +350,7 @@
   .hmain { position: relative; }
   .hbig { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 0.9; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hpct { font-size: 26px; }
-  .hlbl { font-size: 13px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+  .hlbl { font-size: 13px; color: var(--dim); margin-top: 4px; font-weight: 700; }
   .hstats { position: relative; display: grid; grid-template-columns: repeat(4, auto); gap: 10px 22px; }
   @media (max-width: 640px) { .hstats { grid-template-columns: 1fr 1fr; } }
   .hs { display: flex; flex-direction: column; gap: 2px; }
@@ -363,7 +363,7 @@
   .genv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 760px) { .genv { grid-template-columns: 1fr; } }
   .ge { padding: 15px 18px; }
-  .gl { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gl { font-size: 12px; font-weight: 700; color: var(--muted); }
   .gv { font-size: 19px; font-weight: 800; margin-top: 4px; }
   .gs { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
@@ -386,7 +386,7 @@
   .pbtop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
   .pbm { display: flex; flex-direction: column; gap: 3px; }
   .pbv { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .pbk { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .pbk { font-size: 10.5px; color: var(--muted); font-weight: 700;}
   .pbbar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 22%, transparent); overflow: hidden; margin-bottom: 16px; }
   .pbfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 60%, var(--acc))); transition: width 0.6s; }
   .devlist { display: flex; flex-direction: column; gap: 8px; }
@@ -419,7 +419,7 @@
   .vn { font-size: 12.5px; font-weight: 700; }
   .vrows { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 10px; }
   .vv { font-size: 14.5px; font-weight: 800; }
-  .vk { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+  .vk { font-size: 9.5px; color: var(--muted); margin-top: 1px; font-weight: 700;}
   .appgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .app { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); text-align: left; }
   .app.on { background: color-mix(in srgb, var(--warning) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }

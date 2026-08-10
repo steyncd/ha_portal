@@ -300,7 +300,7 @@
   .crow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
   .crow.dates { margin-top: 12px; }
   .fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .flb { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .flb { font-size: 11px; font-weight: 700; color: var(--dim); }
   select, input[type="date"] {
     background: var(--soft); color: var(--text); border: 1px solid var(--line);
     border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; min-width: 220px;
@@ -330,7 +330,7 @@
 
   .ig { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .ic { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); }
-  .il { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .il { font-size: 11px; font-weight: 700; color: var(--dim); }
   .iv { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
   .is { font-size: 11.5px; color: var(--dim); }
   .sum { margin: 16px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }

@@ -145,7 +145,7 @@
   .body { flex: 1; min-width: 0; }
   .title { font-size: 14px; font-weight: 700; color: var(--text); }
   .std { font-size: 12px; color: var(--text-2); margin-top: 3px; line-height: 1.4; }
-  .meta { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 5px; }
+  .meta { font-size: 10.5px; color: var(--muted); margin-top: 5px; font-weight: 700;}
   .del { width: 28px; height: 28px; border-radius: 8px; color: var(--muted); font-size: 12px; flex: none; }
   .del:hover { background: rgba(255,255,255,0.08); color: var(--text); }
   .empty { text-align: center; color: var(--muted); }

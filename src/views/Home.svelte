@@ -358,7 +358,7 @@
   .tile.on { background: color-mix(in srgb, var(--acc) 16%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 42%, transparent); }
   .tic { font-size: 22px; line-height: 1; }
   .tname { font-size: 11.5px; font-weight: 600; text-align: center; }
-  .tstate { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--acc); }
+  .tstate { font-size: 9.5px; color: var(--acc); font-weight: 700;}
   .tstate.dim { color: var(--muted-2); text-transform: none; letter-spacing: 0; }
   .dots { position: absolute; top: 5px; right: 5px; width: 22px; height: 22px; border-radius: 7px; color: var(--muted-2); font-size: 13px; opacity: 0; transition: opacity 0.12s; }
   .scell:hover .dots { opacity: 1; }
@@ -378,7 +378,7 @@
   .ltap { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; text-align: left; }
   .cic { font-size: 17px; flex-shrink: 0; }
   .cname { flex: 1; min-width: 0; font-size: 12.5px; font-weight: 600; }
-  .cstate { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .cstate { font-size: 10px; color: var(--muted); font-weight: 700;}
   .ctrl.on .cstate { color: var(--acc); }
   .tune { position: absolute; top: 8px; right: 8px; width: 24px; height: 24px; border-radius: 7px; background: rgba(255,255,255,0.09); color: #dbe6f0; font-size: 13px; }
   .tune:hover { background: rgba(255,255,255,0.18); }

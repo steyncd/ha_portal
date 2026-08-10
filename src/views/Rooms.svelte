@@ -309,7 +309,7 @@
   .room:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
   .dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 6px var(--warning); }
   .odot { position: absolute; top: 4px; left: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
-  .occ { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
+  .occ { font-size: 10px; font-weight: 700; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
   .occ.oon { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
   .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
   .legend .lc { width: 26px; height: 9px; border-radius: 2px; }

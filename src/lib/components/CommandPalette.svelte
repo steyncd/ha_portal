@@ -171,10 +171,7 @@
   }
   .hint {
     font-size: 10px;
-    color: var(--muted-2);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
+    color: var(--muted-2); font-weight: 700;}
   .empty {
     padding: 20px;
     text-align: center;

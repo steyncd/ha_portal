@@ -9,15 +9,27 @@
   const PERSON = "person.christo_steyn";
   const MY_GEO = "sensor.hello_geocoded_location";
 
+  // Eight rooms composited into ONE occupancy band, so colour is the only thing
+  // that says which room — the hardest case for a red-green deficiency, and the
+  // old set (#a78bfa / #f472b6 / #38bdf8 / #34d399 / #fbbf24 / #fb923c /
+  // #22d3ee / #c084fc) failed it three times over: mint/sky/cyan collapsed into
+  // each other, pink/violet collapsed, and amber/orange collapsed.
+  //
+  // Rebuilt on the two channels deuteranopia leaves intact — the blue↔yellow
+  // axis, and lightness. Four cool and four warm, interleaved so neighbours in
+  // the legend never share a family, and spread across L≈33–87 so any two that
+  // do sit near each other in hue are far apart in luminance. The last pair are
+  // both light on purpose: they differ only on the blue↔yellow axis, which is
+  // precisely the axis that survives.
   const ROOMS = [
-    { label: "Main", id: "binary_sensor.main_room_pir", color: "#a78bfa" },
-    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#f472b6" },
-    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#38bdf8" },
-    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#34d399" },
-    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#fbbf24" },
-    { label: "Garage", id: "binary_sensor.garage_pir", color: "#fb923c" },
-    { label: "Passage", id: "binary_sensor.passage_pir", color: "#22d3ee" },
-    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#c084fc" },
+    { label: "Main", id: "binary_sensor.main_room_pir", color: "var(--load)" }, //      L50 blue
+    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "var(--energy)" }, // L76 amber
+    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#1f4f8f" }, //      L33 navy
+    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#c87a2e" }, //            L57 orange
+    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "var(--heat-2)" }, //    L70 mid blue
+    { label: "Garage", id: "binary_sensor.garage_pir", color: "#7a5320" }, //            L38 bronze
+    { label: "Passage", id: "binary_sensor.passage_pir", color: "#b8def7" }, //          L87 ice
+    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#f3d89b" }, //         L87 sand
   ];
   const QUIET = "rgba(255,255,255,.06)";
   const AWAY = "rgba(255,255,255,.13)";
@@ -381,7 +393,7 @@
   .hstats { position: relative; display: flex; gap: 20px; flex-shrink: 0; }
   .hstats > div { text-align: center; }
   .hv { font-size: 22px; font-weight: 800; }
-  .hk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .hk { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 700;}
 
   .movebar { display: flex; height: 30px; border-radius: 9px; overflow: hidden; gap: 1px; background: rgba(255, 255, 255, 0.03); }
   .mseg { min-width: 1px; }
@@ -419,7 +431,7 @@
   .pinfo { flex: 1; min-width: 0; }
   .ptop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pn { font-size: 13.5px; font-weight: 600; }
-  .ptag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); padding: 2px 7px; border-radius: 999px; }
+  .ptag { font-size: 9.5px; font-weight: 700; color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); padding: 2px 7px; border-radius: 999px; }
   .ptag.geo { color: var(--water); background: color-mix(in srgb, var(--water) 16%, transparent); }
   .psub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .pright { text-align: right; flex-shrink: 0; }
@@ -433,6 +445,6 @@
   .pbk { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .chips { flex: 1; min-width: 220px; display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { display: flex; flex-direction: column; gap: 1px; padding: 8px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.045); }
-  .ck { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .ck { font-size: 9.5px; color: var(--muted); font-weight: 700;}
   .cv { font-size: 13px; font-weight: 700; }
 </style>

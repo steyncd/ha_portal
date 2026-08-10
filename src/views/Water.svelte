@@ -70,7 +70,7 @@
     <span class="glow" style="--gc:var(--water)"></span>
     <div class="hleft">
       <div class="hbig" style="color:{daysColor}">{n(days)}<span class="hunit"> days</span></div>
-      <div class="hlbl">of water left at current use</div>
+      <div class="hlbl">Of water left at current use</div>
     </div>
     <div class="hmeta">
       <div class="hm"><span class="hmv" style="color:var(--water)">{n(ha.num(E.tankVolume))} L</span><span class="hmk">in tank · {n(tank)}%</span></div>
@@ -165,7 +165,7 @@
   .hleft { position: relative; }
   .hbig { font-size: 48px; font-weight: 800; letter-spacing: -2px; line-height: 0.9; }
   .hunit { font-size: 22px; }
-  .hlbl { font-size: 12.5px; color: var(--dim); margin-top: 5px; text-transform: uppercase; letter-spacing: 1.2px; font-weight: 700; }
+  .hlbl { font-size: 12.5px; color: var(--dim); margin-top: 5px; font-weight: 700; }
   .hmeta { position: relative; display: grid; grid-template-columns: repeat(3, auto); gap: 8px 22px; }
   @media (max-width: 560px) { .hmeta { grid-template-columns: 1fr 1fr; } }
   .hm { display: flex; flex-direction: column; gap: 2px; }
@@ -201,7 +201,7 @@
   .bhm { min-width: 0; }
   .bhv { font-size: 19px; font-weight: 800; }
   .uu { font-size: 11px; color: var(--dim); font-weight: 600; }
-  .bhk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 2px; }
+  .bhk { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 700;}
   .effrow { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 0 0 12px; padding-top: 12px; border-top: 1px solid var(--line); }
   @media (max-width: 420px) { .effrow { grid-template-columns: repeat(2, 1fr); } }
   .wear { font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 8px; padding: 8px 11px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); }

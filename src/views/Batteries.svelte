@@ -134,10 +134,10 @@
         {/if}
 
         <div class="stats">
-          <div class="s"><div class="sv">{r.a ? r.a.charges : "—"}</div><div class="sk">charges · 7d</div></div>
-          <div class="s"><div class="sv">{r.a?.rate ? `${n(r.a.rate, 1)}%/h` : "—"}</div><div class="sk">avg drain</div></div>
-          <div class="s"><div class="sv">{r.a?.runtime ? fmtH(r.a.runtime) : (r.d.kind === "oura" && ha.available(r.d.analysis!) ? ha.state(r.d.analysis!) : "—")}</div><div class="sk">lasts (est.)</div></div>
-          <div class="s"><div class="sv">{r.a?.minL != null ? `${n(r.a.minL)}%` : "—"}</div><div class="sk">low · 7d</div></div>
+          <div class="s"><div class="sv">{r.a ? r.a.charges : "—"}</div><div class="sk">Charges · 7d</div></div>
+          <div class="s"><div class="sv">{r.a?.rate ? `${n(r.a.rate, 1)}%/h` : "—"}</div><div class="sk">Avg drain</div></div>
+          <div class="s"><div class="sv">{r.a?.runtime ? fmtH(r.a.runtime) : (r.d.kind === "oura" && ha.available(r.d.analysis!) ? ha.state(r.d.analysis!) : "—")}</div><div class="sk">Lasts (est.)</div></div>
+          <div class="s"><div class="sv">{r.a?.minL != null ? `${n(r.a.minL)}%` : "—"}</div><div class="sk">Low · 7d</div></div>
         </div>
 
         {#if r.d.kind === "android" && ha.available(r.d.health!)}
@@ -179,7 +179,7 @@
   .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
   .s { text-align: center; padding: 9px 4px; border-radius: 11px; background: rgba(255, 255, 255, 0.035); }
   .sv { font-size: 14.5px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .sk { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 3px; }
+  .sk { font-size: 9.5px; color: var(--muted); margin-top: 3px; font-weight: 700;}
   .health { font-size: 11.5px; color: var(--text-2, var(--muted)); margin-top: 12px; }
   .health.note { color: var(--muted); font-style: italic; }
   .foot { font-size: 11.5px; color: var(--muted); margin: 0; }

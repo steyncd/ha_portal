@@ -88,5 +88,5 @@
   .svc.bad { color: var(--warn, #f5a623); }
   .sv { font-size: 14px; font-weight: 700; color: var(--text); }
   .svc.bad .sv { color: var(--warn, #f5a623); }
-  .sk { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .sk { font-size: 10.5px; color: var(--muted); font-weight: 700;}
 </style>

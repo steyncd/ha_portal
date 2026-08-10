@@ -124,7 +124,7 @@
   .at { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .aic { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-size: 16px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
   .an { font-size: 15px; font-weight: 700; letter-spacing: -0.2px; }
-  .acount { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted-2); padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); }
+  .acount { font-size: 11px; font-weight: 700; color: var(--muted-2); padding: 3px 9px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); }
   .acount.lit { color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); }
   .actrl { display: flex; gap: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 11px; padding: 4px; }
   .ab { padding: 7px 15px; border-radius: 8px; font-size: 12px; font-weight: 600; color: var(--text-2); }
@@ -137,7 +137,7 @@
   /* Group controls read as a distinct control, not a single lamp: accent tint + dashed frame + badge. */
   .ltile.group { background: color-mix(in srgb, var(--acc) 9%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 42%, transparent); }
   .ltile.group.on { background: color-mix(in srgb, var(--acc) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--acc); }
-  .gbadge { position: absolute; top: 10px; right: 11px; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent); padding: 3px 7px; border-radius: 999px; }
+  .gbadge { position: absolute; top: 10px; right: 11px; font-size: 9px; font-weight: 800; color: var(--acc); background: color-mix(in srgb, var(--acc) 16%, transparent); padding: 3px 7px; border-radius: 999px; }
   .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; outline: none; }
   .ltap:focus-visible { box-shadow: 0 0 0 2px var(--acc); border-radius: 8px; }
   .mi { font-size: 17px; }

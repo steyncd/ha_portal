@@ -126,7 +126,7 @@
   .week { display: flex; flex-direction: column; gap: 8px; }
   .day { padding: 12px 14px; border-radius: 13px; background: rgba(255,255,255,0.03); }
   .day.today { background: color-mix(in srgb, var(--acc) 12%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--acc) 40%, transparent); }
-  .dl { font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .dl { font-size: 11.5px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .tt { font-size: 9.5px; color: var(--acc); background: color-mix(in srgb, var(--acc) 18%, transparent); border-radius: 999px; padding: 2px 7px; letter-spacing: 0.03em; }
   .dv { display: block; width: 100%; text-align: left; }
   .meal { font-size: 14.5px; font-weight: 600; color: var(--text); }

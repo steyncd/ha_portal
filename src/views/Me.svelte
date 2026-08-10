@@ -393,7 +393,7 @@
   .ah { text-align: center; padding: 13px 6px; border-radius: 13px; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
   .ahv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .ahu { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 1px; }
-  .ahk { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .ahk { font-size: 10px; color: var(--muted); margin-top: 4px; font-weight: 700;}
   .insight { display: flex; align-items: center; gap: 13px; padding: 15px 20px; }
   .ii { font-size: 22px; }
   .it { font-size: 13.5px; color: var(--text); font-weight: 500; }
@@ -462,7 +462,7 @@
   @media (max-width: 430px) { .wkgrid { grid-template-columns: 1fr; } }
   .wkgrid > div { padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .wkv { font-size: 15px; font-weight: 800; }
-  .wkk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .wkk { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 700;}
   .favs { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .fav { display: flex; align-items: center; gap: 9px; padding: 13px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
   .fav.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }

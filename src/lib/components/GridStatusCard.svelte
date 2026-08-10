@@ -57,7 +57,7 @@
   .grid { padding: 18px; margin: 0 0 14px; break-inside: avoid; }
   .grid.alert { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--error) 55%, transparent); }
   .wh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
-  .urg { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); background: rgba(255,255,255,0.05); border-radius: 999px; padding: 3px 9px; }
+  .urg { font-size: 10.5px; font-weight: 700; color: var(--muted-2); background: rgba(255,255,255,0.05); border-radius: 999px; padding: 3px 9px; }
   .urg.hot { color: var(--warning); background: color-mix(in srgb, var(--warning) 16%, transparent); }
   .ls { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 13px; background: color-mix(in srgb, var(--success) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 20%, transparent); margin-bottom: 12px; }
   .ls.on { background: color-mix(in srgb, var(--error) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 30%, transparent); }

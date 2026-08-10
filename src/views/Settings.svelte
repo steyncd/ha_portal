@@ -654,7 +654,7 @@
   .signout { padding: 10px 16px; border-radius: 11px; background: color-mix(in srgb, var(--error) 16%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 34%, transparent); color: #fecdd6; font-size: 12.5px; font-weight: 700; }
   .aav.img { object-fit: cover; }
   .anm2 { display: flex; align-items: center; gap: 8px; }
-  .rolechip { font-size: 9.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--muted); }
+  .rolechip { font-size: 9.5px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: rgba(255,255,255,0.08); color: var(--muted); }
   .rolechip.owner { background: var(--soft); color: var(--acc); box-shadow: inset 0 0 0 1px var(--line); }
   .editname { font-size: 12px; color: var(--muted); padding: 2px 6px; border-radius: 6px; }
   .editname:hover { background: rgba(255,255,255,0.08); }
@@ -743,7 +743,7 @@
   .logrow { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-size: 12.5px; }
   .lgwho { font-weight: 600; min-width: 120px; }
   .lgev { flex: 1; color: var(--text-2); }
-  .lgrole { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+  .lgrole { font-size: 10px; color: var(--muted); font-weight: 700;}
   .lgrole.guest { color: var(--acc); }
   .lgt { font-size: 11px; color: var(--muted-2); white-space: nowrap; }
   .tvlink { padding: 16px 20px; font-size: 12.5px; color: var(--text-2); }

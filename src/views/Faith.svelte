@@ -284,7 +284,7 @@
   .kid { padding: 14px; border-radius: 14px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line, rgba(255,255,255,0.06)); }
   .kh { display: flex; align-items: center; gap: 9px; margin-bottom: 10px; }
   .ki { font-size: 18px; } .kn { font-size: 14px; font-weight: 700; flex: 1; }
-  .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 3px 8px; border-radius: 999px; }
+  .badge { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; }
   .editbtn { font-size: 11.5px; color: var(--acc2, var(--acc)); font-weight: 600; }
   .mvr { font-size: 13px; font-weight: 700; color: var(--acc2, var(--acc)); margin-bottom: 4px; }
   .mvt { font-size: 13px; line-height: 1.45; color: var(--text-2); }
