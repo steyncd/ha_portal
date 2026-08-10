@@ -138,10 +138,15 @@
           v: "By design",
         },
         {
-          k: "The garage beam is bypassed with no expiry",
-          s: "Zone 030. Unlike zone 022 this one has no end date, which is the thing maintenance windows exist to prevent. Either clear it or give it an end date.",
-          v: "Open",
-          warn: true,
+          // Was listed here as a standing bypass with no end date. Checked
+          // against the live panel on 2026-08-10: zone 030 is NOT bypassed, and
+          // its bypass button was last pressed on 6 August — so it was cleared
+          // since. Zone 022 is the only zone bypassed right now. Left as a row
+          // rather than deleted, because "this used to be true" is worth knowing
+          // on a page whose job is to be trusted without checking.
+          k: "The garage beam is no longer bypassed",
+          s: "Zone 030. This page previously said it was bypassed with no expiry; the panel says otherwise as of 10 August 2026 — it was bypassed on 6 August and has since been cleared. Security › Zones shows the live state of all 32, and lets you bypass or restore any of them.",
+          v: "Cleared",
         },
         {
           k: "Geysers and the hob are GAS",

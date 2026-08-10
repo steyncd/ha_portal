@@ -5,6 +5,7 @@ export function setEntities(list: Record<string, string>, names: Record<string, 
   for (const k of Object.keys(ents)) delete ents[k];
   for (const [id, st] of Object.entries(list)) ents[id] = { state: st, attributes: names[id] ? { friendly_name: names[id] } : {} };
 }
+export const pressed: string[] = [];
 export const ha = {
   get entities() { return ents; },
   exists: (id: string) => id in ents,
@@ -12,4 +13,11 @@ export const ha = {
   num: (id: string) => { const v = Number(ents[id]?.state); return Number.isFinite(v) ? v : null; },
   attr: (id: string, a: string) => ents[id]?.attributes?.[a],
   setText: async () => {},
+  isOn: (id: string) => ents[id]?.state === "on",
+  available: (id: string) => !!ents[id] && !["unknown", "unavailable"].includes(ents[id].state),
+  pressButton: (id: string) => { pressed.push(id); },
+  mockSet: () => {},
+  historyStates: async () => [],
+  armAway: () => {}, armHome: () => {}, armNight: () => {}, disarm: () => {}, script: () => {},
+  status: "connected",
 };

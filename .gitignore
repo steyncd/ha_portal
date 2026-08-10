@@ -12,3 +12,5 @@ firebase-debug.log
 # render-check build output (npm run render-check regenerates it)
 .ssrcheck/out/
 .ssrcheck/buttons.mjs
+
+.ssrcheck/zones.mjs

@@ -12,6 +12,7 @@
   // history IS the log — which is why the timeline below needs no extra store.
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
+  import { deriveZones } from "../lib/zones";
   import { E } from "../lib/entities";
   import { clock } from "../lib/format";
   import HubBoard, { type Stat, type Row } from "../lib/components/HubBoard.svelte";
@@ -158,17 +159,12 @@
     return out.sort((a, b) => b.t - a.t).slice(0, 40);
   });
 
-  const zonesTotal = $derived(
-    Object.keys(ha.entities).filter((id) => /^binary_sensor\.helloliam_alarm_zone_\d+/.test(id) && !id.includes("bypass")).length,
-  );
-  const zonesOpen = $derived(
-    Object.keys(ha.entities).filter(
-      (id) => /^binary_sensor\.helloliam_alarm_zone_\d+/.test(id) && !id.includes("bypass") && ha.isOn(id),
-    ),
-  );
-  const bypassed = $derived(
-    Object.keys(ha.entities).filter((id) => id.includes("alarm_zone") && id.includes("bypass") && ha.isOn(id)),
-  );
+  // Same derivation the zones screen uses, so the counts here and the list there
+  // can never disagree. Three inline regexes used to do this job.
+  const zones = $derived(deriveZones(Object.keys(ha.entities)));
+  const zonesTotal = $derived(zones.length);
+  const zonesOpen = $derived(zones.filter((z) => ha.isOn(z.id)));
+  const bypassed = $derived(zones.filter((z) => ha.isOn(z.bypass)));
 
   const stats = $derived<Stat[]>([
     {
@@ -190,9 +186,15 @@
       key: "Zones",
       value: `${zonesTotal - zonesOpen.length} of ${zonesTotal}`,
       units: `${zonesOpen.length} open · ${bypassed.length} bypassed`,
-      note: bypassed.length ? "a bypass shows in the digest until it is cleared" : "nothing bypassed",
+      // This used to open a sheet listing only the open and bypassed zones, with
+      // no controls — a dead end when the reason you tapped it was to bypass
+      // something. It now opens the zones screen, where all of them are listed
+      // and each can be bypassed or restored.
+      note: bypassed.length
+        ? `${bypassed.map((z) => z.label).join(", ")} bypassed — tap to restore`
+        : "tap to see every zone and bypass or restore any of them",
       warn: bypassed.length > 0,
-      open: () => (sheet = { kind: "zones" }),
+      open: () => onnav("securitydetail"),
     },
     {
       key: "Mains",
@@ -206,12 +208,24 @@
     { key: "Cameras", sub: "six cameras, events and snapshots", value: "Open", tint: "var(--security)", open: () => onnav("cameras") },
     { key: "The road outside", sub: "vehicles and pedestrians counted at the sidewalk", value: "Open", tint: "var(--security)", open: () => onnav("traffic") },
     { key: "Timeline", sub: "who was where, and when", value: "Open", tint: "var(--acc)", open: () => onnav("timeline") },
-    ...zonesOpen.slice(0, 4).map((id) => ({
-      key: ha.name(id),
-      sub: "open right now",
+    // Bypassed first: an open zone usually means a door someone just walked
+    // through, while a bypass is a decision somebody made and may have forgotten.
+    // Both now lead somewhere you can act, rather than being labels.
+    ...bypassed.slice(0, 4).map((z) => ({
+      key: z.label,
+      sub: `zone ${z.n} · bypassed, so it will not report while armed`,
+      value: "Restore",
+      tint: "var(--warn)",
+      warn: true,
+      open: () => onnav("securitydetail"),
+    })),
+    ...zonesOpen.slice(0, 4).map((z) => ({
+      key: z.label,
+      sub: `zone ${z.n} · open right now`,
       value: "Open",
       tint: "var(--warn)",
       warn: true,
+      open: () => onnav("securitydetail"),
     })),
   ]);
 </script>
@@ -230,8 +244,8 @@
 
 <Sheet
   open={!!sheet}
-  title={sheet?.kind === "zones" ? "Zones" : "What happened"}
-  subtitle={sheet?.kind === "zones" ? `${zonesTotal} zones` : "state changes and machine events, interleaved"}
+  title="What happened"
+  subtitle="state changes and machine events, interleaved"
   onclose={() => (sheet = null)}
 >
   {#if sheet?.kind === "log"}
@@ -254,18 +268,6 @@
         before an actor-less disarm should be one glance, not two screens.
       </p>
     {/if}
-  {:else if sheet?.kind === "zones"}
-    <div class="tl">
-      {#each zonesOpen as id (id)}
-        <div class="ent warn"><span class="when">open</span><span class="what">{ha.name(id)}</span></div>
-      {/each}
-      {#each bypassed as id (id)}
-        <div class="ent warn"><span class="when">bypassed</span><span class="what">{ha.name(id)}</span></div>
-      {/each}
-      {#if !zonesOpen.length && !bypassed.length}
-        <p class="empty">All {zonesTotal} zones clear, nothing bypassed.</p>
-      {/if}
-    </div>
   {/if}
 </Sheet>
 

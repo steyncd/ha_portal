@@ -89,5 +89,63 @@ t("every press documents its built-in behaviour", ALL_PRESSES.every((p) => p.cur
 t("the 3 alarm-changing presses are flagged", ALL_PRESSES.filter((p) => p.security).length === 3,
   ALL_PRESSES.filter((p) => p.security).map((p) => p.key).join(", "));
 
+// ---------------------------------------------------------------------------
+console.log("\nF · Security zones: all of them, real status, working controls");
+// Built from the LIVE entity ids captured from the panel, so this proves the
+// derivation against the real naming — including zone 032, which has no
+// descriptive suffix, and the bypass sensors whose ids look like zone names.
+const { deriveZones } = await import("./zones.mjs");
+const sec = await import("./out/security.mjs");
+const zoneIds = JSON.parse(await (await import("node:fs/promises"))
+  .readFile(new URL("./zone-entities.json", import.meta.url), "utf8"));
+
+const derived = deriveZones(zoneIds);
+t("derives all 32 zones the panel exposes", derived.length === 32, `${derived.length}`);
+t("every zone has a bypass AND an unbypass button", derived.every((z) => z.bypassBtn && z.unbypassBtn));
+t("every derived id is one the panel really has", derived.every((z) => zoneIds.includes(z.id) && zoneIds.includes(z.bypass)));
+t("zone 032 (no name suffix) is included", derived.some((z) => z.n === "032" && z.label === "Zone 032"));
+t("zone 030 Beam · Garage is included — it was missing before", derived.some((z) => z.label === "Beam · Garage"));
+t("a bypass sensor is never mistaken for a zone", !derived.some((z) => z.label.toLowerCase().includes("bypass")));
+t("labels read as kind · place", derived.some((z) => z.label === "Beam · Back Garden") && derived.some((z) => z.label === "PIR · TV Room"));
+t("single place names are not split", derived.some((z) => z.label === "Front Door") && derived.some((z) => z.label === "Lounge Windows"));
+
+// Render the screen with zone 022 bypassed and 013 open — the live shape.
+const base = Object.fromEntries(zoneIds.map((id) => [id, id.startsWith("button.") ? "unknown" : "off"]));
+const view = sec.run({
+  ...base,
+  "binary_sensor.helloliam_alarm_zone_022_bypass_beam_back_garden": "on",
+  "binary_sensor.helloliam_alarm_zone_013_front_door": "on",
+  "alarm_control_panel.helloliam_alarm_area_01_huis": "armed_home",
+  "alarm_control_panel.helloliam_alarm_area_02_beams": "armed_away",
+});
+t("renders all 32 zone rows", (view.match(/class="zrow/g) || []).length === 32, `${(view.match(/class="zrow/g) || []).length} rows`);
+t("counts 32 of 32", has(view, "Zones · 32 of 32"));
+t("the bypassed zone reads Bypassed, not Clear", has(view, "Bypassed"));
+t("the open zone reads Open", has(view, "Open"));
+t("offers Restore for the bypassed zone", has(view, "Restore"));
+t("offers Bypass for the others", has(view, "Bypass"));
+t("has a Restore all for the one bypassed zone", has(view, "Restore all 1"));
+// Attribute text, so it is checked in the raw HTML — strip() removes tags.
+t("search placeholder counts the real zones", view.includes("Search 32 zones"));
+t("explains that a bypassed zone will not trigger", has(view, "will not trigger"));
+t("says how long the panel takes to confirm", has(view, "fifteen seconds"));
+// The auto-restore rule differs by armed state, and getting it backwards would
+// tell Christo a bypass is temporary when it will actually last all night.
+t("armed: says the bypass lasts the whole armed session", has(view, "stays for this whole armed session"));
+t("armed: does NOT claim it auto-restores in an hour", !has(view, "is restored automatically"));
+
+// BOTH areas, because the auto-restore rule checks both — and when the beams
+// entity is missing the screen deliberately shows the armed wording, since
+// promising an auto-restore it cannot guarantee is the worse error.
+const clear = sec.run({
+  ...base,
+  "alarm_control_panel.helloliam_alarm_area_01_huis": "disarmed",
+  "alarm_control_panel.helloliam_alarm_area_02_beams": "disarmed",
+});
+t("with nothing bypassed there is no Restore all", !has(clear, "Restore all"));
+t("disarmed: says an hour-old bypass is auto-restored", has(clear, "restored automatically"));
+t("disarmed: does not claim the session rule", !has(clear, "stays for this whole armed session"));
+t("all zones read Clear", (clear.match(/Clear/g) || []).length >= 32, `${(clear.match(/Clear/g) || []).length}`);
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
