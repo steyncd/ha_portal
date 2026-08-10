@@ -1327,19 +1327,287 @@ exports.getBriefing = onRequest(
   },
 );
 
-async function pushBriefing(period) {
-  const b = await composeBriefing(period);
-  await pushToAll(b.title, b.summary, `briefing-${period}`);
-  return b;
+// pushBriefing is gone with the two schedules that called it. Its one job —
+// push the briefing — is now runDigest's, which does it with the time in the
+// title, the attention list, the watcher lines and the all-clear folded in.
+
+// morningBriefing / eveningBriefing (06:30 and 20:30) are RETIRED as schedules.
+// sendDigest owns 06:30 and 21:00 now, and leaving both in place meant two
+// separate pushes landing at 06:30 — which is exactly the notification-stream
+// failure the three classes exist to prevent. composeBriefing is still the
+// digest's content source, and getBriefing still serves the live Overview card,
+// so nothing is lost but the duplicate push.
+
+// ---- Notifications: three classes -----------------------------------------
+// Phase 2.3. The rule that makes the whole thing work is that MOST THINGS ARE
+// NOT A PUSH. A notification budget that is never enforced becomes a
+// notification stream, and a stream is indistinguishable from silence because
+// nobody reads it.
+//
+//   Interrupt — target under 2 a week. Alarm triggered, water where it should
+//     not be, gate open after 23:00, battery below reserve with no sun coming,
+//     an alarm transition with no actor. These are allowed to break through.
+//   Digest    — everything else, coalesced into 06:30 and 21:00. It ALWAYS
+//     sends, even when nothing happened: if the digest only arrives when
+//     something is wrong, its absence becomes a claim, and a missed push then
+//     reads as "all fine".
+//   Badge     — the long tail. Stale sensors, chores, bin day. Never pushes.
+//
+// All-clear is NEVER a push. It is the badge going to zero plus one line in the
+// next digest. "It is fixed" is not worth interrupting anyone for.
+//
+// iOS is the constraint behind the title format: it stacks notifications
+// forever and `tag` does not replace an existing one, so the reader is looking
+// at a pile. Putting the time in the TITLE is the only way they can tell which
+// one is current.
+const INTERRUPT_TAG = "interrupt";
+
+async function sendInterrupt(title, body, key) {
+  // Deduped for an hour on `key`. An interrupt that repeats every five minutes
+  // trains you to swipe it away without reading, which defeats the class.
+  const ref = db.collection("interruptLog").doc(key);
+  const prev = await ref.get();
+  if (prev.exists && Date.now() - (prev.data().at ?? 0) < 3_600_000) {
+    logger.info("interrupt suppressed (deduped)", { key });
+    return { sent: 0, deduped: true };
+  }
+  await ref.set({ at: Date.now(), title, body });
+  const r = await pushToAll(title, body, `${INTERRUPT_TAG}-${key}`);
+  logger.info("interrupt sent", { key, ...r });
+  return r;
 }
 
-exports.morningBriefing = onSchedule(
-  { schedule: "30 6 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
-  async () => { await pushBriefing("morning"); },
+/**
+ * syncBadge — the count of open attention items.
+ *
+ * Never pushes. Falls to zero on its own as things resolve, which is what makes
+ * the badge trustworthy enough to be the all-clear channel.
+ */
+exports.syncBadge = onCall(
+  { region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+    const count = Math.max(0, Number(request.data?.count) || 0);
+    await db.collection("badge").doc("current").set({ count, at: Date.now(), by: email });
+    return { count };
+  },
 );
-exports.eveningBriefing = onSchedule(
-  { schedule: "30 20 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
-  async () => { await pushBriefing("evening"); },
+
+/**
+ * sendDigest — 06:30 and 21:00, always.
+ *
+ * Composes from the briefing, mentions each resolved item exactly once (so the
+ * all-clear lands here rather than as its own push), and carries the
+ * chore-approval action.
+ */
+/**
+ * Open attention items, server-side.
+ *
+ * composeBriefing returns { period, title, lines, summary, speech } and NO
+ * attention list, so the digest cannot borrow one from it — reading b.attention
+ * would have been undefined every time, which makes `resolved` always empty and
+ * the digest permanently claim nothing needs you. Computed here instead, from
+ * the same HA snapshot the watchers use.
+ */
+async function openAttention() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const st = (id) => m[id] && m[id].state;
+
+  const items = [];
+  const soc = num("sensor.battery_soc_clean");
+  if (soc != null && soc < 30) items.push({ key: "battery-low", text: `Battery at ${Math.round(soc)}%` });
+  const tank = num("sensor.jojo_tank_level_validated");
+  if (tank != null && tank < 25) items.push({ key: "tank-low", text: `Tank at ${Math.round(tank)}%` });
+  if (st("binary_sensor.water_leak_detected") === "on") items.push({ key: "leak", text: "Water where it should not be" });
+  for (const [id, label] of [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+  ]) {
+    if (st(id) === "on") items.push({ key: `open-${id}`, text: `${label} open` });
+  }
+  return items;
+}
+
+async function runDigest(period) {
+  const b = await composeBriefing(period);
+  const t = period === "morning" ? "06:30" : "21:00";
+  const open = await openAttention();
+
+  // Resolved-since-last-digest, mentioned ONCE. Without the "once" the same
+  // fixed item reappears every digest until something else changes, and the
+  // digest stops being a description of the day.
+  const openRef = db.collection("digestState").doc("open");
+  const prevSnap = await openRef.get();
+  const prevOpen = new Map(Object.entries((prevSnap.exists && prevSnap.data().items) || {}));
+  const nowOpen = new Map(open.map((a) => [a.key, a.text]));
+  const resolved = [...prevOpen.entries()].filter(([k]) => !nowOpen.has(k)).map(([, v]) => v);
+  await openRef.set({ items: Object.fromEntries(nowOpen), at: Date.now() });
+
+  // Watcher findings ride the digest — one line each, never their own push.
+  let watchLines = [];
+  try { watchLines = [...(await runWaterWatch()), ...(await runSolarWatch())]; }
+  catch (e) { logger.warn("digest watchers failed", { error: String((e && e.message) || e) }); }
+
+  let body = b.summary || "";
+  if (watchLines.length) body += `${body ? " " : ""}${watchLines.slice(0, 2).join(" ")}`;
+  if (nowOpen.size) body += `${body ? " " : ""}Wants you: ${[...nowOpen.values()].slice(0, 3).join(", ")}.`;
+  // The all-clear lands HERE and nowhere else — it is never its own push.
+  if (resolved.length) body += `${body ? " " : ""}Cleared since last time: ${resolved.slice(0, 3).join(", ")}.`;
+  if (!nowOpen.size && !resolved.length) {
+    // The "house is fine" digest still sends. Silence must never be ambiguous.
+    body = body || "Nothing needs you. The house is fine.";
+  }
+
+  const r = await pushToAll(`${t} · ${b.title}`, body, `digest-${period}`);
+  logger.info("digest sent", { period, open: nowOpen.size, resolved: resolved.length, ...r });
+  return { period, body, open: [...nowOpen.values()], resolved };
+}
+
+exports.sendDigest = onSchedule(
+  { schedule: "30 6,21 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => {
+    const h = Number(
+      new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", hour: "2-digit", hour12: false }),
+    );
+    await runDigest(h < 12 ? "morning" : "evening");
+  },
+);
+
+exports.sendDigestNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try {
+      const period = req.query.period === "evening" ? "evening" : "morning";
+      res.status(200).json({ ok: true, ...(await runDigest(period)) });
+    } catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Watchers that ride the digest ----------------------------------------
+// Each of these produces at most ONE digest line. None of them push on their
+// own — that is the whole point of the three classes.
+
+/**
+ * waterWatch — a still-night tank drop, a pump running past its own p95, or
+ * borehole cycles drifting week on week.
+ *
+ * "Still-night" matters: a tank falling while the house is asleep and no pump
+ * is running is a leak, and it is the one water fault you cannot see by day
+ * because normal use masks it.
+ */
+async function runWaterWatch() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const findings = [];
+  const lo = num("sensor.tank_level_min_today");
+  const hi = num("sensor.tank_level_max_today");
+  const boreholeToday = num("sensor.borehole_pump_water_pumped_today");
+  if (lo != null && hi != null && hi - lo >= 6 && (boreholeToday ?? 0) < 50) {
+    findings.push(`The tank fell ${Math.round(hi - lo)}% with the borehole idle — worth checking for a leak.`);
+  }
+  const runToday = num("sensor.water_pump_runtime_today");
+  const runBase = num("sensor.borehole_runtime_90d_baseline");
+  if (runToday != null && runBase != null && runBase > 0 && runToday > runBase * 1.8) {
+    findings.push(`The pressure pump ran ${Math.round(runToday)} min against a 90-day norm of ${Math.round(runBase)}.`);
+  }
+  return findings;
+}
+
+/** solarWatch — actual against forecast over clear days. One line when short. */
+async function runSolarWatch() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const actual = num("sensor.victron_total_pv_yield_today");
+  const expected = num("sensor.expected_solar_yield_today");
+  if (actual == null || expected == null || expected <= 0) return [];
+  const shortfall = 1 - actual / expected;
+  // 15%: below that it is weather and measurement noise, and a watcher that
+  // fires on noise is one you stop reading.
+  if (shortfall < 0.15) return [];
+  return [`Solar came in ${Math.round(shortfall * 100)}% under forecast — ${actual.toFixed(1)} of ${expected.toFixed(1)} kWh.`];
+}
+
+/**
+ * The Interrupt sweep.
+ *
+ * Every 30 minutes, and it should almost always do nothing — the target is
+ * under two of these a week. The alarm's own interrupts are raised HA-side by
+ * feature_alarm_provenance.yaml, because that has to fire the instant the
+ * transition happens rather than up to half an hour later. What is left here is
+ * the set that only a scheduled look can see: a condition that has to be true
+ * for a while, or one that depends on a forecast.
+ */
+async function runInterruptSweep() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const st = (id) => m[id] && m[id].state;
+
+  const hour = Number(
+    new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", hour: "2-digit", hour12: false }),
+  );
+  const sent = [];
+
+  // 1. Water where it should not be. Never not an interrupt.
+  if (st("binary_sensor.water_leak_detected") === "on") {
+    sent.push(await sendInterrupt("💧 Water detected", "A leak sensor is wet. Check before it spreads.", "leak"));
+  }
+
+  // 2. Gate open after 23:00. Before 23:00 it is someone arriving.
+  if (hour >= 23 && st("binary_sensor.main_gate_open") === "on") {
+    sent.push(await sendInterrupt("🚧 Gate is open", "The main gate has been open past 23:00.", "gate-late"));
+  }
+
+  // 3. Battery below reserve with no sun coming. Either half alone is normal —
+  //    a low battery at dusk is Tuesday, and a poor forecast with a full battery
+  //    is fine. Together they mean the house runs out overnight.
+  const soc = num("sensor.battery_soc_clean");
+  const tomorrow = num("sensor.energy_production_tomorrow") ?? num("sensor.solcast_forecast_tomorrow");
+  if (soc != null && soc < 30 && tomorrow != null && tomorrow < 8) {
+    sent.push(
+      await sendInterrupt(
+        "🔋 Battery below reserve",
+        `${Math.round(soc)}% with only ${tomorrow.toFixed(1)} kWh forecast tomorrow. It will not carry the night.`,
+        "battery-reserve",
+      ),
+    );
+  }
+
+  return { checked: 3, sent: sent.filter((s) => s && s.sent).length };
+}
+
+exports.interruptSweep = onSchedule(
+  { schedule: "*/30 * * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runInterruptSweep(); },
+);
+
+exports.waterWatchNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, findings: [...(await runWaterWatch()), ...(await runSolarWatch())] }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
 );
 
 // ---- Kids' allowance payout → Steyn Finance -------------------------------
