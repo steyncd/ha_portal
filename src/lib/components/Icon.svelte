@@ -26,6 +26,21 @@
     // match the prototype rather than approximating it.
     "chevron-right": '<path d="M9 5l7 7-7 7"/>',
     logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+    // ── The nav set (Phase 3.2) ──────────────────────────────────────────────
+    // Kept under nav-* names rather than replacing home/layout/bolt etc, because
+    // those are used at other sizes elsewhere in the app and these are tuned for
+    // 18px in the rail. Verbatim NAVICON paths.
+    "nav-home": '<path d="M3 11L12 4l9 7M6 10v9h12v-9"/>',
+    "nav-dashboard": '<path d="M4 4h7v7H4zM13 4h7v4h-7zM13 10h7v10h-7zM4 13h7v7H4z"/>',
+    "nav-energy": '<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',
+    "nav-water": '<path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/>',
+    "nav-security": '<path d="M12 3l7 3v6c0 4.5-3 8.2-7 9-4-.8-7-4.5-7-9V6z"/>',
+    "nav-rooms": '<path d="M3 4h8v7H3zM13 4h8v11h-8zM3 13h8v7H3zM13 17h8v3h-8z"/>',
+    "nav-household":
+      '<path d="M9 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3 20v-1a5 5 0 0 1 5-5h2a5 5 0 0 1 5 5v1M17 11a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM21 20v-1a4 4 0 0 0-3-3.9"/>',
+    "nav-me": '<path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1"/>',
+    "nav-settings":
+      '<path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2 2 2 0 1 1-4 0 1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 15a2 2 0 1 1 0-4 1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 4.1a2 2 0 1 1 4 0 1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1A1.7 1.7 0 0 0 21 11a2 2 0 1 1 0 4 1.7 1.7 0 0 0-1.6 1z"/>',
     // domain objects (appliances / pumps)
     fridge: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 10h12"/><path d="M9 6.3v1.6M9 12.5v3"/>',
     washer: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6.2h.01M11 6.2h.01"/>',

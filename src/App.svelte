@@ -6,7 +6,7 @@
   import { actionLog } from "./lib/actionLog.svelte";
   import { computeAttention } from "./lib/attention";
   import { prefs } from "./lib/prefs.svelte";
-  import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
+  import { NAV, NAV_GROUPS, GUEST_HIDDEN, RAIL, isSpoke, collapsedCount, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
@@ -45,10 +45,22 @@
     usage: () => import("./views/Usage.svelte"),
     markets: () => import("./views/Markets.svelte"),
     settings: () => import("./views/Settings.svelte"),
+    household: () => import("./views/Household.svelte"),
+    // Spokes: no longer in the rail, still routed, still deep-linkable. Wiring
+    // these is what makes "the five originals still exist" true rather than a
+    // claim in a note column.
+    energydetail: () => import("./views/Energy.svelte"),
+    batteries: () => import("./views/Batteries.svelte"),
+    medetail: () => import("./views/Me.svelte"),
+    focus: () => import("./views/FocusWork.svelte"),
+    devices: () => import("./views/Devices.svelte"),
+    automations: () => import("./views/Automations.svelte"),
+    assist: () => import("./views/Assist.svelte"),
+    server: () => import("./views/ServerControl.svelte"),
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (id === "now" || id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights" || id === "usage") return { onnav: go };
+    if (["now","home","overview","energy","water","security","climate","household","me","powertrends","insights","usage"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -97,6 +109,17 @@
     const tick = setInterval(() => (now = new Date()), 30_000);
     return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); clearInterval(tick); };
   });
+
+  // ⌘K on Apple, Ctrl K on Windows. Christo drives this from a Windows desktop
+  // with three monitors as well as a MacBook, so a hardcoded ⌘ is wrong half the
+  // time — and a shortcut hint you cannot press is worse than none.
+  // userAgentData.platform where available, userAgent as the fallback; both are
+  // read once, since the OS does not change mid-session.
+  const APPLE = /Mac|iPhone|iPad|iPod/.test(
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+      navigator.userAgent,
+  );
+  const KBD = APPLE ? "⌘K" : "Ctrl K";
 
   // Live clock/date + day-night weather icon for the top bar.
   const clock = $derived(now.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false }));
@@ -159,15 +182,23 @@
     // Sabbath mode quietens work/admin/money views (Faith, Overview & Settings stay).
     if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
     // Members/owners: honour the per-device guest toggle + enabled-views prefs.
+    // Rail items are never gated by prefs.viewsOn. viewsOn is a per-SPOKE
+    // toggle, and a hub that vanished because a pref for it had never been
+    // written is how Household disappeared the first time this ran.
     return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-      (["now", "home", "overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+      (RAIL.includes(id) || prefs.viewsOn[id]);
   };
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
   // The desktop rail never shows phoneOnly items. Now and Home are two
   // different front doors on purpose — Now answers "what now", Home is the
   // three-monitor board — so offering both in the rail would read as a choice
   // when only one of them is the desktop answer.
-  const railItems = $derived(shown.filter((nav) => !nav.phoneOnly));
+  // The rail is RAIL's order, not NAV's, and it excludes every spoke. Ordering
+  // from an explicit list rather than filtering NAV means adding a spoke can
+  // never accidentally put it back in the sidebar.
+  const railItems = $derived(
+    RAIL.map((id) => NAV.find((n) => n.id === id)!).filter((n) => n && !n.phoneOnly && visible(n.id)),
+  );
   // Never sit on a now-hidden view (entering guest mode, or a guest landing).
   $effect(() => { if (!visible(view)) view = "home"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
@@ -288,24 +319,52 @@
             </svg>
           </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
-          <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        {#each railItems.filter((s) => s.group === "") as it}
-          <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
-        {/each}
-        {#each groups as g}
-          {@const items = railItems.filter((s) => s.group === g.key)}
-          {#if items.length}
-            {#if !prefs.collapsed}<div class="grp">{g.title}</div>{:else}<div class="grpline"></div>{/if}
-            {#each items as it}
-              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
-            {/each}
-          {/if}
+        <!-- Nine items, no group headings. The groups existed to make eighteen
+             navigable; at nine they were labelling categories of one. -->
+        {#each railItems.filter((s) => s.group !== "Bottom") as it (it.id)}
+          {@const count = collapsedCount(it.id)}
+          <button
+            class="nav"
+            class:active={view === it.id}
+            onclick={() => go(it.id)}
+            title={prefs.collapsed ? it.name : undefined}
+            aria-label={prefs.collapsed ? it.name : undefined}
+          >
+            <span class="ni" style="color:{it.color}"><Icon name={it.ic} size={18} /></span>
+            {#if !prefs.collapsed}
+              <span class="nn">{it.name}</span>
+              <!-- Count hides when collapsed: a bare number beside an unlabelled
+                   icon reads as a badge (something needs you) rather than as
+                   "this hub folded five views in". -->
+              {#if count}<span class="ncount">{count}</span>{/if}
+            {/if}
+          </button>
         {/each}
         <div class="navbottom">
-          {#each railItems.filter((s) => s.group === "Bottom") as it}
-            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+          {#each railItems.filter((s) => s.group === "Bottom") as it (it.id)}
+            <button
+              class="nav"
+              class:active={view === it.id}
+              onclick={() => go(it.id)}
+              title={prefs.collapsed ? it.name : undefined}
+              aria-label={prefs.collapsed ? it.name : undefined}
+            >
+              <span class="ni" style="color:{it.color}"><Icon name={it.ic} size={18} /></span>
+              {#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}
+            </button>
           {/each}
+          <!-- Collapse lives at the BOTTOM per the design, not in the brand row:
+               it is a preference you set once, not a control you reach for. -->
+          <button
+            class="nav clp"
+            onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}
+            title={prefs.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={prefs.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <span class="ni">{prefs.collapsed ? "»" : "«"}</span>
+            {#if !prefs.collapsed}<span class="nn">Collapse</span>{/if}
+          </button>
         </div>
         <button class="user" onclick={() => authStore.signOut()} title="Sign out">
           <span class="uav">{(authStore.user?.displayName ?? authStore.user?.email ?? "C").charAt(0).toUpperCase()}</span>
@@ -318,7 +377,7 @@
       <header>
         <div class="htitle"><span class="hi" style="color:{active.color}"><Icon name={active.ic} size={20} /></span><span class="hn">{active.name}</span></div>
         <div class="hchips">
-          <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">⌘K</span></button>
+          <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">{KBD}</span></button>
           <button class="chip tmc" class:on={timeMachine.active} onclick={() => go(timeMachine.active ? "__live" : "__timemachine")} title="Rewind the dashboard through history">🕰️ {timeMachine.active ? "Live" : "Rewind"}</button>
           {#if hAct}<button class="chip hact" onclick={hAct.run}>{hAct.icon} {hAct.label}</button>{/if}
           <button class="chip arm" style="--c:{alarm.color}" onclick={() => go("security")}><span class="ad"></span>{alarm.label}</button>
@@ -421,17 +480,27 @@
 
   .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
   aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: var(--s1); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
-  aside.collapsed { width: 66px; }
+  /* 68px collapsed, per the design: 18px icon centred in a 44px target with
+     12px either side. 66px was 2px short of that arithmetic. */
+  aside.collapsed { width: 68px; }
   .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 3px; }
   .logo { width: 32px; height: 32px; flex-shrink: 0; display: block; }
   .bn { font-size: 14.5px; font-weight: 700; flex: 1; white-space: nowrap; }
-  .clp { width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.06); color: #b6c5d6; font-size: 13px; margin-left: auto; }
+  /* Collapse is now a nav row at the bottom, so it inherits .nav and only needs
+     the muted treatment — it is a preference, not a destination. */
+  .nav.clp { color: var(--mut); margin-top: 2px; }
+  .nav.clp .ni { font-size: 13px; }
+  .nav.clp:hover { color: var(--tx2); }
   .nav { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: 11px; width: 100%; text-align: left; }
   aside.collapsed .nav { justify-content: center; padding: 11px 0; }
   .nav:hover { background: rgba(255, 255, 255, 0.04); }
   .nav.active { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
   .ni { width: 20px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.95; }
-  .nn { font-size: 13.5px; font-weight: 600; color: #eef4fc; white-space: nowrap; }
+  .nn { font-size: 13.5px; font-weight: 600; color: var(--tx); white-space: nowrap; flex: 1; }
+  /* Tabular so the counts line up down the rail; --mut so they never read as an
+     attention badge, which is what --warn would have implied. */
+  .ncount { flex: none; font-size: 11px; font-weight: 700; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .nav.active .ncount { color: var(--tx2); }
   .grp { font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted-2); padding: 0 13px; margin: 13px 0 5px; }
   .grpline { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 10px 6px; }
   .navbottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
