@@ -44,6 +44,18 @@ t("still names the built-in replaced", has(h, "Toggle the pool pump"));
 t("counts 1 of 12", has(h, "1 of 12"));
 t("last dispatch read from the helper", has(h, "patio double -> script.movie_mode @ 19:42"));
 
+// This is the LIVE state after a fresh reload: the helpers exist, but their
+// state is 'unknown' rather than '' because a YAML input_text has no value until
+// something writes one. Added after seeing it on the real instance — group A
+// covers helpers that are absent, which is a different thing.
+console.log("\nB2 · helpers exist but are 'unknown' (the state after a reload)");
+h = run({ ...SCRIPTS, ...Object.fromEntries(KEYS.map((k) => [`input_text.btn_${k}`, "unknown"])), "input_text.btn_last_dispatch": "unknown" }, NAMES);
+t("set-up notice gone — the helpers do exist", !has(h, "helpers are not loaded yet"));
+t("unknown counts as no override", (h.match(/Built-in/g) || []).length >= 12, `${(h.match(/Built-in/g) || []).length} Built-in`);
+t("no Custom or Broken pill", !has(h, "Custom") && !has(h, "Broken"));
+t("counts 0 of 12", has(h, "0 of 12"));
+t("last dispatch reads 'none yet', not 'unknown'", has(h, "none yet"));
+
 console.log("\nC · a mapping whose script was deleted in HA");
 h = run({ ...SCRIPTS, ...H, "input_text.btn_bedroom_hold": "script.deleted_thing" }, NAMES);
 t("shows Broken", has(h, "Broken"));

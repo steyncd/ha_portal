@@ -33,11 +33,16 @@
     (ha.attr(id, "friendly_name") as string) ||
     id.replace(/^script\./, "").replace(/_/g, " ");
 
-  const mapped = (p: Press) => {
-    const v = ha.state(helperFor(p.key));
+  /** A YAML input_text has no value until something writes one, so a freshly
+   *  reloaded helper reads 'unknown' — which is truthy, and rendered the literal
+   *  word "unknown" on the last-dispatch row until the render-check caught it. */
+  const value = (id: string) => {
+    const v = ha.state(id);
     if (!v || ["unknown", "unavailable", "none", "None"].includes(v)) return null;
     return v.trim() || null;
   };
+
+  const mapped = (p: Press) => value(helperFor(p.key));
 
   /** A mapping whose script no longer exists. The press silently does nothing —
    *  which is the safe behaviour, but it must be visible somewhere, and this is
@@ -63,13 +68,18 @@
   });
 
   async function assign(p: Press, id: string) {
+    // Captured BEFORE the write. The first version read mapped(p) inside the undo
+    // closure, which runs after the write has landed — so "undo" restored the
+    // value it had just set, silently doing nothing. Same mistake as the toggle
+    // undo in the store, and the same fix.
+    const prev = mapped(p);
     busy = p.key;
     try {
       await ha.setText(helperFor(p.key), id);
       open = null;
       q = "";
       toast.showUndo(`${p.label} → ${nameOf(id)}`, async () => {
-        await ha.setText(helperFor(p.key), mapped(p) ?? "");
+        await ha.setText(helperFor(p.key), prev ?? "");
       });
     } finally {
       busy = null;
@@ -195,7 +205,7 @@
     <SettingRow
       label="Last remapped press that fired"
       explain="Written by the dispatcher itself. If you press a remapped button and this does not change, the press is not reaching Home Assistant — check the button's battery in Diagnostics › Zigbee mesh."
-      value={ha.state("input_text.btn_last_dispatch") || "none yet"}
+      value={value("input_text.btn_last_dispatch") ?? "none yet"}
     />
   {/if}
   <SettingRow
