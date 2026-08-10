@@ -56,6 +56,7 @@
   import Icon from "./lib/components/Icon.svelte";
   import TimeMachine from "./lib/components/TimeMachine.svelte";
   import Sheet from "./lib/components/Sheet.svelte";
+  import LinkBar from "./lib/components/LinkBar.svelte";
   import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
@@ -330,6 +331,8 @@
           <button onclick={() => { prefs.guest = false; prefs.save(); }}>Exit</button>
         </div>
       {/if}
+
+      <LinkBar />
 
       <div class="body">
         {#key view}

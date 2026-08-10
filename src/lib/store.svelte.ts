@@ -10,6 +10,8 @@ import { HASS_URL } from "./config";
 import { loadHaConnection } from "./haConfig";
 import { timeMachine } from "./timeMachine.svelte";
 import { toReading, toNumReading, type Reading } from "./freshness";
+import { queue, isQueueable } from "./queue.svelte";
+import { toast } from "./toast.svelte";
 
 type Status = "connecting" | "connected" | "error";
 
@@ -68,6 +70,18 @@ class HAStore {
   entities = $state.raw<HassEntities>({});
   status = $state<Status>("connecting");
   error = $state("");
+
+  // ---- link liveness (Phase 1.1 / 2.2) ----
+  //
+  // `status` only described the INITIAL connect, so a mid-session drop was
+  // invisible: the app kept rendering the last snapshot as though it were live.
+  // This is the app-level signal the brief asks for — one bar, not 179 badges.
+  //
+  // Driven by the library's own connection events rather than inferred from
+  // silence, because a quiet house is not the same thing as a dead socket.
+  link = $state<"live" | "offline">("live");
+  /** When the socket last dropped — powers "the house as it was at 19:04". */
+  lastFrameAt = $state<number | null>(null);
   #conn: Connection | undefined;
   #auth: { accessToken: string; expired: boolean; refreshAccessToken: () => Promise<void> } | undefined;
   #mock = false;
@@ -126,7 +140,25 @@ class HAStore {
       }
       this.#conn = connection;
       this.#auth = auth;
-      subscribeEntities(connection, (ents) => this.#applyEntities(ents));
+      subscribeEntities(connection, (ents) => {
+        this.lastFrameAt = Date.now();
+        this.#applyEntities(ents);
+      });
+
+      // Liveness from the library's own events. On reconnect we open the queue
+      // for review rather than replaying silently — the house may have changed
+      // while we were blind, so each queued action needs a fresh decision.
+      connection.addEventListener("disconnected", () => {
+        this.link = "offline";
+      });
+      connection.addEventListener("ready", () => {
+        this.link = "live";
+        this.lastFrameAt = Date.now();
+        queue.review();
+      });
+
+      this.link = "live";
+      this.lastFrameAt = Date.now();
       this.status = "connected";
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
@@ -507,6 +539,31 @@ class HAStore {
     // this you could be looking at 14:00, tap a light that was on then, and
     // switch something now — acting on a state that hasn't been true for hours.
     if (timeMachine.active) return;
+
+    // Offline: queue what is safe to queue, and fail LOUDLY for what isn't.
+    // Doing this here rather than at ~20 call sites means every writer method
+    // gets the behaviour, and none of them can forget it.
+    if (this.link === "offline" && !this.#mock) {
+      const target = (data as { entity_id?: string | string[] }).entity_id;
+      const first = Array.isArray(target) ? target[0] : target;
+      const probe = first ?? domain;
+
+      if (!isQueueable(probe)) {
+        // Alarm, gate, lock, scripts, scenes: never queued. You must know now.
+        toast.show(`Can't reach the house — ${domain}.${service} not sent`, 4000);
+        return;
+      }
+      const label = `${this.name(first ?? "") || first || domain} · ${service.replace(/_/g, " ")}`;
+      queue.push({
+        key: `${domain}.${service}:${first ?? "all"}`,
+        label,
+        target: probe,
+        run: () => { if (this.#conn) callService(this.#conn, domain, service, data); },
+      });
+      toast.show(`Offline — queued ${queue.count === 1 ? "1 action" : `${queue.count} actions`}`);
+      return;
+    }
+
     if (this.#conn) return callService(this.#conn, domain, service, data);
   }
   #setMock(ids: string | string[], state: string) {
