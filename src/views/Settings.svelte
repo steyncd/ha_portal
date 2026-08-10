@@ -19,6 +19,7 @@
   import SettingsTwins from "../lib/components/SettingsTwins.svelte";
   import SettingsCalendars from "../lib/components/SettingsCalendars.svelte";
   import SettingsCloud from "../lib/components/SettingsCloud.svelte";
+  import SettingsSystem from "../lib/components/SettingsSystem.svelte";
   import { onMount } from "svelte";
 
   // ---- Home Assistant connection (direct vs built-in Nabu Casa) ----
@@ -295,6 +296,7 @@
   {#if tab === "twins"}<SettingsTwins />{/if}
   {#if tab === "calendars"}<SettingsCalendars />{/if}
   {#if tab === "cloud"}<SettingsCloud />{/if}
+  {#if tab === "system"}<SettingsSystem />{/if}
 
   {#if tab === "account"}
   <!-- profile -->

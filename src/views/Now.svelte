@@ -18,10 +18,12 @@
   import { computeAttention } from "../lib/attention";
   import { actionById, fireAction, suggestions } from "../lib/suggest";
   import { toast } from "../lib/toast.svelte";
+  import { alarms, snoozeOptions } from "../lib/alarms.svelte";
   import { stable, sig } from "../lib/stable";
   import Value from "../lib/components/Value.svelte";
   import Sheet from "../lib/components/Sheet.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import { onMount } from "svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();
 
@@ -31,6 +33,22 @@
     const items = computeAttention();
     return attnMemo(items, sig(items, "key", "sev", "title"));
   });
+
+  // Alarm objects (§3): an attention row you can say "I know" to. Without this
+  // the list returns on the next evaluation whatever you do, and a list that
+  // cannot be answered is a list you stop reading.
+  onMount(() => { alarms.load(); });
+  const acked = $derived.by(() => {
+    void alarms.open;
+    const now = Date.now();
+    return new Set(
+      alarms.open
+        .filter((a) => a.ackAt != null || (a.snoozeUntil != null && a.snoozeUntil > now))
+        .map((a) => a.key),
+    );
+  });
+  const live = $derived(attention.filter((a) => !acked.has(a.key)));
+  let snoozeFor = $state<string | null>(null);
 
   // ── Leaving check ───────────────────────────────────────────────────────────
   // Derived from live state, never from a stored list: a card that says the
@@ -315,19 +333,48 @@
 
   <div class="wants">
     <span class="divider">Wants you</span>
-    {#if attention.length}<span class="count">{attention.length}</span>{/if}
+    {#if live.length}<span class="count">{live.length}</span>{/if}
   </div>
-  {#if attention.length}
+  {#if live.length}
     <div class="stack">
-      {#each attention as a (a.key)}
-        <button class="attn" class:warn={a.sev === "crit"} onclick={() => a.nav && onnav(a.nav)}>
-          <span class="a-ic">{a.icon}</span>
-          <span class="a-body">
-            <span class="a-t">{a.title}</span>
-            {#if a.sub}<span class="a-d">{a.sub}</span>{/if}
-          </span>
-          <Icon name="chevron-right" size={14} />
-        </button>
+      {#each live as a (a.key)}
+        <div class="attnwrap">
+          <button class="attn" class:warn={a.sev === "crit"} onclick={() => a.nav && onnav(a.nav)}>
+            <span class="a-ic">{a.icon}</span>
+            <span class="a-body">
+              <span class="a-t">{a.title}</span>
+              {#if a.sub}<span class="a-d">{a.sub}</span>{/if}
+            </span>
+            <Icon name="chevron-right" size={14} />
+          </button>
+          <!-- "I know" takes it off the BADGE, never off the record. Some things
+               take a fortnight to fix, and an item that cannot be answered is an
+               item you learn to scroll past. -->
+          <div class="acks">
+            <button
+              class="ackb"
+              onclick={() => {
+                alarms.raise({ key: a.key, title: a.title, detail: a.sub, severity: "badge", entityIds: [] })
+                  .then(() => alarms.ack(a.key, "Christo"));
+                toast.show("Noted — off the badge, still on the record");
+              }}
+            >I know</button>
+            <button class="ackb" onclick={() => (snoozeFor = snoozeFor === a.key ? null : a.key)}>Later</button>
+            {#if snoozeFor === a.key}
+              {#each snoozeOptions() as o (o.label)}
+                <button
+                  class="ackb sn"
+                  onclick={() => {
+                    alarms.raise({ key: a.key, title: a.title, detail: a.sub, severity: "badge", entityIds: [] })
+                      .then(() => alarms.snooze(a.key, o.until, "Christo"));
+                    snoozeFor = null;
+                    toast.show(`Back ${o.label.toLowerCase()}`);
+                  }}
+                >{o.label}</button>
+              {/each}
+            {/if}
+          </div>
+        </div>
       {/each}
     </div>
   {:else}
@@ -500,6 +547,19 @@
     padding: 1px 7px;
   }
   .stack { display: grid; gap: 7px; margin-bottom: 16px; }
+  .attnwrap { display: grid; gap: 6px; }
+  .acks { display: flex; flex-wrap: wrap; gap: 6px; padding-left: 2px; }
+  .ackb {
+    padding: 5px 11px;
+    border-radius: var(--r-pill);
+    background: var(--fill);
+    color: var(--mut);
+    font-size: 11.5px;
+    font-weight: 700;
+    min-height: 32px;
+  }
+  .ackb:hover { background: var(--fill-strong); color: var(--tx2); }
+  .ackb.sn { color: var(--tx2); }
   .attn {
     width: 100%;
     background: var(--s1);
