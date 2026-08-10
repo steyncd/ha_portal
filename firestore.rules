@@ -217,6 +217,23 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // ---- Health: the machinery half of staleness ---------------------------
+    // Written only by healthProbe and the Cloud Monitoring webhook. Read by
+    // everyone allowed, including guests: "the house is not answering" is not
+    // privileged information, and a house-sitter staring at a frozen dashboard
+    // is exactly who most needs to know.
+    match /health/{doc} {
+      allow read: if isAllowed();
+      allow write: if false;
+    }
+
+    // Route history for leave-now — server-owned. Travel times are a movement
+    // pattern, so members only, and nothing writes from a client.
+    match /routeHistory/{doc} {
+      allow read: if isMember();
+      allow write: if false;
+    }
+
     // Badge count + digest bookkeeping: server-owned, member-readable.
     match /badge/{doc} {
       allow read: if isMember();

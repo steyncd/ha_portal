@@ -19,6 +19,8 @@
   import { dependentCount, groupedDependents, depsEntityCount, depsGeneratedAt } from "../lib/deps";
   import { n } from "../lib/format";
   import Sheet from "../lib/components/Sheet.svelte";
+  import { health } from "../lib/health";
+  import { onMount } from "svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();
 
@@ -51,9 +53,15 @@
       id: "core",
       name: "Home Assistant core",
       glyph: "✓",
-      health: ha.status === "connected" ? "ok" : "care",
+      // Two independent signals: this browser's socket AND the server-side probe.
+      // They disagree in the case that matters most — the portal open on a phone
+      // with a working cache while the house is actually off the internet.
+      health: ha.status === "connected" && health.haReachable !== false ? "ok" : "care",
       detail: [st("sensor.home_assistant_version") ?? st("update.home_assistant_core_update"), uptime ? `up ${uptime}` : null]
-        .filter(Boolean).join(" · ") || (ha.status === "connected" ? "connected" : "reconnecting"),
+        .filter(Boolean).join(" · ")
+        || (health.haReachable === false
+              ? `unreachable — ${health.data.ha?.consecutiveFails ?? 0} failed probes`
+              : ha.status === "connected" ? "connected" : "reconnecting"),
       feeds: `Feeds ${depsEntityCount} referenced entities`,
     });
 
@@ -186,6 +194,20 @@
       feeds: "Feeds the digest at 06:30 and 21:00",
     });
 
+    // Cloud Monitoring incidents become cards of their own. Without this, "a
+    // scheduled function has been failing for a week" has nowhere to appear —
+    // which is precisely the gap this whole section exists to close.
+    for (const i of health.openIncidents) {
+      out.push({
+        id: `inc-${i.name}`,
+        name: i.name,
+        glyph: "⚠",
+        health: "care",
+        detail: i.summary || "alert policy is open",
+        feeds: i.since ? `Open since ${new Date(i.since).toLocaleString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false })}` : "Open",
+      });
+    }
+
     return out;
   });
 
@@ -194,6 +216,9 @@
     care: cards.filter((c) => c.health === "care").length,
     idle: cards.filter((c) => c.health === "idle").length,
   });
+
+  // The machinery half: written by healthProbe and the Cloud Monitoring webhook.
+  onMount(() => health.start());
 
   let sheet = $state<Card | null>(null);
 </script>

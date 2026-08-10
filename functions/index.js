@@ -29,6 +29,14 @@ const HA_URL = defineSecret("HA_URL");
 const HA_TOKEN = defineSecret("HA_TOKEN");
 const WA_WEBHOOK_SECRET = defineSecret("WA_WEBHOOK_SECRET");
 const GEMINI_API_KEY = defineSecret("GEMINI_API_KEY");
+// Shared secret guarding the Cloud Monitoring webhook. Monitoring cannot present
+// a Firebase ID token, so the URL carries this instead — and the endpoint only
+// ever writes a health summary, so a leak buys someone a false "HA is down" line.
+const MONITORING_TOKEN = defineSecret("MONITORING_TOKEN");
+// Google Maps Platform key, RESTRICTED TO THE ROUTES SKU. Server-side only — an
+// unrestricted Maps key in a client bundle is the one item on the cloud review
+// with no cost ceiling at all.
+const MAPS_KEY = defineSecret("MAPS_KEY");
 const SHIP24_KEY = defineSecret("SHIP24_KEY");
 const TMDB_KEY = defineSecret("TMDB_KEY");
 const TIDAL_CLIENT_ID = defineSecret("TIDAL_CLIENT_ID");
@@ -67,6 +75,7 @@ exports.waInbound = onRequest(
     const sd = (sender.match(/\d+/g) || []).join("") || "unknown";
     try {
       const ref = db.collection("waRate").doc(sd);
+      // Same TTL story: a rate-limit window for a past day has no readers.
       const ok = await db.runTransaction(async (tx) => {
         const snap = await tx.get(ref);
         const nowMs = Date.now();
@@ -1379,7 +1388,17 @@ async function sendInterrupt(title, body, key) {
     logger.info("interrupt suppressed (deduped)", { key });
     return { sent: 0, deduped: true };
   }
-  await ref.set({ at: Date.now(), title, body });
+  // expiresAt is the TTL key. A Firestore TTL policy on interruptLog.expiresAt
+  // deletes these server-side for free — no cleanup function to write, and more
+  // importantly none to forget. 30 days is long enough to see a pattern in
+  // repeated interrupts and short enough that the collection never becomes a
+  // thing to think about.
+  await ref.set({
+    at: Date.now(),
+    title,
+    body,
+    expiresAt: new Date(Date.now() + 30 * 86_400_000),
+  });
   const r = await pushToAll(title, body, `${INTERRUPT_TAG}-${key}`);
   logger.info("interrupt sent", { key, ...r });
   return r;
@@ -2279,6 +2298,229 @@ exports.applianceDriftNow = onRequest(
     try { await admin.auth().verifyIdToken(idToken); }
     catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
     try { res.status(200).json({ ok: true, ...(await runApplianceDrift()) }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- health/latest — "is the machinery answering at all?" -------------------
+// Cloud review §2.2. The staleness problem has two halves and the project has
+// been treating it as one.
+//
+// The half already designed: is this SENSOR's number old? That is the freshness
+// type and the cadence job.
+//
+// The other half, cruder and until now completely unbuilt: IS THE MACHINERY
+// ANSWERING AT ALL? If ha.helloliam.co.za is down, or a scheduled function has
+// been failing for a week, nothing tells anyone — the portal just keeps showing
+// the last thing it saw, which is the most confident-looking failure mode there
+// is.
+//
+// One Firestore doc, health/latest, so "HA unreachable for 6 minutes" and
+// "refreshParcels has failed 12 times" land in the same list as a stale sensor.
+// The family gets one health story instead of three.
+async function writeHealth(patch) {
+  await db.collection("health").doc("latest").set(
+    { ...patch, at: Date.now() },
+    { merge: true },
+  );
+}
+
+/**
+ * Receives Cloud Monitoring alert notifications (uptime checks, function error
+ * rates) via a webhook channel and folds them into health/latest.
+ *
+ * Deliberately NOT authenticated with a Firebase ID token — Cloud Monitoring
+ * cannot present one. It is guarded by a shared secret in the URL instead, and it
+ * only ever WRITES a health summary: the worst a leaked URL buys someone is a
+ * false "HA is down" line on a family dashboard.
+ */
+exports.monitoringHook = onRequest(
+  { secrets: [MONITORING_TOKEN], region: "us-central1", maxInstances: 3 },
+  async (req, res) => {
+    if ((req.query.token || "") !== MONITORING_TOKEN.value()) {
+      res.status(403).json({ ok: false });
+      return;
+    }
+    try {
+      const inc = (req.body && req.body.incident) || {};
+      const open = inc.state === "open" || inc.state === "OPEN";
+      const name = String(inc.policy_name || inc.condition_name || "unknown");
+      // Keyed by policy so a resolve overwrites its own open rather than
+      // appending — an incident list that only grows is a list nobody reads.
+      await writeHealth({
+        [`incidents.${name.replace(/[.#$/[\]]/g, "_")}`]: open
+          ? { open: true, since: inc.started_at ? inc.started_at * 1000 : Date.now(), summary: String(inc.summary || "").slice(0, 300) }
+          : { open: false, resolvedAt: Date.now() },
+      });
+      logger.info("monitoringHook", { policy: name, open });
+      res.status(200).json({ ok: true });
+    } catch (e) {
+      logger.warn("monitoringHook failed", { error: String((e && e.message) || e) });
+      res.status(200).json({ ok: true }); // never make Monitoring retry-storm us
+    }
+  },
+);
+
+/**
+ * Belt-and-braces reachability probe, every 5 minutes.
+ *
+ * The uptime check in Cloud Monitoring is the primary signal, but it needs a
+ * console to set up and an alert policy to reach us. This runs regardless, so the
+ * "is HA up" half of health works from the moment it deploys rather than after
+ * somebody configures something.
+ */
+exports.healthProbe = onSchedule(
+  { schedule: "*/5 * * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => {
+    const base = HA_URL.value().replace(/\/+$/, "");
+    const t0 = Date.now();
+    let ok = false;
+    let status = 0;
+    try {
+      const r = await fetch(`${base}/api/`, {
+        headers: { Authorization: `Bearer ${HA_TOKEN.value()}` },
+        signal: AbortSignal.timeout(8000),
+      });
+      status = r.status;
+      ok = r.ok;
+    } catch { /* unreachable */ }
+    const ms = Date.now() - t0;
+
+    // Consecutive-failure count, not a boolean: one missed probe is a flaky
+    // link, six in a row is the house being off the internet, and only the
+    // second is worth telling anyone about.
+    const ref = db.collection("health").doc("latest");
+    const prev = (await ref.get()).data() || {};
+    const fails = ok ? 0 : ((prev.ha && prev.ha.consecutiveFails) || 0) + 1;
+
+    await writeHealth({ ha: { ok, status, latencyMs: ms, consecutiveFails: fails } });
+
+    // Three failures ≈ 15 minutes. Interrupt class, and deduped for an hour by
+    // sendInterrupt, so a weekend outage is one push rather than 200.
+    if (fails === 3) {
+      await sendInterrupt(
+        "⚠️ Home Assistant unreachable",
+        `No answer from ${base} for about 15 minutes. The portal is showing the house as it was, not as it is.`,
+        "ha-unreachable",
+      );
+    }
+    logger.info("healthProbe", { ok, status, ms, fails });
+  },
+);
+
+// ---- leaveNow — the school run ---------------------------------------------
+// Cloud review §3. The Traffic view is property intelligence: it counts vehicles
+// and pedestrians passing the house and logs plates. Good, and completely
+// unrelated to the only traffic question anyone in this family asks in the
+// morning — WHEN DO WE NEED TO LEAVE?
+//
+// Four decisions worth recording:
+//
+// 1. SERVER-SIDE, ALWAYS. One key in Secret Manager, restricted to the Routes
+//    SKU, never in the bundle. An unrestricted Maps key in client JS is the only
+//    item on the whole review with no ceiling.
+// 2. CACHED IN FIRESTORE. Six phones refreshing costs one API call, not six.
+// 3. "WORSE THAN USUAL" MEANS LOCALLY USUAL. It compares against the trailing
+//    median for that weekday from our own history, not Google's typical-traffic
+//    figure — because the useful sentence is "worse than YOUR Tuesday", and
+//    Google's baseline includes every car in Pretoria.
+// 4. WEEKDAY MORNINGS ONLY. A row that is right 5 mornings out of 7 and absent
+//    the rest of the time is read; a permanent row is furniture.
+//
+// About 250 calls a month against a 10 000 allowance.
+const ROUTES = [
+  {
+    id: "school",
+    label: "School run",
+    // Replace with real coordinates. Kept as placeholders deliberately rather
+    // than guessed: a wrong destination produces a confident wrong number, which
+    // is worse than the row being absent.
+    from: { lat: -25.7, lng: 28.2 },
+    to: { lat: -25.72, lng: 28.23 },
+  },
+];
+
+async function runLeaveNow() {
+  const key = MAPS_KEY.value();
+  // Shape-checked, not just presence-checked. Firebase refuses to deploy a
+  // codebase referencing a secret that does not exist, so the secret is seeded
+  // with the literal "unset" until Christo adds a real key — and a truthy
+  // placeholder would otherwise sail past `if (!key)` and fire malformed requests
+  // at the Routes API four times every weekday morning. Google API keys are
+  // "AIza" + 35 chars.
+  if (!key || !/^AIza[\w-]{30,}$/.test(key)) {
+    logger.info("leaveNow skipped — MAPS_KEY not configured");
+    return { skipped: "no key" };
+  }
+  const out = [];
+  for (const r of ROUTES) {
+    let mins = null;
+    try {
+      const res = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": key,
+          // Field mask is required by the Routes API and it is also the cost
+          // control: asking only for duration keeps this on the Essentials SKU.
+          "X-Goog-FieldMask": "routes.duration",
+        },
+        body: JSON.stringify({
+          origin: { location: { latLng: { latitude: r.from.lat, longitude: r.from.lng } } },
+          destination: { location: { latLng: { latitude: r.to.lat, longitude: r.to.lng } } },
+          travelMode: "DRIVE",
+          routingPreference: "TRAFFIC_AWARE",
+        }),
+      });
+      if (res.ok) {
+        const j = await res.json();
+        const d = j?.routes?.[0]?.duration; // e.g. "1080s"
+        const secs = d ? parseInt(String(d).replace("s", ""), 10) : NaN;
+        if (Number.isFinite(secs)) mins = Math.round(secs / 60);
+      } else {
+        logger.warn("leaveNow route failed", { id: r.id, status: res.status });
+      }
+    } catch (e) {
+      logger.warn("leaveNow route threw", { id: r.id, error: String((e && e.message) || e) });
+    }
+    if (mins == null) continue;
+
+    // Trailing median for this weekday, from our own samples.
+    const dow = new Date().toLocaleDateString("en-ZA", { weekday: "short", timeZone: "Africa/Johannesburg" });
+    const histRef = db.collection("routeHistory").doc(`${r.id}_${dow}`);
+    const hist = (await histRef.get()).data() || { samples: [] };
+    const samples = [...(hist.samples || []), mins].slice(-20);
+    await histRef.set({ samples });
+
+    const sorted = [...samples].sort((a, b) => a - b);
+    const median = sorted.length >= 4 ? sorted[Math.floor(sorted.length / 2)] : null;
+    const delta = median != null ? mins - median : null;
+
+    out.push({ id: r.id, label: r.label, mins, median, delta });
+  }
+
+  await db.collection("config").doc("leaveNow").set({ generatedAt: Date.now(), routes: out });
+  logger.info("leaveNow", { routes: out.length });
+  return { routes: out };
+}
+
+// 06:20–07:40 on weekdays, every 20 minutes. Four checks per route per morning.
+exports.leaveNow = onSchedule(
+  { schedule: "20,40 6 * * 1-5", timeZone: "Africa/Johannesburg", secrets: [MAPS_KEY], region: "us-central1", maxInstances: 1 },
+  async () => { await runLeaveNow(); },
+);
+exports.leaveNowLate = onSchedule(
+  { schedule: "0,20 7 * * 1-5", timeZone: "Africa/Johannesburg", secrets: [MAPS_KEY], region: "us-central1", maxInstances: 1 },
+  async () => { await runLeaveNow(); },
+);
+
+exports.leaveNowNow = onRequest(
+  { secrets: [MAPS_KEY], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, ...(await runLeaveNow()) }); }
     catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );

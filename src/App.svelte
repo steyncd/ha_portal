@@ -76,6 +76,8 @@
   import LinkBar from "./lib/components/LinkBar.svelte";
   import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
   import { loadCachedCadence, refreshCadence } from "./lib/cadence";
+  import { initRemoteConfig, config } from "./lib/remoteConfig";
+  import { initPerf, startTrace } from "./lib/perf";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
@@ -101,6 +103,12 @@
     // catches last night's job.
     loadCachedCadence();
     refreshCadence();
+
+    // Remote Config and Performance Monitoring. Both fire-and-forget: the in-app
+    // defaults mean the app is fully functional whether or not either ever
+    // answers, so neither can become a boot dependency.
+    initRemoteConfig();
+    initPerf();
 
     // Ask the browser to mark our storage persistent, so the HA connection
     // cache, Firestore's IndexedDB cache and the usage log aren't evicted under
@@ -160,9 +168,22 @@
     }
   });
 
+  let stopFirstState: (() => void) | null = null;
+
   // Connect to Home Assistant only once the user is signed in and authorised.
   $effect(() => {
-    if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
+    if ((mockMode || authStore.status === "ready") && ha.status !== "connected") {
+      // ha_first_state: sign-in to the first full entity snapshot over WSS. That
+      // is the moment the app becomes usable — everything before it is a
+      // skeleton — and it is invisible to any synthetic page-load metric, which
+      // is why the blur-budget argument had no numbers behind it.
+      stopFirstState ??= startTrace("ha_first_state");
+      ha.init();
+    }
+    if (ha.status === "connected" && stopFirstState) {
+      stopFirstState();
+      stopFirstState = null;
+    }
   });
 
   // App badge — the one ambient channel iOS actually gives a PWA.
