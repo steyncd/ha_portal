@@ -9,23 +9,60 @@
     {
       "site": "helloliam-ha-dashboard",
       "public": "dist",
-      "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
       "rewrites": [
         {
           "source": "/api/wa-inbound",
-          "function": { "functionId": "waInbound", "region": "us-central1" }
+          "function": {
+            "functionId": "waInbound",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/api/parse-document",
-          "function": { "functionId": "parseDocument", "region": "us-central1" }
+          "function": {
+            "functionId": "parseDocument",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/api/trello",
-          "function": { "functionId": "trelloApi", "region": "us-central1" }
+          "function": {
+            "functionId": "trelloApi",
+            "region": "us-central1"
+          }
         },
         {
           "source": "/api/refresh-parcels",
-          "function": { "functionId": "refreshParcelsNow", "region": "us-central1" }
+          "function": {
+            "functionId": "refreshParcelsNow",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/api/briefing",
+          "function": {
+            "functionId": "getBriefing",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/api/kid-payout",
+          "function": {
+            "functionId": "kidPayout",
+            "region": "us-central1"
+          }
+        },
+        {
+          "source": "/api/warehouse-now",
+          "function": {
+            "functionId": "warehouseSnapshotNow",
+            "region": "us-central1"
+          }
         },
         {
           "source": "**",
@@ -39,6 +76,42 @@
             {
               "key": "Cache-Control",
               "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        },
+        {
+          "source": "/sw.js",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "/firebase-messaging-sw.js",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "/index.html",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "/manifest.webmanifest",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
             }
           ]
         }

@@ -141,7 +141,7 @@
     <div class="heroglow"></div>
     <div class="hmain">
       <div class="hbig">{n(indep)}<span class="hpct">%</span></div>
-      <div class="hlbl">self-powered today</div>
+      <div class="hlbl">Self-powered today</div>
     </div>
     <div class="hstats">
       <div class="hs"><span class="hv" style="color:var(--solar)">{power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</span><span class="hk">☀️ Solar now</span></div>
@@ -166,15 +166,15 @@
 
   <div class="kpis">
     <div class="card k"><div class="lb">Battery</div><div class="big">{n(ha.num(E.batterySoc))}<span class="u">%</span></div><div class="sub" style="color:var(--water)">{n(ha.num(E.batteryPower))} W → home</div></div>
-    <div class="card k"><div class="lb">Solar today</div><div class="big">{n(ha.num(E.solarYieldToday), 1)}<span class="u"> kWh</span></div><div class="sub" style="color:var(--solar)">live {power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
-    <div class="card k"><div class="lb">Grid import</div><div class="big">{n(ha.num(E.gridImportToday), 1)}<span class="u"> kWh</span></div><div class="sub">{rand(ha.num(E.energyCostToday))} today</div></div>
+    <div class="card k"><div class="lb">Solar today</div><div class="big">{n(ha.num(E.solarYieldToday), 1)}<span class="u">kWh</span></div><div class="sub" style="color:var(--solar)">live {power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
+    <div class="card k"><div class="lb">Grid import</div><div class="big">{n(ha.num(E.gridImportToday), 1)}<span class="u">kWh</span></div><div class="sub">{rand(ha.num(E.energyCostToday))} today</div></div>
     <div class="card k"><div class="lb">Grade</div><div class="big" style="color:var(--success)">{ha.state(E.energyGrade) ?? "—"}</div><div class="sub">{n(indep)}% independent</div></div>
   </div>
 
   <div class="kpis">
     <div class="card k"><div class="lb">Self-sufficient</div><div class="big">{n(ha.num(E.selfSufficiency))}<span class="u">%</span></div><div class="sub">today</div></div>
     <div class="card k"><div class="lb">Solar saved</div><div class="big" style="color:var(--solar)">{rand(ha.num(E.solarSaved))}</div><div class="sub">today vs grid</div></div>
-    <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u"> kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
+    <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u">kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
     <div class="card k"><div class="lb">Solar strings</div><div class="big" style="color:{mppt === 'ok' ? 'var(--success)' : 'var(--warning)'};font-size:22px;text-transform:capitalize">{mppt ?? '—'}</div><div class="sub">battery {rand(ha.num(E.batteryValueNow))}/h · {ha.state(E.batteryTou) ?? '—'}</div></div>
   </div>
 
@@ -318,7 +318,7 @@
       {#each APPLIANCES as a}
         {@const p = ha.num(a.power)}
         {@const on = appOn(a)}
-        <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!ha.exists(a.sw)}>
+        <button class="app" class:on onclick={() => ha.toggle(a.sw, a.label)} disabled={!ha.exists(a.sw)}>
           <span class="al"><span class="an">{a.label}</span><span class="aw">{p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span></span>
           <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
         </button>
@@ -350,7 +350,7 @@
   .hmain { position: relative; }
   .hbig { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 0.9; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .hpct { font-size: 26px; }
-  .hlbl { font-size: 13px; color: var(--dim); margin-top: 4px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; }
+  .hlbl { font-size: 13px; color: var(--dim); margin-top: 4px; font-weight: 700; }
   .hstats { position: relative; display: grid; grid-template-columns: repeat(4, auto); gap: 10px 22px; }
   @media (max-width: 640px) { .hstats { grid-template-columns: 1fr 1fr; } }
   .hs { display: flex; flex-direction: column; gap: 2px; }
@@ -363,11 +363,11 @@
   .genv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
   @media (max-width: 760px) { .genv { grid-template-columns: 1fr; } }
   .ge { padding: 15px 18px; }
-  .gl { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .gl { font-size: 12px; font-weight: 700; color: var(--muted); }
   .gv { font-size: 19px; font-weight: 800; margin-top: 4px; }
   .gs { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -386,7 +386,7 @@
   .pbtop { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
   .pbm { display: flex; flex-direction: column; gap: 3px; }
   .pbv { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-  .pbk { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .pbk { font-size: 10.5px; color: var(--muted); font-weight: 700;}
   .pbbar { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 22%, transparent); overflow: hidden; margin-bottom: 16px; }
   .pbfill { height: 100%; border-radius: 999px; background: linear-gradient(90deg, var(--success), color-mix(in srgb, var(--success) 60%, var(--acc))); transition: width 0.6s; }
   .devlist { display: flex; flex-direction: column; gap: 8px; }
@@ -419,7 +419,7 @@
   .vn { font-size: 12.5px; font-weight: 700; }
   .vrows { display: grid; grid-template-columns: 1fr 1fr; gap: 11px 10px; }
   .vv { font-size: 14.5px; font-weight: 800; }
-  .vk { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 1px; }
+  .vk { font-size: 9.5px; color: var(--muted); margin-top: 1px; font-weight: 700;}
   .appgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
   .app { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.05); text-align: left; }
   .app.on { background: color-mix(in srgb, var(--warning) 14%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }

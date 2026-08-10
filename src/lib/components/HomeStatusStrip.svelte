@@ -79,7 +79,7 @@
   .tile.warn .ico { color: var(--warn, #f5a623); background: color-mix(in srgb, var(--warn, #f5a623) 18%, transparent); }
   .ico.car { color: var(--security, #6ea8fe); }
   .body { min-width: 0; }
-  .lb { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); font-weight: 600; }
+  .lb { font-size: 11px; color: var(--muted); font-weight: 700; }
   .val { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 2px; }
   .tile.warn .val { font-weight: 600; font-size: 13.5px; line-height: 1.3; }
   .sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
@@ -88,5 +88,5 @@
   .svc.bad { color: var(--warn, #f5a623); }
   .sv { font-size: 14px; font-weight: 700; color: var(--text); }
   .svc.bad .sv { color: var(--warn, #f5a623); }
-  .sk { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+  .sk { font-size: 10.5px; color: var(--muted); font-weight: 700;}
 </style>

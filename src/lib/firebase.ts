@@ -11,7 +11,12 @@
 import { initializeApp } from "firebase/app";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+  getFirestore,
+} from "firebase/firestore";
 
 const env = import.meta.env;
 const firebaseConfig = {
@@ -43,5 +48,29 @@ if (typeof window !== "undefined" && env.VITE_RECAPTCHA_SITE_KEY) {
 }
 
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Firestore with an IndexedDB-backed cache rather than the default memory-only
+// one. Two reasons that matter here:
+//
+//   1. Outage resilience. Memory-only means every read needs the WAN. With
+//      persistence, cached documents (chores, meal plan, prayer board, nudges)
+//      still render during a power or fibre outage, and writes queue in
+//      IndexedDB and flush when the connection returns.
+//   2. Multi-tab. The household runs the wall tablet, phones and a desktop at
+//      once; persistentMultipleTabManager lets them share one cache instead of
+//      fighting over the IndexedDB lock (the older enablePersistence would fail
+//      outright on the second tab).
+//
+// Falls back to the plain instance if persistence can't initialise — a private
+// window or a browser with IndexedDB disabled must still load the app.
+export const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app);
+  }
+})();
+
 export const googleProvider = new GoogleAuthProvider();

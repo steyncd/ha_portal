@@ -1,0 +1,535 @@
+<title>Steyn Home — Design Handover</title>
+<style>
+  :root{
+    --ground:#f4f6f8; --panel:#fff; --ink:#12181d; --ink-2:#3d4a55; --muted:#6b7a88;
+    --faint:#93a2b0; --line:#dde4ea; --accent:#0d6d7a; --accent-soft:#e0f0f2;
+    --amber:#a56a12; --amber-soft:#f8eeda; --ok:#25704b; --warn:#a3730d; --crit:#a5382c;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){:root{
+    --ground:#0c1013; --panel:#141a1f; --ink:#e6edf3; --ink-2:#b0bfcb; --muted:#7f909e;
+    --faint:#66757f; --line:#242f37; --accent:#4cc4d0; --accent-soft:#0f2a2e;
+    --amber:#d9a45c; --amber-soft:#2a2117; --ok:#57ad81; --warn:#d3a24e; --crit:#e07260;}}
+  :root[data-theme="light"]{--ground:#f4f6f8;--panel:#fff;--ink:#12181d;--ink-2:#3d4a55;--muted:#6b7a88;--faint:#93a2b0;--line:#dde4ea;--accent:#0d6d7a;--accent-soft:#e0f0f2;--amber:#a56a12;--amber-soft:#f8eeda;--ok:#25704b;--warn:#a3730d;--crit:#a5382c;}
+  :root[data-theme="dark"]{--ground:#0c1013;--panel:#141a1f;--ink:#e6edf3;--ink-2:#b0bfcb;--muted:#7f909e;--faint:#66757f;--line:#242f37;--accent:#4cc4d0;--accent-soft:#0f2a2e;--amber:#d9a45c;--amber-soft:#2a2117;--ok:#57ad81;--warn:#d3a24e;--crit:#e07260;}
+  *{box-sizing:border-box;} body{margin:0;}
+  .doc{background:var(--ground);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.62;-webkit-font-smoothing:antialiased;padding:0 20px 90px;}
+  .wrap{max-width:880px;margin:0 auto;} .prose{max-width:68ch;}
+
+  header.mast{padding:52px 0 28px;border-bottom:2px solid var(--ink);margin-bottom:36px;}
+  .kicker{font-family:var(--mono);font-size:.7rem;letter-spacing:.2em;text-transform:uppercase;color:var(--accent);font-weight:600;}
+  h1{font-family:var(--serif);font-weight:600;font-size:clamp(1.95rem,5.4vw,3rem);line-height:1.08;letter-spacing:-.015em;margin:14px 0 0;text-wrap:balance;}
+  .standfirst{font-family:var(--serif);font-size:clamp(1rem,2.1vw,1.18rem);line-height:1.55;color:var(--ink-2);margin:16px 0 0;max-width:62ch;}
+  .mastmeta{display:flex;flex-wrap:wrap;gap:8px 22px;margin-top:22px;font-family:var(--mono);font-size:.72rem;color:var(--muted);}
+  .mastmeta b{color:var(--ink-2);font-weight:600;}
+
+  section{margin:0 0 50px;scroll-margin-top:16px;}
+  .sechead{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--line);padding-bottom:8px;margin-bottom:20px;}
+  h2{font-family:var(--serif);font-weight:600;font-size:clamp(1.3rem,2.9vw,1.7rem);letter-spacing:-.01em;margin:0;line-height:1.2;text-wrap:balance;}
+  .sectag{font-family:var(--mono);font-size:.65rem;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);margin-left:auto;white-space:nowrap;padding-bottom:3px;}
+  h3{font-family:var(--sans);font-weight:700;font-size:.95rem;margin:28px 0 9px;color:var(--ink);}
+  h4{font-family:var(--mono);font-weight:600;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:20px 0 7px;}
+  p{margin:0 0 13px;} .prose p{color:var(--ink-2);}
+  strong{color:var(--ink);font-weight:650;}
+  a{color:var(--accent);text-underline-offset:2px;}
+
+  .toc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 20px;margin-bottom:38px;}
+  .toc ol{margin:0;padding-left:20px;columns:2;column-gap:28px;}
+  @media(max-width:620px){.toc ol{columns:1;}}
+  .toc li{margin-bottom:4px;font-size:.9rem;}
+  .toc a{text-decoration:none;color:var(--ink-2);} .toc a:hover{color:var(--accent);}
+
+  .callout{background:var(--panel);border-left:3px solid var(--amber);padding:16px 20px;margin:0 0 22px;border-radius:0 8px 8px 0;}
+  .callout .lt{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);font-weight:600;display:block;margin-bottom:6px;}
+  .callout p:last-child{margin-bottom:0;}
+  .callout.key{border-left-color:var(--accent);} .callout.key .lt{color:var(--accent);}
+  .callout.warn{border-left-color:var(--crit);} .callout.warn .lt{color:var(--crit);}
+
+  .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:9px;background:var(--panel);margin-bottom:16px;}
+  table{border-collapse:collapse;width:100%;font-size:.86rem;min-width:460px;}
+  th,td{text-align:left;padding:9px 13px;border-bottom:1px solid var(--line);vertical-align:top;}
+  thead th{font-family:var(--mono);font-size:.64rem;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);font-weight:600;background:color-mix(in srgb,var(--ground) 55%,var(--panel));}
+  tbody tr:last-child td{border-bottom:0;}
+  td.num,th.num{font-family:var(--mono);font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap;}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:700px){.grid2{grid-template-columns:1fr;}}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:15px 17px;}
+  .card h4{margin-top:0;}
+  .card ul{margin:0;padding-left:18px;font-size:.88rem;color:var(--ink-2);}
+  .card li{margin-bottom:4px;}
+
+  .chips{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:14px;}
+  .chip{font-family:var(--mono);font-size:.7rem;padding:3px 8px;border-radius:5px;background:var(--accent-soft);color:var(--accent);white-space:nowrap;}
+  .chip.n{background:color-mix(in srgb,var(--muted) 14%,transparent);color:var(--ink-2);}
+
+  ul.plain{margin:0 0 14px;padding-left:20px;color:var(--ink-2);}
+  ul.plain li{margin-bottom:6px;} ul.plain li::marker{color:var(--faint);}
+  code{font-family:var(--mono);font-size:.85em;background:var(--accent-soft);color:var(--accent);padding:1px 5px;border-radius:4px;}
+  pre{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:13px;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.5;color:var(--ink-2);}
+  pre code{background:none;color:inherit;padding:0;}
+  .sw{display:inline-block;width:11px;height:11px;border-radius:3px;vertical-align:-1px;margin-right:5px;border:1px solid rgba(128,128,128,.35);}
+
+  footer.end{border-top:2px solid var(--ink);margin-top:52px;padding-top:18px;font-size:.83rem;color:var(--muted);}
+  @media print{:root{--ground:#fff;--panel:#fff;--ink:#111;--ink-2:#333;--line:#ccc;}.doc{padding:0;}section{break-inside:avoid;}}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+</style>
+
+<div class="doc"><div class="wrap">
+
+<header class="mast">
+  <span class="kicker">Design Handover · Steyn Home</span>
+  <h1>Everything Claude Design needs to know</h1>
+  <p class="standfirst">A self-hosted Home Assistant running a family's house in Pretoria, and the custom Svelte PWA that has replaced its dashboard entirely. This is the full picture: what exists, what changed, what's known-good, and where the real design problems are.</p>
+  <div class="mastmeta">
+    <span><b>Compiled</b> 9 Aug 2026</span>
+    <span><b>HA Core</b> 2026.8.1</span>
+    <span><b>Entities</b> 4,623</span>
+    <span><b>Devices</b> 425</span>
+    <span><b>Integrations</b> 170</span>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><a href="#context">Who this is for</a></li>
+    <li><a href="#devices">Devices it runs on</a></li>
+    <li><a href="#app">The app as it stands</a></li>
+    <li><a href="#design">Design system in use</a></li>
+    <li><a href="#recent">What just changed</a></li>
+    <li><a href="#problems">Open design problems</a></li>
+    <li><a href="#entities">Entities available</a></li>
+    <li><a href="#hardware">Devices &amp; hardware</a></li>
+    <li><a href="#integrations">Integrations</a></li>
+    <li><a href="#addons">Add-ons</a></li>
+    <li><a href="#rooms">Floors &amp; rooms</a></li>
+    <li><a href="#backend">Backend &amp; data</a></li>
+    <li><a href="#ha">Home Assistant side</a></li>
+    <li><a href="#constraints">Hard constraints</a></li>
+  </ol>
+</nav>
+
+<!-- ================= CONTEXT ================= -->
+<section id="context">
+  <div class="sechead"><h2>Who this is for</h2><span class="sectag">Household</span></div>
+  <p class="prose">A family of four in Pretoria, South Africa. Christo (owner, builds the system), Mandri, and two boys — <strong>Liam, 11</strong> and <strong>Eben, 8</strong>. Reformed Christian household, which shows up in the product: a prayer board, a daily devotional, Sabbath mode, and a media-discernment app. Afrikaans matters to them.</p>
+  <p class="prose">The house runs on <strong>solar with battery backup</strong> (Victron), a <strong>borehole and JoJo tank</strong> for water, a pool, and a 31-zone alarm with armed response. Load shedding shaped a lot of the original thinking but has been suspended nationally since May 2025 — so resilience still matters, scheduled outages don't.</p>
+
+  <div class="callout key">
+    <span class="lt">The single most important thing to understand</span>
+    <p><strong>They do not use Home Assistant's own dashboard any more.</strong> Lovelace is effectively dead to them. The Svelte PWA <em>is</em> the interface to their house — for the whole family, on every device. Anything you design for HA should be about capability (automations, data, new integrations), never about its UI.</p>
+  </div>
+
+  <p class="prose">Christo is technical and opinionated, reads the code, and would rather be told a plan is wrong than have it quietly built. He has explicitly asked for research-backed alternatives over agreement. He is also cost-sensitive right now: <strong>no new subscriptions, nothing that pushes up hosting or API spend.</strong></p>
+</section>
+
+<!-- ================= DEVICES ================= -->
+<section id="devices">
+  <div class="sechead"><h2>The devices it actually runs on</h2><span class="sectag">Design targets</span></div>
+  <p class="prose">This list was corrected mid-project and it changed priorities substantially — design for these, in this order:</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Device</th><th>Notes for design</th></tr></thead>
+    <tbody>
+      <tr><td><strong>iPhone</strong></td><td>Primary quick-glance surface. Installed to home screen — push and badging only work there.</td></tr>
+      <tr><td><strong>iPad 13"</strong> + <strong>iPad Air 13" M4</strong></td><td>Two large tablets. iPadOS 26 windowed mode has a real bug: window controls overlap the top-left of PWA content.</td></tr>
+      <tr><td><strong>MacBook Air 15" M5</strong></td><td>Safari 26+. All modern CSS lands here — Grid Lanes, View Transitions, anchor positioning.</td></tr>
+      <tr><td><strong>Windows desktop, 3 × 2K/3K monitors</strong></td><td>The deep-dive surface. Was badly served: the app capped at 1440px and wasted most of the screen. Now steps to 2000px / 5 columns.</td></tr>
+      <tr><td>65" 4K TV (wall dashboard)</td><td><strong>Rarely used.</strong> Deprioritised — don't invest here unless asked.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose">Practical read: <strong>an Apple-first household with one big Windows desktop.</strong> Safari-only features are usually safe for four of the five targets, but the desktop needs a working fallback.</p>
+</section>
+
+<!-- ================= APP ================= -->
+<section id="app">
+  <div class="sechead"><h2>The app as it stands</h2><span class="sectag">37 views</span></div>
+  <p class="prose">Svelte 5 (runes) + Vite PWA on Firebase Hosting, talking to Home Assistant over a live WebSocket. Roughly 2,000 lines of hand-rolled SVG charting — <strong>no chart library</strong>, deliberately.</p>
+
+  <div class="chips">
+    <span class="chip">svelte 5.19</span><span class="chip">vite 6</span><span class="chip">vite-plugin-pwa 1.3</span>
+    <span class="chip">firebase 12.16</span><span class="chip">home-assistant-js-websocket 9.4</span><span class="chip">typescript 5.7</span>
+  </div>
+
+  <h3>Information architecture</h3>
+  <p class="prose">Two front doors, deliberately. This was the outcome of a research pass that <em>rejected</em> the owner's own suggestion of a quick/advanced mode toggle — modes halve discoverability and cause mode errors, and no commercial system (Apple, Google, Control4, Savant, Crestron) uses one.</p>
+  <div class="grid2">
+    <div class="card">
+      <h4>Home — the default landing</h4>
+      <ul>
+        <li>Security hero (arm/disarm, biggest target)</li>
+        <li>Glance ribbon: battery · solar · tank · lights</li>
+        <li>Scenes named by intent, not device</li>
+        <li>"Suggested for now" — adaptive, frecency-ranked</li>
+        <li>Pinned favourites (stable, never reordered)</li>
+        <li>Room scenes, quick controls, jump-to</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>Dashboard — the dense board</h4>
+      <ul>
+        <li>15-card masonry, the original deep-dive view</li>
+        <li>Power flow, battery, solar, comfort, tank</li>
+        <li>Lights, appliances, security, activity log</li>
+        <li>User-toggleable widgets</li>
+        <li>This is the desktop/3-monitor surface</li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>All 37 views</h4>
+  <div class="chips">
+    <span class="chip">Home</span><span class="chip">Overview (Dashboard)</span><span class="chip n">Energy</span><span class="chip n">EnergyHub</span><span class="chip n">Solar</span><span class="chip n">PowerTrends</span><span class="chip n">Batteries</span><span class="chip n">Water</span><span class="chip n">Irrigation</span><span class="chip n">Rooms</span><span class="chip n">Lights</span><span class="chip n">Appliances</span><span class="chip n">Security</span><span class="chip n">Cameras</span><span class="chip n">Traffic</span><span class="chip n">Devices</span><span class="chip n">Automations</span><span class="chip n">System</span><span class="chip n">ServerControl</span><span class="chip n">ControlHub</span><span class="chip n">Reminders</span><span class="chip n">Trello</span><span class="chip n">Meals</span><span class="chip n">FairPlay</span><span class="chip n">Kids</span><span class="chip n">Faith</span><span class="chip n">Me</span><span class="chip n">MeHub</span><span class="chip n">Vitality</span><span class="chip n">FocusWork</span><span class="chip n">Timeline</span><span class="chip n">Insights</span><span class="chip n">Usage</span><span class="chip n">Markets</span><span class="chip n">Assist</span><span class="chip n">TV</span><span class="chip n">Settings</span>
+  </div>
+
+  <h4>Shared components (25)</h4>
+  <div class="chips">
+    <span class="chip n">AreaChart</span><span class="chip n">BarChart</span><span class="chip n">Sankey</span><span class="chip n">Spark</span><span class="chip n">PowerFlow</span><span class="chip n">TrendCard</span><span class="chip n">GridStatusCard</span><span class="chip n">HomeStatusStrip</span><span class="chip n">PresenceStrip</span><span class="chip n">RightNow</span><span class="chip n">NeedsAttention</span><span class="chip n">Nudges</span><span class="chip n">Briefing</span><span class="chip n">Favourites</span><span class="chip n">RoomScenes</span><span class="chip n">TimeMachine</span><span class="chip n">ExplainChart</span><span class="chip n">CommandPalette</span><span class="chip n">LightSheet</span><span class="chip n">Overlay</span><span class="chip n">Toast</span><span class="chip n">Toggle</span><span class="chip n">StatusChip</span><span class="chip n">Icon</span><span class="chip n">CrossLinks</span>
+  </div>
+  <p class="prose"><code>Icon.svelte</code> is a hand-built 1.7px-stroke line-icon set (~42 glyphs, <code>currentColor</code>, 24×24). Emoji are used alongside it as a deliberate second register — warmer, and instantly readable for the kids.</p>
+</section>
+
+<!-- ================= DESIGN ================= -->
+<section id="design">
+  <div class="sechead"><h2>The design system in use</h2><span class="sectag">"Aurora Command"</span></div>
+  <p class="prose">Dark-first, glass-and-glow. Tokens live in <code>src/app.css</code>. Accent colours are themable at runtime; <strong>domain colours are semantic and never themed</strong> — that separation is load-bearing and worth preserving.</p>
+
+  <h4>Brand accent — 4 selectable themes</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Theme</th><th>Gradient</th><th></th></tr></thead>
+    <tbody>
+      <tr><td>Tide <em>(default)</em></td><td><code>#38bdf8 → #818cf8</code></td><td><span class="sw" style="background:#38bdf8"></span><span class="sw" style="background:#818cf8"></span></td></tr>
+      <tr><td>Meadow</td><td><code>#34d399 → #38bdf8</code></td><td><span class="sw" style="background:#34d399"></span><span class="sw" style="background:#38bdf8"></span></td></tr>
+      <tr><td>Spectrum</td><td><code>#38bdf8 → #818cf8 → #a855f7</code></td><td><span class="sw" style="background:#38bdf8"></span><span class="sw" style="background:#818cf8"></span><span class="sw" style="background:#a855f7"></span></td></tr>
+      <tr><td>Classic</td><td><code>#818cf8 → #a855f7</code></td><td><span class="sw" style="background:#818cf8"></span><span class="sw" style="background:#a855f7"></span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Domain colours — semantic, never themed</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Token</th><th>Value</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td><code>--energy</code> / <code>--solar</code></td><td><span class="sw" style="background:#fbbf24"></span><code>#fbbf24</code></td><td>Generation, yield</td></tr>
+      <tr><td><code>--battery</code></td><td><span class="sw" style="background:#a78bfa"></span><code>#a78bfa</code></td><td>Storage, SoC</td></tr>
+      <tr><td><code>--water</code></td><td><span class="sw" style="background:#38bdf8"></span><code>#38bdf8</code></td><td>Tank, pumps, irrigation</td></tr>
+      <tr><td><code>--climate</code></td><td><span class="sw" style="background:#fb923c"></span><code>#fb923c</code></td><td>Temperature, comfort</td></tr>
+      <tr><td><code>--security</code></td><td><span class="sw" style="background:#34d399"></span><code>#34d399</code></td><td>Alarm, zones, cameras</td></tr>
+      <tr><td><code>--load</code></td><td><span class="sw" style="background:#818cf8"></span><code>#818cf8</code></td><td>Consumption, appliances</td></tr>
+      <tr><td><code>--health</code></td><td><span class="sw" style="background:#fb7185"></span><code>#fb7185</code></td><td>Oura, vitality</td></tr>
+      <tr><td><code>--grid-alert</code></td><td><span class="sw" style="background:#fb923c"></span><code>#fb923c</code></td><td><strong>Amber, not red</strong> — deliberate, red/green CVD-safe</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout">
+    <span class="lt">Two rules already baked in — please keep them</span>
+    <p><strong>Colour is never the only signal.</strong> Status always pairs a colour with a glyph and a label. <strong>Grid alerts are amber, not red</strong>, specifically so red/green colour-blindness can't misread the most safety-relevant state in the app.</p>
+  </div>
+
+  <h4>Base + text</h4>
+  <pre><code>--base   #13171a   dim, not black
+--text   #eef2f9   --text-2 #c8d4e2   --muted #93a3b5   --faint #7e8ea3
+--r-card 16px      glass: backdrop-filter + inset 1px hairline</code></pre>
+</section>
+
+<!-- ================= RECENT ================= -->
+<section id="recent">
+  <div class="sechead"><h2>What just changed</h2><span class="sectag">This week</span></div>
+  <p class="prose">All shipped and live. Useful because it tells you what's fresh, what's proven, and what hasn't had real-world use yet.</p>
+
+  <h4>New surfaces &amp; features</h4>
+  <ul class="plain">
+    <li><strong>Home quick surface</strong> — new default landing (described above).</li>
+    <li><strong>Frecency intelligence</strong> — "Suggested for now" ranks the owner's <em>own portal taps</em>, 30-day half-life, bucketed by time of day. Key insight: HA state history is automation-polluted (the pumps top "most active" purely from solar scheduling, not humans), so ranking entity changes recommends things the house already does itself.</li>
+    <li><strong>Usage view</strong> — most-used actions and most-visited pages by frecency, plus a time-of-day histogram. Also feeds the adaptive "Jump to" row.</li>
+    <li><strong>Room scenes</strong> — one verb (Bright / Relax / Off) resolving per room. Backed by a single HA script where each room declares <code>bright</code> and <code>soft</code> light sets, so 8 rooms × 4 scenes is one script, not 32.</li>
+    <li><strong>Proactive AI nudges</strong> — a scheduled job hands Gemini a contextual house snapshot; a <em>deterministic</em> gate then decides what may surface (confidence ≥ 0.7, 6h cooldown per key, 3/day cap, quiet hours, one per run). Model proposes, code decides.</li>
+    <li><strong>Time machine</strong> 🕰️ — scrub the whole dashboard back through history. Hooks the store's <em>readers</em>, so all 37 views time-travel with no per-view changes. Writes are hard-blocked while rewound.</li>
+    <li><strong>Explain this chart</strong> ✨ — two-sentence caption under a chart. Only the rendered series is sent; answers cached on a content hash, so a daily chart costs about one model call per day for the whole household.</li>
+    <li><strong>Evening In</strong> scene — arms the alarm but <em>leaves interior lights on</em>. Distinct from Goodnight; existed in HA but was unreachable from anywhere until now.</li>
+  </ul>
+
+  <h4>Performance &amp; platform</h4>
+  <ul class="plain">
+    <li><strong>Wide-screen layout</strong> — 1440 → 2000px, 3 → 5 masonry columns at 2560px.</li>
+    <li><strong>Grid Lanes</strong> behind <code>@supports</code> — also fixes a real a11y bug: <code>column-count</code> flows top-to-bottom per column, so tab order and screen-reader order didn't match visual order.</li>
+    <li><strong>Render loops killed</strong> — deriveds that allocated a new array on every 300 ms tick re-rendered forever. Now memoised by content signature via <code>lib/stable.ts</code>.</li>
+    <li><strong>Firestore persistent cache</strong> + multi-tab; <strong>View Transitions</strong>; <strong>app badge</strong> wired to the attention count; <code>content-visibility</code> on below-fold cards.</li>
+  </ul>
+
+  <h4>Three real bugs found and fixed</h4>
+  <ul class="plain">
+    <li>Boot awaited a Firestore read for the HA token with <strong>no timeout</strong>, and Firestore's default cache is memory-only — so with WAN down but LAN up, the app couldn't reach HA <em>even though HA was reachable</em>. The moment you most want the dashboard was the moment it failed.</li>
+    <li>The service worker called <code>showNotification</code> without <em>returning</em> the promise. iOS counts that as a silent push and revokes the subscription after ~3 offences.</li>
+    <li>Notification taps always opened <code>/</code>, ignoring any deep link.</li>
+  </ul>
+</section>
+
+<!-- ================= PROBLEMS ================= -->
+<section id="problems">
+  <div class="sechead"><h2>Open design problems</h2><span class="sectag">Where to aim</span></div>
+  <p class="prose">The honest list of what's unresolved. This is probably the most useful section for a design pass.</p>
+
+  <div class="grid2">
+    <div class="card">
+      <h4>1 · 37 views is a lot</h4>
+      <ul><li>The Home surface fixed "I get lost", but the underlying IA is still 37 destinations behind a sidebar.</li><li>Several overlap: Energy / EnergyHub / Solar / PowerTrends / Batteries; Me / MeHub / Vitality / FocusWork.</li><li>Usage data now exists to justify merging or demoting.</li></ul>
+    </div>
+    <div class="card">
+      <h4>2 · Staleness is invisible</h4>
+      <ul><li>A dead sensor holding its last value looks identical to a live one.</li><li>Needed: fresh / frozen / unavailable / disconnected, with per-entity thresholds.</li><li>A wrong number is worse than no number when deciding if the battery lasts the night.</li></ul>
+    </div>
+    <div class="card">
+      <h4>3 · Notifications can't be edited on iOS</h4>
+      <ul><li><code>tag</code> does not replace; action buttons don't render; images unsupported.</li><li>Every push stacks forever, so coalescing must happen server-side before sending.</li><li>Needs a digest and "all clear" design, not more alerts.</li></ul>
+    </div>
+    <div class="card">
+      <h4>4 · The kids have no surface of their own</h4>
+      <ul><li>Chores, allowance and routines exist but are rendered for adults.</li><li>An 8-year-old needs icon-led, large-target, reading-light design.</li><li>Photo-proof, streaks and a ledger were researched and not yet built.</li></ul>
+    </div>
+    <div class="card">
+      <h4>5 · Charts are all hand-rolled SVG</h4>
+      <ul><li>Genuinely the right call at this scale — a library would be a regression.</li><li>But the energy Sankey and any streaming chart are at the edge of what's comfortable.</li><li>Visual consistency across ~6 chart types is not formalised.</li></ul>
+    </div>
+    <div class="card">
+      <h4>6 · Afrikaans is entirely absent</h4>
+      <ul><li>Afrikaans household; the app is English-only.</li><li>Faith content especially would land better in Afrikaans.</li><li>No i18n scaffolding exists yet.</li></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ================= ENTITIES ================= -->
+<section id="entities">
+  <div class="sechead"><h2>Entities available</h2><span class="sectag">4,623 total</span></div>
+  <p class="prose">Far too many to enumerate — and most are noise. What matters is the split between <em>everything that exists</em> and <em>the curated ~200 the dashboard actually renders</em>.</p>
+
+  <h4>Everything, by domain</h4>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Domain</th><th class="num">Count</th><th>Domain</th><th class="num">Count</th></tr></thead>
+    <tbody>
+      <tr><td>sensor</td><td class="num">1,978</td><td>number</td><td class="num">67</td></tr>
+      <tr><td>automation</td><td class="num">424</td><td>input_datetime</td><td class="num">64</td></tr>
+      <tr><td>binary_sensor</td><td class="num">419</td><td>image</td><td class="num">46</td></tr>
+      <tr><td>switch</td><td class="num">295</td><td>select</td><td class="num">41</td></tr>
+      <tr><td>input_number</td><td class="num">288</td><td>input_text</td><td class="num">30</td></tr>
+      <tr><td>input_boolean</td><td class="num">241</td><td>light</td><td class="num">28</td></tr>
+      <tr><td>device_tracker</td><td class="num">191</td><td>camera</td><td class="num">26</td></tr>
+      <tr><td>button</td><td class="num">136</td><td>counter / media_player</td><td class="num">20 / 20</td></tr>
+      <tr><td>update</td><td class="num">128</td><td>alarm_control_panel</td><td class="num">5</td></tr>
+      <tr><td>script</td><td class="num">101</td><td>todo / person / calendar</td><td class="num">5 / 3 / 2</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="callout key">
+    <span class="lt">The curated set is what design should work from</span>
+    <p><code>src/lib/entities.ts</code> is the single source of truth for what the dashboard renders — <strong>179 named entities</strong> plus structured catalogues. It excludes dead and flaky entities deliberately. Anything new should be added there, not read ad-hoc.</p>
+  </div>
+
+  <div class="tablewrap"><table>
+    <thead><tr><th>Catalogue</th><th class="num">Size</th><th>Contents</th></tr></thead>
+    <tbody>
+      <tr><td><code>E</code></td><td class="num">179</td><td>Named entities: Victron energy, water/tank/borehole, alarm, cameras, traffic, system, pumps, irrigation, Oura health</td></tr>
+      <tr><td><code>ALARM_ZONES</code></td><td class="num">31</td><td>Every zone with state, bypass status, and bypass/unbypass buttons</td></tr>
+      <tr><td><code>LIGHT_AREAS</code></td><td class="num">6 / 26</td><td>6 areas containing 26 individual lights</td></tr>
+      <tr><td><code>APPLIANCE_AREAS</code></td><td class="num">7 / 17</td><td>7 areas, 17 metered appliances (switch + power sensor each)</td></tr>
+      <tr><td><code>CAMERAS</code></td><td class="num">8</td><td>Gate, driveway, front door, sidewalk, store room, back/front yard, pool</td></tr>
+      <tr><td><code>ROOMS</code></td><td class="num">8</td><td>Temperature + humidity per room</td></tr>
+      <tr><td><code>SCENES</code></td><td class="num">6</td><td>Evening In, Goodnight, Movie, Braai, Away, Morning</td></tr>
+      <tr><td><code>ACCESS</code> / <code>IRR_ZONES</code> / <code>PUMPS</code></td><td class="num">6 / 6 / 3</td><td>Doors &amp; gates · irrigation zones · water/borehole/pool pumps</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ================= HARDWARE ================= -->
+<section id="hardware">
+  <div class="sechead"><h2>Devices &amp; hardware</h2><span class="sectag">425 active</span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Manufacturer</th><th class="num">n</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>Tasmota</td><td class="num">41</td><td>Flashed smart plugs / relays</td></tr>
+      <tr><td>TP-Link</td><td class="num">37</td><td>Kasa/Tapo plugs with energy metering (+6 Deco mesh nodes)</td></tr>
+      <tr><td>Hikvision</td><td class="num">27</td><td>NVR + cameras</td></tr>
+      <tr><td>SONOFF</td><td class="num">20</td><td>Zigbee relays and switches</td></tr>
+      <tr><td>Espressif</td><td class="num">15</td><td>ESPHome nodes (JoJo tank monitor etc.)</td></tr>
+      <tr><td>Frigate</td><td class="num">15</td><td>NVR-derived camera devices</td></tr>
+      <tr><td>Victron Energy</td><td class="num">7</td><td>Cerbo GX, inverter, MPPTs, battery</td></tr>
+      <tr><td>LUMI (Aqara)</td><td class="num">7</td><td>Buttons + motion/contact sensors</td></tr>
+      <tr><td>EZVIZ / Apple / Google</td><td class="num">5 / 7 / 7</td><td>Gate camera · phones &amp; watch · Cast targets</td></tr>
+      <tr><td>Brother / HEIMAN / eWeLink</td><td class="num">5 / 3 / 4</td><td>Printer · Zigbee sensors · switches</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Zigbee mesh — 31 devices on ZHA (Sonoff CC2652 coordinator)</h4>
+  <div class="chips">
+    <span class="chip n">Kitchen Button (Aqara)</span><span class="chip n">Bedroom Button (Aqara)</span><span class="chip n">Patio Button (Aqara)</span><span class="chip n">Kitchen / Driveway / Main Bedroom / Bathroom lights</span><span class="chip n">Hallway Light</span><span class="chip n">Study &amp; Liam lamps</span><span class="chip n">Room temp/humidity sensors ×6</span><span class="chip n">Lounge + Study occupancy (SNZB-06P)</span><span class="chip n">Window contacts ×4</span><span class="chip n">Vibration sensors ×3</span><span class="chip n">TV Room plug</span>
+  </div>
+  <div class="callout">
+    <span class="lt">Known hardware pain worth designing around</span>
+    <p>The <strong>kitchen and bedroom Aqara buttons sit on weak links (LQI 11–18)</strong> — Aqara devices are notoriously incompatible with Tuya/Sonoff routers and cling to the coordinator. Presses are occasionally missed. Any UX that depends on those buttons should degrade gracefully. Frigate also runs <strong>CPU-only detection</strong> across 6 cameras, so nothing new should add local inference load.</p>
+  </div>
+</section>
+
+<!-- ================= INTEGRATIONS ================= -->
+<section id="integrations">
+  <div class="sechead"><h2>Integrations</h2><span class="sectag">170 config entries</span></div>
+  <div class="grid2">
+    <div class="card"><h4>Energy &amp; environment</h4><ul>
+      <li><code>victron_gx</code> — Cerbo, local MQTT push</li>
+      <li><code>victron_remote_monitoring</code> — VRM forecasts</li>
+      <li><code>forecast_solar</code>, <code>co2signal</code></li>
+      <li><code>powercalc</code> ×14 — virtual power for unmetered loads</li>
+      <li><code>utility_meter</code> ×10, <code>integration</code> ×5 (Riemann)</li>
+      <li>Native Modbus: 41 register sensors from the Cerbo</li>
+    </ul></div>
+    <div class="card"><h4>Security &amp; cameras</h4><ul>
+      <li><code>olarm</code> — official integration, OAuth2 + MQTT push</li>
+      <li><code>frigate</code> — 6 AI cameras</li>
+      <li><code>hikvision_next</code>, <code>ezviz</code> ×6, <code>go2rtc</code></li>
+      <li><code>llmvision</code> ×3 — Gemini vision on camera events</li>
+    </ul></div>
+    <div class="card"><h4>AI &amp; voice</h4><ul>
+      <li><code>google_generative_ai_conversation</code> — Gemini + AI Task</li>
+      <li><code>google_cloud</code> — <strong>primary TTS/STT</strong></li>
+      <li><code>mcp_server</code> — HA exposed as MCP</li>
+      <li><code>conversation</code>, <code>assist_pipeline</code> (fully Google)</li>
+    </ul></div>
+    <div class="card"><h4>Home &amp; family</h4><ul>
+      <li><code>zha</code>, <code>matter</code>, <code>mqtt</code>, <code>tasmota</code>, <code>tplink</code> ×13, <code>sonoff</code>, <code>wyzeapi</code>, <code>tuya_local</code></li>
+      <li><code>icloud</code>, <code>mobile_app</code> ×4, <code>ibeacon</code>, <code>proximity</code></li>
+      <li><code>oura</code>, <code>local_todo</code> ×5, <code>local_calendar</code></li>
+      <li><code>plex</code>, <code>cast</code>, <code>androidtv_remote</code> ×2, <code>homekit</code> ×29</li>
+    </ul></div>
+    <div class="card"><h4>Network &amp; system</h4><ul>
+      <li><code>asuswrt</code>, <code>tplink_deco</code>, <code>nextdns</code>, <code>nmap_tracker</code>, <code>upnp</code></li>
+      <li><code>influxdb</code>, <code>systemmonitor</code>, <code>speedtestdotnet</code>, <code>fastdotcom</code></li>
+      <li><code>watchman</code>, <code>spook</code>, <code>hacs</code>, <code>backup</code></li>
+    </ul></div>
+    <div class="card"><h4>Custom components (HACS)</h4><ul>
+      <li>alarmo · blitzortung · browser_mod · frigate · hacs</li>
+      <li>hikvision_next · linkplay · llmvision · multiscrape</li>
+      <li>olarm · oura · powercalc · scheduler · sonoff</li>
+      <li>spook · tplink_deco · tuya_local · variable</li>
+      <li>watchman · weatherdotcom · webrtc · wyzeapi · yamaha_ynca</li>
+    </ul></div>
+  </div>
+  <p class="prose" style="margin-top:14px"><em>Recently removed as dead weight:</em> <code>victron</code> (HACS Modbus), <code>victron_vrm_api</code>, <code>eskom_loadshedding</code>, <code>load_shedding</code>, <code>nodered</code>, and the Piper/Wyoming TTS integration — all had zero config entries and zero entities.</p>
+</section>
+
+<!-- ================= ADDONS ================= -->
+<section id="addons">
+  <div class="sechead"><h2>Add-ons</h2><span class="sectag">18 installed</span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Add-on</th><th>Version</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>MariaDB</td><td>3.0.1</td><td>Recorder database (external)</td></tr>
+      <tr><td>InfluxDB</td><td>5.0.2</td><td>Long-term time series</td></tr>
+      <tr><td>Grafana</td><td>12.1.0</td><td>Analytics (largely superseded by the PWA)</td></tr>
+      <tr><td>Mosquitto broker</td><td>7.1.0</td><td>MQTT — Frigate, Victron, Olarm</td></tr>
+      <tr><td>Frigate</td><td>0.17.2</td><td>NVR, 6 cameras, CPU detection, GenAI review summaries</td></tr>
+      <tr><td>Matter Server</td><td>9.1.1</td><td>Matter devices</td></tr>
+      <tr><td>NGINX SSL proxy + Let's Encrypt</td><td>4.5.1 / 6.4.0</td><td>TLS for <code>ha.helloliam.co.za</code></td></tr>
+      <tr><td>Samba share</td><td>12.10.0</td><td>Config access</td></tr>
+      <tr><td>Studio Code Server / File editor</td><td>6.0.1 / 6.1.0</td><td>Config editing</td></tr>
+      <tr><td>Terminal &amp; SSH / Advanced SSH</td><td>10.3.0 / 24.0.1</td><td>Shell access</td></tr>
+      <tr><td>Log Viewer / Glances</td><td>0.17.1 / 0.22.0</td><td>Diagnostics</td></tr>
+      <tr><td>phpMyAdmin / TasmoAdmin</td><td>0.13.0 / 0.33.0</td><td>DB + Tasmota device admin</td></tr>
+      <tr><td>AirCast</td><td>5.1.1</td><td>AirPlay → Cast bridge</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose"><strong>Platform:</strong> HA OS 18.2 · Core 2026.8.1 · Supervisor 2026.07.5. Self-hosted at <code>ha.helloliam.co.za</code> — <em>no Nabu Casa</em> (cancelled), so there is no vendor safety net for backups or remote access.</p>
+</section>
+
+<!-- ================= ROOMS ================= -->
+<section id="rooms">
+  <div class="sechead"><h2>Floors &amp; rooms</h2><span class="sectag">3 floors · 20 areas</span></div>
+  <p class="prose">Floors were only defined this week — before that all 22 areas were floorless, which made HA 2026.7's floor/area-targeted automations unreachable. Two empty duplicate areas were deleted.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Floor</th><th>Rooms</th><th class="num">Entities</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Ground Floor</strong></td><td>Entrance · Laundry · Store Room</td><td class="num">92</td></tr>
+      <tr><td><strong>First Floor</strong><br><span style="color:var(--muted);font-size:.85em">most of the living space</span></td><td>Kitchen (208) · Main Bedroom (186) · Living Room (109) · Study (484) · Hallway · Kids Room · Guest Room · Dining · Lounge · Liam's Room · School Room · Bedroom</td><td class="num">1,149</td></tr>
+      <tr><td><strong>Outside</strong></td><td>Back Yard (323) · Front Yard (160) · Patio · Sidewalk</td><td class="num">491</td></tr>
+    </tbody>
+  </table></div>
+  <p class="prose"><em>Note the unusual layout:</em> the ground floor is only the store room, laundry and entrance hall — the family actually lives on the first floor. Worth respecting in any floor-plan visualisation.</p>
+</section>
+
+<!-- ================= BACKEND ================= -->
+<section id="backend">
+  <div class="sechead"><h2>Backend &amp; data</h2><span class="sectag">Firebase</span></div>
+  <div class="grid2">
+    <div class="card"><h4>Cloud Functions (30)</h4><ul>
+      <li><code>homeWatchdog</code> — 30-min sweep, threshold alerts</li>
+      <li><code>anomalyNudges</code> — 2-hourly Gemini contextual scan</li>
+      <li><code>morningBriefing</code> / <code>eveningBriefing</code> / <code>getBriefing</code></li>
+      <li><code>explainChart</code> — cached chart captions</li>
+      <li><code>warehouseSnapshot</code> — nightly → BigQuery</li>
+      <li><code>kidPayout</code>, <code>syncMoneyToHA</code>, <code>refreshParcels</code></li>
+      <li><code>waInbound</code> — WhatsApp command channel</li>
+      <li><code>trelloApi</code>, <code>parseDocument</code>, <code>sendPush</code></li>
+      <li>Screening Room: <code>analyzeMovie</code>, <code>whereToWatch</code>, <code>tmdbSearch</code>, <code>discussTitle</code>, <code>similarTitles</code>, <code>getTrailer</code>, music equivalents</li>
+    </ul></div>
+    <div class="card"><h4>Firestore collections</h4><ul>
+      <li><code>action_log</code> — every tap + view open (frecency)</li>
+      <li><code>access_log</code> — sign-ins and view opens</li>
+      <li><code>nudges</code> — proactive AI cards</li>
+      <li><code>chartExplain</code> — cached chart captions</li>
+      <li><code>prayers</code>, <code>gratitude</code> — faith features</li>
+      <li><code>kids_payouts</code>, <code>responsibilities</code>, <code>shopping</code>, <code>parcels</code></li>
+      <li><code>watchlist*</code>, <code>music_items</code> — Screening Room</li>
+    </ul></div>
+  </div>
+  <p class="prose" style="margin-top:14px">Auth is Google sign-in with a Firestore-rules allow-list and three roles — <strong>owner / member / guest</strong>. Guests get a forced restricted view with security, cameras, location and health hidden. There is also a <strong>Sabbath mode</strong> that quietens work, admin and money views. Both are real design states worth accounting for.</p>
+</section>
+
+<!-- ================= HA ================= -->
+<section id="ha">
+  <div class="sechead"><h2>The Home Assistant side</h2><span class="sectag">Capability, not UI</span></div>
+  <p class="prose">Christo explicitly invited ideas here — just not dashboard ideas. Scale: <strong>424 automations</strong> (374 enabled), <strong>101 scripts</strong>, <strong>111 feature packages</strong> in <code>/config/packages/</code>.</p>
+
+  <h4>What's already sophisticated</h4>
+  <ul class="plain">
+    <li><strong>Solar load-shifting</strong> — surplus detection with hysteresis (PV on &gt;2000W, stays on until &lt;1500W), asymmetric debounce, peak-tariff lockout, and an EMHASS interlock that cleanly hands pump control back and forth.</li>
+    <li><strong>Arrival intelligence</strong> — sensor fusion across car occupancy zones, plate recognition, phone presence and a reliability-weighted phone sensor.</li>
+    <li><strong>Context-aware buttons</strong> — the bedroom button's single press reads time-of-day <em>and</em> alarm state to decide between bedtime, get-up, back-to-bed and daytime behaviours.</li>
+    <li><strong>Announcement pipeline</strong> — TTS with quiet hours, focus gating and a digest queue.</li>
+  </ul>
+
+  <h4>Known-weak, if you want targets</h4>
+  <ul class="plain">
+    <li><strong>Room-level presence doesn't exist.</strong> Presence is phone-GPS + a few occupancy sensors. BLE proxies with IRK would make iPhones room-level sensors with no app — the single biggest missing input.</li>
+    <li><strong>No per-circuit energy monitoring</strong> — Powercalc estimates fill gaps, but attribution is incomplete.</li>
+    <li><strong>A flaky Tapo cloud relay</strong> controls the street lights and drops commands; a self-heal loop papers over it.</li>
+    <li><strong>Scripts aren't exposed to the LLM</strong> as tools, which is the highest-leverage way to make voice/NL control reliable.</li>
+    <li><strong>Credentials in plaintext</strong> — the Frigate config carries the MQTT password and four RTSP camera passwords.</li>
+  </ul>
+
+  <div class="callout warn">
+    <span class="lt">A hard-won lesson worth carrying forward</span>
+    <p>A bare <code>to: "on"</code> state trigger in HA also matches <code>unavailable → on</code>. Template sensors briefly go unavailable on <em>every</em> config reload and restart — so an auto-disarm automation triggered by a template-backed sensor <strong>silently disarmed the house alarm on every reload</strong>, including minutes after it was deliberately armed for the night. Anything safety-critical must pin <code>from:</code>, and must never be undone by an inferred state.</p>
+  </div>
+</section>
+
+<!-- ================= CONSTRAINTS ================= -->
+<section id="constraints">
+  <div class="sechead"><h2>Hard constraints</h2><span class="sectag">Read before designing</span></div>
+  <div class="tablewrap"><table>
+    <thead><tr><th>Constraint</th><th>Why it's immovable</th></tr></thead>
+    <tbody>
+      <tr><td><strong>No new subscriptions or running cost</strong></td><td>Stated explicitly. Anything per-use needs caching or a free tier.</td></tr>
+      <tr><td><strong>Cannot connect to a LAN IP</strong></td><td>The app is HTTPS, so <code>ws://192.168.x.x</code> is blocked mixed content with no override. Chrome's Local Network Access excludes WebSockets; Safari has no implementation. Split-horizon DNS is the only fix, and it's network work.</td></tr>
+      <tr><td><strong>iOS notifications are immutable</strong></td><td>No action buttons, no images, <code>tag</code> doesn't replace. Design digests, not alerts.</td></tr>
+      <tr><td><strong>No background sync on iOS</strong></td><td>Never shipped, no standards position. Don't design around it.</td></tr>
+      <tr><td><strong>Home-screen install is required for push</strong></td><td>Push is silently absent in a Safari tab. Any push UI must be hidden until installed.</td></tr>
+      <tr><td><strong>Frigate is CPU-only</strong></td><td>6 cameras, no accelerator. Nothing may add local inference.</td></tr>
+      <tr><td><strong>Load shedding is over</strong></td><td>Suspended nationally since May 2025. Don't build features around scheduled outages — but <em>do</em> keep outage resilience.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<footer class="end">
+  <p><strong>Provenance.</strong> Every number here was read from the live system on 9 August 2026 — entity and device counts from the running state machine and registries, integrations from config entries, add-ons from the device registry, floors and areas post-migration. Nothing is estimated. Where something couldn't be verified it is not claimed.</p>
+  <p style="margin-top:12px"><strong>Repos.</strong> Portal: <code>/Users/christo/Code/HA_Portal</code> (branch <code>portal-vision</code>, live at <code>helloliam-ha-dashboard.web.app</code>). HA config: <code>/config</code> via Samba. Screening Room is a separate repo sharing the same Firebase backend.</p>
+</footer>
+
+</div></div>

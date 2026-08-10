@@ -25,7 +25,7 @@
   <div class="kpis">
     <div class="card k">
       <div class="lb">Total draw</div>
-      <div class="big">{power(totalDraw).val}<span class="u"> {power(totalDraw).unit}</span></div>
+      <div class="big">{power(totalDraw).val}<span class="u">{power(totalDraw).unit}</span></div>
       <div class="sub" style="color:var(--warning)">{onCount} appliance{onCount === 1 ? "" : "s"} on</div>
     </div>
     <div class="card k">
@@ -50,7 +50,7 @@
           {@const p = ha.num(a.power)}
           {@const st = appState(a)}
           {@const avail = ha.available(a.sw)}
-          <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw)} disabled={!avail}>
+          <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw, a.label)} disabled={!avail}>
             <span class="aicn"><Icon name={a.ic} size={18} /></span>
             <span class="al">
               <span class="anm">{a.label}</span>
@@ -73,7 +73,7 @@
   .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .k { padding: 16px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
   .pad { padding: 20px 22px; }

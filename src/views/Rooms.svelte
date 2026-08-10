@@ -5,38 +5,61 @@
   import AreaChart from "../lib/components/AreaChart.svelte";
   import Overlay from "../lib/components/Overlay.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
+  import BatterySignal from "../lib/components/BatterySignal.svelte";
 
   type Dev = { id: string; label: string; icon: string; power?: string };
   type TempSrc = { id: string; label: string };
   type Room = { id: string; label: string; left: number; top: number; w: number; h: number; temps?: TempSrc[]; hum?: string; occ?: string; lights?: Dev[]; appliances?: Dev[] };
 
   const PLAN: Room[] = [
-    { id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3 },
-    { id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27, temps: [{ id: "sensor.patio_sensor_temperature", label: "Braai" }], hum: "sensor.patio_sensor_humidity", lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }] },
+    {
+      id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3, occ: "binary_sensor.helloliam_alarm_zone_023_beam_patio",
+      temps: [{ id: "sensor.back_yard_temperature", label: "Outside" }],
+      lights: [
+        { id: "switch.patio_lamp", label: "Patio Lamp", icon: "🪑" },
+        { id: "light.back_yard_pool_light", label: "Pool", icon: "🏊", power: "sensor.pool_light_power" },
+      ],
+    },
+    {
+      id: "braai", label: "Braai", left: 0, top: 24.3, w: 22.6, h: 27,
+      temps: [{ id: "sensor.patio_sensor_temperature", label: "Braai" }], hum: "sensor.patio_sensor_humidity",
+      lights: [{ id: "light.back_yard_fire_pit_light", label: "Fire Pit", icon: "🔥" }],
+    },
     {
       id: "study", label: "Study", left: 22.6, top: 24.3, w: 19.4, h: 27, occ: "binary_sensor.study_occupancy",
-      temps: [
-        { id: "sensor.study_bt_device_scanner_desk_temperature", label: "Desk" },
-        { id: "sensor.study_temperature", label: "Study" },
-      ],
-      hum: "sensor.study_bt_device_scanner_desk_humidity",
+      temps: [{ id: "sensor.study_sensor_temperature", label: "Study" }], hum: "sensor.study_sensor_humidity",
       lights: [
         { id: "light.study_lamp", label: "Study Lamp", icon: "📖", power: "sensor.study_lamp_power" },
         { id: "light.study_light_1", label: "Study Light 1", icon: "💡", power: "sensor.study_light_1_power" },
         { id: "light.study_light_2", label: "Study Light 2", icon: "💡", power: "sensor.study_light_2_power" },
       ],
-      appliances: [{ id: "switch.study_heater", label: "Study Heater", icon: "🔥", power: "sensor.study_heater_current_consumption" }],
+      appliances: [
+        { id: "switch.study_heater", label: "Heater", icon: "🔥", power: "sensor.study_heater_current_consumption" },
+        { id: "switch.work_pc", label: "Work PC", icon: "💻", power: "sensor.work_pc_current_consumption" },
+        { id: "switch.study_router_and_ha", label: "Router & HA", icon: "📶", power: "sensor.study_router_and_ha_power" },
+      ],
     },
-    { id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23, temps: [{ id: "sensor.liam_s_room_temperature", label: "Liam" }], hum: "sensor.liam_s_room_humidity" },
-    { id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23, temps: [{ id: "sensor.adjusted_temperature", label: "Eben" }], lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡", power: "sensor.eben_room_lamp_power" }] },
     {
-      id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23,
+      id: "liam", label: "Liam", left: 41.9, top: 28.4, w: 17.2, h: 23,
+      temps: [{ id: "sensor.liam_s_room_temperature", label: "Liam" }], hum: "sensor.liam_s_room_humidity",
+      lights: [{ id: "light.liam_study_lamp", label: "Liam's Lamp", icon: "🛏️" }],
+    },
+    {
+      id: "eben", label: "Eben", left: 59.1, top: 28.4, w: 16.1, h: 23,
+      temps: [{ id: "sensor.eben_s_room_temperature", label: "Eben" }],
+      lights: [{ id: "light.eben_room_lamp", label: "Eben Lamp", icon: "💡", power: "sensor.eben_room_lamp_power" }],
+    },
+    {
+      id: "main", label: "Main", left: 75.3, top: 28.4, w: 24.7, h: 23, occ: "binary_sensor.main_bed_occupancy_stable",
       temps: [{ id: "sensor.main_room_temperature", label: "Main" }], hum: "sensor.main_bedroom_lamp_si7021_humidity",
       lights: [
         { id: "switch.main_bedroom_lamp", label: "Bedside", icon: "🛏️", power: "sensor.main_bedroom_lamp_power" },
-        { id: "light.main_bedroom_light", label: "Ceiling", icon: "💡" },
-        { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+        { id: "switch.main_bedroom_light", label: "Ceiling", icon: "💡" },
+        { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+        { id: "switch.bedroom_reading_lamp", label: "Reading", icon: "📖" },
+        { id: "switch.main_bedroom_outdoor_lights", label: "Outdoor", icon: "🌙" },
       ],
+      appliances: [{ id: "switch.main_bedroom_plugs", label: "Plugs", icon: "🔌", power: "sensor.main_bedroom_plugs_current_consumption" }],
     },
     {
       id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8, occ: "binary_sensor.lounge_area_occupancy",
@@ -44,11 +67,17 @@
       lights: [
         { id: "switch.living_room_lamp", label: "Living", icon: "🛋️", power: "sensor.living_room_lamp_power" },
         { id: "switch.tv_room_lamp", label: "TV Lamp", icon: "📺", power: "sensor.tv_room_lamp_power" },
+        { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️" },
       ],
+      appliances: [{ id: "switch.living_room_main_tv_plug", label: "TV", icon: "📺", power: "sensor.living_room_main_tv_plug_power" }],
     },
-    { id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8, temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity", lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️", power: "sensor.dining_room_lamp_power" }] },
     {
-      id: "kitchen", label: "Kitchen", left: 40.9, top: 57.4, w: 15.6, h: 27.7,
+      id: "dining", label: "Dining", left: 25.3, top: 51.4, w: 15.6, h: 33.8,
+      temps: [{ id: "sensor.living_room_sensor_temperature", label: "Dining" }], hum: "sensor.living_room_sensor_humidity",
+      lights: [{ id: "light.dining_room_lamp", label: "Dining", icon: "🍽️", power: "sensor.dining_room_lamp_power" }],
+    },
+    {
+      id: "kitchen", label: "Kitchen", left: 40.9, top: 57.4, w: 15.6, h: 27.7, occ: "binary_sensor.helloliam_alarm_zone_009_pir_kitchen",
       temps: [{ id: "sensor.kitchen_sensor_temperature", label: "Kitchen" }], hum: "sensor.kitchen_sensor_humidity",
       lights: [
         { id: "switch.kitchen_lights", label: "Ceiling", icon: "💡", power: "sensor.kitchen_lights_power" },
@@ -63,22 +92,88 @@
         { id: "switch.nespresso", label: "Nespresso", icon: "☕", power: "sensor.nespresso_current_consumption" },
       ],
     },
-    { id: "passage", label: "Passage", left: 40.9, top: 51.4, w: 59.1, h: 6.1 },
+    {
+      id: "passage", label: "Passage", left: 40.9, top: 51.4, w: 59.1, h: 6.1, occ: "binary_sensor.hallway_motion_sensor_occupancy",
+      lights: [{ id: "switch.hallway_light", label: "Hallway", icon: "🚶" }],
+    },
     { id: "bath", label: "Bath", left: 56.5, top: 57.4, w: 11.8, h: 27.7 },
-    { id: "bed3", label: "Bed 3", left: 68.3, top: 57.4, w: 16.7, h: 27.7, temps: [{ id: "sensor.guest_room_temperature", label: "Guest" }], hum: "sensor.guest_room_humidity", lights: [{ id: "light.guest_room_guest_room", label: "Guest Lamp", icon: "🛏️", power: "sensor.guest_room_lamp_power" }] },
-    { id: "ensuite", label: "En-suite", left: 85, top: 57.4, w: 15.1, h: 27.7 },
-    { id: "entrance", label: "Entry", left: 0, top: 85.1, w: 15.6, h: 14.9 },
+    {
+      id: "bed3", label: "Guest", left: 68.3, top: 57.4, w: 16.7, h: 27.7, occ: "binary_sensor.helloliam_alarm_zone_002_pir_guest_room",
+      temps: [{ id: "sensor.guest_room_temperature", label: "Guest" }], hum: "sensor.guest_room_humidity",
+      lights: [{ id: "light.guest_room_guest_room", label: "Guest Lamp", icon: "🛏️", power: "sensor.guest_room_lamp_power" }],
+    },
+    { id: "ensuite", label: "En-suite", left: 85, top: 57.4, w: 15.1, h: 27.7, lights: [{ id: "switch.main_bathroom_light", label: "Bathroom", icon: "🚿" }] },
+    {
+      id: "entrance", label: "Entry", left: 0, top: 85.1, w: 15.6, h: 14.9, occ: "binary_sensor.entrance_entrance_sensor",
+      temps: [{ id: "sensor.entrance_entrance_sensor_temperature", label: "Entry" }], hum: "sensor.entrance_entrance_sensor_humidity",
+    },
   ];
 
-  // 5-band temperature heat scale (house runs cold; bands per prototype 14/17/21.5/25)
+  // 5-band temperature heat scale. Same bands as before (14 / 17 / 21.5 / 25),
+  // re-spaced onto blue -> amber.
+  //
+  // The old ramp was #3b82f6 -> #38bdf8 -> #34d399 -> #fbbf24 -> #fb7185. Green
+  // through amber to rose is the single ramp Christo cannot read: under
+  // deuteranopia bands 3, 4 and 5 converge, so "comfortable" and "hot" were the
+  // same swatch. This one also drops monotonically in luminance, so the ordering
+  // survives with no colour discrimination at all.
+  const HEAT = ["--heat-1", "--heat-2", "--heat-3", "--heat-4", "--heat-5"] as const;
+  function heatVar(t: number): (typeof HEAT)[number] {
+    return t < 14 ? HEAT[0] : t < 17 ? HEAT[1] : t < 21.5 ? HEAT[2] : t < 25 ? HEAT[3] : HEAT[4];
+  }
   function heat(t: number | null): string {
     if (t == null) return "rgba(255,255,255,.03)";
-    const c = t < 14 ? "#3b82f6" : t < 17 ? "#38bdf8" : t < 21.5 ? "#34d399" : t < 25 ? "#fbbf24" : "#fb7185";
-    return `color-mix(in srgb, ${c} 26%, transparent)`;
+    return `color-mix(in srgb, var(${heatVar(t)}) 26%, transparent)`;
   }
+  // ── Overlay (PLATFORM-CONCEPTS §7) ────────────────────────────────────────
+  // One drawing, several questions. The plan is the real percentage-positioned
+  // floor plan; the overlay re-reads it as watts and occupancy instead of
+  // temperature.
+  //
+  // THE LEGEND MUST SWAP WITH IT. In power mode blue means occupied and amber
+  // means drawing power, so leaving the temperature ramp underneath would
+  // describe a scale the drawing is no longer using — and since colour is never
+  // the only signal, the legend is part of the signal.
+  type Overlay = "temp" | "power";
+  let overlay = $state<Overlay>("temp");
+
+  function roomWatts(r: Room): number {
+    return [...(r.lights ?? []), ...(r.appliances ?? [])].reduce(
+      (sum, d) => sum + (d.power && ha.isOn(d.id) ? (ha.num(d.power) ?? 0) : 0),
+      0,
+    );
+  }
+
+  // Fill for power mode. Amber scaled by draw, blue when occupied and drawing
+  // nothing — the two questions the overlay exists to answer at once.
+  function powerFill(r: Room): string {
+    const w = roomWatts(r);
+    const occ = r.occ ? ha.isOn(r.occ) : false;
+    if (w > 0) {
+      // 0–600 W maps to 8–34% — a scale, not a threshold, so a kettle and a
+      // standby LED do not look the same.
+      const pct = Math.min(34, 8 + (Math.min(w, 600) / 600) * 26);
+      return `color-mix(in srgb, var(--warn) ${pct.toFixed(0)}%, transparent)`;
+    }
+    if (occ) return "color-mix(in srgb, var(--ok) 20%, transparent)";
+    return "rgba(255,255,255,.03)";
+  }
+
   const HEAT_LEGEND = [
-    { c: "#3b82f6", l: "<14°" }, { c: "#38bdf8", l: "14–17°" }, { c: "#34d399", l: "17–21°" }, { c: "#fbbf24", l: "22–25°" }, { c: "#fb7185", l: ">25°" },
+    { c: "var(--heat-1)", l: "<14°" },
+    { c: "var(--heat-2)", l: "14–17°" },
+    { c: "var(--heat-3)", l: "17–21°" },
+    { c: "var(--heat-4)", l: "22–25°" },
+    { c: "var(--heat-5)", l: ">25°" },
   ];
+
+  // Comfort labels ride the same ramp, so the pill and the room fill can never
+  // disagree. Label carries the meaning; colour only reinforces it.
+  function comfortOf(t: number | null) {
+    if (t == null) return { label: "No sensor", color: "var(--mut)" };
+    const label = t < 14 ? "Cold" : t < 17 ? "Cool" : t < 21.5 ? "Comfortable" : t < 25 ? "Warm" : "Hot";
+    return { label, color: `var(${heatVar(t)})` };
+  }
 
   let activeId = $state("study");
   const active = $derived(PLAN.find((r) => r.id === activeId)!);
@@ -97,21 +192,14 @@
     if (t) ha.history(t, 24).then((h) => (hist = h));
   });
 
-  const comfort = $derived.by(() => {
-    if (temp == null) return { label: "No sensor", color: "var(--muted)" };
-    if (temp < 14) return { label: "Cold", color: "#3b82f6" };
-    if (temp < 17) return { label: "Cool", color: "var(--water)" };
-    if (temp < 21.5) return { label: "Comfortable", color: "var(--success)" };
-    if (temp < 25) return { label: "Warm", color: "var(--warning)" };
-    return { label: "Hot", color: "var(--error)" };
-  });
+  const comfort = $derived(comfortOf(temp));
 
   const pw = (id?: string) => (id ? `${power(ha.num(id)).val} ${power(ha.num(id)).unit}` : "");
 
   // Outdoor actual vs weather-service forecast (48h overlay)
   let outHist = $state<{ t: number; v: number }[]>([]);
   let fcHist = $state<{ t: number; v: number }[]>([]);
-  // Floating (portable) temperature sensor — roams the house, not tied to a room.
+  // Courtyard / back-door outdoor sensor (temp + humidity outside the back door).
   let fhist = $state<{ t: number; v: number }[]>([]);
   onMount(async () => {
     outHist = await ha.history("sensor.outdoor_temperature", 48);
@@ -120,28 +208,22 @@
   });
   const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
 
-  // Floating Temp Sensor (portable Zigbee): temp + humidity + light + battery.
+  // Courtyard / back-door sensor (Zigbee, outdoors): temp + humidity + light + battery.
   const FLOAT_T = "sensor.floating_temp_sensor_temperature";
   const ftemp = $derived(ha.num(FLOAT_T));
   const fhum = $derived(ha.num("sensor.floating_temp_sensor_humidity"));
   const flux = $derived(ha.num("sensor.floating_temp_sensor_illuminance"));
   const fbatt = $derived(ha.num("sensor.floating_temp_sensor_battery"));
-  const fcomfort = $derived.by(() => {
-    const t = ftemp;
-    if (t == null) return { label: "No reading", color: "var(--muted)" };
-    if (t < 14) return { label: "Cold", color: "#3b82f6" };
-    if (t < 17) return { label: "Cool", color: "var(--water)" };
-    if (t < 21.5) return { label: "Comfortable", color: "var(--success)" };
-    if (t < 25) return { label: "Warm", color: "var(--warning)" };
-    return { label: "Hot", color: "var(--error)" };
-  });
+  const fcomfort = $derived(
+    ftemp == null ? { label: "No reading", color: "var(--mut)" } : comfortOf(ftemp),
+  );
 </script>
 
 {#snippet devtile(d: Dev)}
   {@const on = ha.isOn(d.id)}
   {@const w = d.power ? ha.num(d.power) : null}
   <div class="ltile" class:on>
-    <div class="ltap" role="button" tabindex="0" onclick={() => ha.toggle(d.id)} onkeydown={(e) => { if (e.key === "Enter") ha.toggle(d.id); }}>
+    <div class="ltap" role="button" tabindex="0" onclick={() => ha.toggle(d.id, d.label)} onkeydown={(e) => { if (e.key === "Enter") ha.toggle(d.id, d.label); }}>
       <span class="li">{d.icon}</span>
       <span class="ll">
         <span class="ln">{d.label}</span>
@@ -154,25 +236,47 @@
 
 <div class="grid">
   <div class="card pad">
-    <div class="rh"><span class="lb">302 Wyoming · tap a room</span><span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span></div>
+    <div class="rh">
+      <span class="lb">302 Wyoming · tap a room</span>
+      <span class="ovl" role="group" aria-label="Plan overlay">
+        <button class="ob" class:on={overlay === "temp"} onclick={() => (overlay = "temp")}>Temperature</button>
+        <button class="ob" class:on={overlay === "power"} onclick={() => (overlay = "power")}>Power &amp; people</button>
+      </span>
+      <span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span>
+    </div>
     <div class="plan">
       {#each PLAN as r}
         {@const t = r.temps?.[0] ? ha.num(r.temps[0].id) : null}
         {@const lit = (r.lights ?? []).some((l) => ha.isOn(l.id)) || (r.appliances ?? []).some((a) => ha.isOn(a.id))}
         {@const occ = r.occ ? ha.isOn(r.occ) : false}
-        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : heat(t)}" onclick={() => (activeId = r.id)}>
+        <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : overlay === 'power' ? powerFill(r) : heat(t)}" onclick={() => (activeId = r.id)}>
           <span class="rn">{r.label}</span>
-          {#if t != null}<span class="rt">{n(t, 1)}°</span>{/if}
+          {#if overlay === "power"}
+            {@const w = roomWatts(r)}
+            {#if w > 0}<span class="rt">{power(w).val}{power(w).unit}</span>{/if}
+          {:else if t != null}
+            <span class="rt">{n(t, 1)}°</span>
+          {/if}
           {#if lit}<span class="dot"></span>{/if}
           {#if occ}<span class="odot"></span>{/if}
         </button>
       {/each}
     </div>
-    <div class="legend">
-      <span class="ll2">Cool</span>
-      {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
-      <span class="ll2">Warm</span>
-    </div>
+    <!-- Swaps with the overlay: a ramp legend under a drawing that is no longer
+         using the ramp is worse than no legend. -->
+    {#if overlay === "power"}
+      <div class="legend">
+        <span class="lg2"><span class="lcd" style="background:color-mix(in srgb, var(--ok) 45%, transparent)"></span>Occupied</span>
+        <span class="lg2"><span class="lcd" style="background:color-mix(in srgb, var(--warn) 45%, transparent)"></span>Drawing power</span>
+        <span class="ll2">deeper amber is more watts</span>
+      </div>
+    {:else}
+      <div class="legend">
+        <span class="ll2">Cool</span>
+        {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
+        <span class="ll2">Warm</span>
+      </div>
+    {/if}
   </div>
 
   <div class="card pad">
@@ -212,14 +316,37 @@
       <div class="lgrid">{#each active.appliances as d}{@render devtile(d)}{/each}</div>
     {/if}
 
+    <!-- Sensors last, completing the fixed order the brief specifies:
+         Temperature / Lights / Appliances / Sensors. Fixed because a panel whose
+         sections move around depending on what a room happens to have forces you
+         to re-read it every time you change rooms. -->
+    {#if active.occ || active.hum || temps.length > 1}
+      <div class="hr"></div>
+      <div class="lb" style="margin-bottom:11px">Sensors</div>
+      <div class="chips">
+        {#if active.occ}
+          <span class="chip"><span class="ck">Occupancy</span><span class="cv" style="color:{occupied ? 'var(--ok)' : 'var(--mut)'}">{occupied == null ? "—" : occupied ? "Occupied" : "Clear"}</span></span>
+        {/if}
+        {#if hum != null}
+          <span class="chip"><span class="ck">Humidity</span><span class="cv">{n(hum)}%</span></span>
+        {/if}
+        {#each temps.slice(1) as ts}
+          {@const tv = ha.num(ts.id)}
+          <span class="chip"><span class="ck">{ts.label}</span><span class="cv" style="color:{tempColor(tv)}">{tv != null ? n(tv, 1) + "°" : "—"}</span></span>
+        {/each}
+      </div>
+    {/if}
+
     {#if !temps.length && !active.lights?.length && !active.appliances?.length}
       <div class="none">No sensors or controls in this room.</div>
     {/if}
   </div>
 
+  <BatterySignal />
+
   {#if ha.available(FLOAT_T)}
     <div class="card pad">
-      <div class="rh"><span class="an">📟 Floating sensor</span><span class="sub">portable{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
+      <div class="rh"><span class="an">🌿 Courtyard / Back door</span><span class="sub">outside{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
       <div class="tr">
         <div class="bigt" style="color:{tempColor(ftemp)}">{n(ftemp, 1)}<span class="deg">°</span></div>
         <div class="pill" style="background:color-mix(in srgb,{fcomfort.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{fcomfort.color} 34%,transparent)">
@@ -248,6 +375,11 @@
 </div>
 
 <style>
+  .ovl { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--r-control); background: var(--fill); }
+  .ob { padding: 6px 11px; border-radius: 8px; font-size: 11.5px; font-weight: 700; color: var(--mut); background: none; min-height: 32px; }
+  .ob.on { background: var(--fill-strong); color: var(--tx); }
+  .lg2 { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--mut); }
+  .lcd { width: 10px; height: 10px; border-radius: 3px; flex: none; }
   .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
   .wide { grid-column: 1 / -1; }
@@ -262,7 +394,7 @@
   .room:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
   .dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 6px var(--warning); }
   .odot { position: absolute; top: 4px; left: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
-  .occ { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
+  .occ { font-size: 10px; font-weight: 700; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
   .occ.oon { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
   .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
   .legend .lc { width: 26px; height: 9px; border-radius: 2px; }

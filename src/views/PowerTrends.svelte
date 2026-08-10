@@ -238,10 +238,10 @@
 
   <!-- headline KPIs -->
   <div class="kpis">
-    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u"> kWh</span></div><div class="sub">over {spanTxt}</div></div>
+    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u">kWh</span></div><div class="sub">over {spanTxt}</div></div>
     <div class="card k"><div class="lb">Est. cost</div><div class="big">{rand(cost)}</div><div class="sub">@ {rand(tariff)}/kWh</div></div>
-    <div class="card k"><div class="lb">Average draw</div><div class="big">{power(avgW).val}<span class="u"> {power(avgW).unit}</span></div><div class="sub">live {liveW != null ? `${power(liveW).val} ${power(liveW).unit}` : "—"}</div></div>
-    <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u"> {power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
+    <div class="card k"><div class="lb">Average draw</div><div class="big">{power(avgW).val}<span class="u">{power(avgW).unit}</span></div><div class="sub">live {liveW != null ? `${power(liveW).val} ${power(liveW).unit}` : "—"}</div></div>
+    <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u">{power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
   </div>
 
   <!-- power over time (hourly W line) — the fine-grained trace -->
@@ -300,7 +300,7 @@
   .crow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
   .crow.dates { margin-top: 12px; }
   .fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
-  .flb { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .flb { font-size: 11px; font-weight: 700; color: var(--dim); }
   select, input[type="date"] {
     background: var(--soft); color: var(--text); border: 1px solid var(--line);
     border-radius: 10px; padding: 9px 12px; font-size: 14px; font-weight: 600; min-width: 220px;
@@ -321,7 +321,7 @@
   .k { padding: 16px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .big { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 14px; color: var(--dim); }
+  .u { font-size: 14px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
   .pad { padding: 18px 20px; }
@@ -330,7 +330,7 @@
 
   .ig { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .ic { display: flex; flex-direction: column; gap: 3px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,0.05); }
-  .il { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 0.4px; }
+  .il { font-size: 11px; font-weight: 700; color: var(--dim); }
   .iv { font-size: 18px; font-weight: 800; letter-spacing: -0.4px; }
   .is { font-size: 11.5px; color: var(--dim); }
   .sum { margin: 16px 0 0; font-size: 13.5px; line-height: 1.55; color: var(--text-2); }

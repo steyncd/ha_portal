@@ -16,6 +16,7 @@ const { defineSecret } = require("firebase-functions/params");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 const { Firestore } = require("@google-cloud/firestore");
+const { BigQuery } = require("@google-cloud/bigquery");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -833,6 +834,1451 @@ exports.refreshParcelsNow = onRequest(
     try { await admin.auth().verifyIdToken(idToken); }
     catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
     try { await refreshAllParcels(); res.status(200).json({ ok: true }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Home watchdog -------------------------------------------------------
+// Scheduled sweep of Home Assistant that pushes a notification the moment an
+// actionable problem appears — the proactive counterpart to the in-app "Needs
+// attention" card. It de-dupes via Firestore `watchdogState/{key}` so each
+// incident alerts once (on appearance), not every run; it re-arms when the
+// condition clears, so the next occurrence alerts again.
+
+// Fan a notification out to every registered device (shared with sendPush).
+async function pushToAll(title, body, tag) {
+  const snap = await db.collection("pushTokens").get();
+  const tokens = snap.docs.map((d) => d.id);
+  if (!tokens.length) return { sent: 0, note: "no devices" };
+  const resp = await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    webpush: { notification: { icon: "/favicon.svg", tag }, fcmOptions: { link: "/" } },
+    data: tag ? { tag } : {},
+  });
+  const dead = [];
+  resp.responses.forEach((r, i) => {
+    if (!r.success && ["messaging/registration-token-not-registered", "messaging/invalid-argument"].includes(r.error && r.error.code)) dead.push(tokens[i]);
+  });
+  await Promise.all(dead.map((t) => db.collection("pushTokens").doc(t).delete()));
+  return { sent: resp.successCount, failed: resp.failureCount, pruned: dead.length };
+}
+
+// Evaluate the ruleset against a fetched HA state map. Returns the list of
+// currently-firing incidents: { key, title, body }.
+function evalWatchdog(states) {
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+  const armed = (st("alarm_control_panel.olarm_alarm") || "").startsWith("armed");
+  // SAST = UTC+2 (no DST).
+  const hour = (new Date().getUTCHours() + 2) % 24;
+  const night = hour >= 21 || hour < 6;
+
+  const out = [];
+  const soc = num("sensor.victron_battery_soc");
+  if (soc != null && soc < 15) out.push({ key: "batt-crit", title: "🔋 Battery critically low", body: `Battery bank at ${Math.round(soc)}% — shed heavy loads.` });
+  else if (soc != null && soc < 30) out.push({ key: "batt-low", title: "🔋 Battery low", body: `Battery bank at ${Math.round(soc)}% — watch heavy appliances.` });
+
+  if (st("binary_sensor.helloliam_alarm_ac_power") === "off")
+    out.push({ key: "alarm-ac", title: "🔌 Alarm on backup power", body: "Mains lost to the alarm panel." });
+
+  const nobodyHome = on("binary_sensor.nobody_home") || st("sensor.home_occupancy") === "Empty";
+  if (nobodyHome && !armed && st("alarm_control_panel.olarm_alarm") !== "triggered")
+    out.push({ key: "alarm-empty", title: "🛡️ Alarm is off", body: "Nobody home and the alarm isn't armed." });
+
+  const doors = [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+    ["binary_sensor.helloliam_alarm_zone_024_door_lounge", "Lounge door"],
+  ].filter(([id]) => on(id)).map(([, label]) => label);
+  if (doors.length && (night || nobodyHome))
+    out.push({ key: "doors-open", title: "🚪 Door open", body: `${doors.join(", ")} open${night ? " after dark" : " while out"}.` });
+
+  if (on("binary_sensor.jojo_tank_monitor_tank_low_water_alert"))
+    out.push({ key: "tank-low", title: "💧 Water tank low", body: "The JoJo tank hit its low-water mark." });
+
+  if (on("binary_sensor.frigate_detection_stalled"))
+    out.push({ key: "frigate", title: "📷 Camera detection stalled", body: "Frigate has stopped processing detections." });
+
+  const sysIssues = num("sensor.system_health_issues");
+  if (sysIssues != null && sysIssues > 0)
+    out.push({ key: "sys", title: "🩺 System health", body: `${sysIssues} system health issue(s) need a look.` });
+
+  // Zigbee mesh health — ZHA per-device link quality (LQI 0–255) + reachability.
+  const zname = (e) => (e.attributes && e.attributes.friendly_name || e.entity_id).replace(/ ?(LQI|Lqi|lqi)$/, "").trim();
+  const lqiEnts = states.filter((e) => /_lqi$/.test(e.entity_id));
+  const weakZ = lqiEnts.filter((e) => { const v = parseFloat(e.state); return Number.isFinite(v) && v > 0 && v < 20; }).map(zname);
+  const offlineZ = lqiEnts.filter((e) => e.state === "unavailable").map(zname);
+  if (offlineZ.length)
+    out.push({ key: "zigbee-offline", title: "📡 Zigbee device offline", body: `Not responding: ${offlineZ.join(", ")}` });
+  if (weakZ.length)
+    out.push({ key: "zigbee-weak", title: "📡 Weak Zigbee link", body: `${weakZ.length} device(s) on a failing link (LQI < 20): ${weakZ.join(", ")}` });
+
+  return out;
+}
+
+async function runWatchdog() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const firing = evalWatchdog(states);
+  const firingKeys = new Set(firing.map((f) => f.key));
+
+  // Load prior active state.
+  const prior = await db.collection("watchdogState").get();
+  const wasActive = new Set(prior.docs.filter((d) => d.data().active).map((d) => d.id));
+
+  let pushed = 0;
+  for (const f of firing) {
+    if (!wasActive.has(f.key)) {
+      await pushToAll(f.title, f.body, f.key);
+      pushed++;
+    }
+    await db.collection("watchdogState").doc(f.key).set({ active: true, title: f.title, ts: Date.now() });
+  }
+  // Re-arm any rule that has cleared.
+  const cleared = [];
+  for (const key of wasActive) {
+    if (!firingKeys.has(key)) { await db.collection("watchdogState").doc(key).set({ active: false, ts: Date.now() }, { merge: true }); cleared.push(key); }
+  }
+  logger.info("watchdog", { firing: [...firingKeys], pushed, cleared });
+  return { firing: [...firingKeys], pushed, cleared };
+}
+
+exports.homeWatchdog = onSchedule(
+  { schedule: "every 30 minutes", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runWatchdog(); },
+);
+
+exports.homeWatchdogNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { const r = await runWatchdog(); res.status(200).json({ ok: true, ...r }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Proactive anomaly nudges --------------------------------------------
+// The watchdog above catches things we could think of in advance (thresholds we
+// hard-coded). This catches the ones we didn't: it hands Gemini a snapshot of
+// the house *in context* — time of day, who's home, what's armed, what's been
+// left running — and asks "is anything here worth interrupting a person about?"
+// That's the Alexa+ "your garage is unlocked and it's after 10pm" pattern.
+//
+// Alert fatigue is the failure mode that kills features like this, so the
+// design copies Alexa Hunches' two-stage split: the model PREDICTS, then a
+// separate deterministic gate decides whether it's allowed to SURFACE.
+// Gate rules: max 1 nudge per run, 6h cooldown per key, 3/day cap, quiet hours
+// 21:30–06:00 (unless the model marks it urgent), and anything the plain
+// watchdog already alerts on is suppressed as a duplicate.
+
+const NUDGE_DAILY_CAP = 3;
+const NUDGE_COOLDOWN_MS = 6 * 3600_000;
+
+// Condense ~5000 entities into the handful of facts that actually carry meaning
+// for "is something off?". Keeping this tight matters: a smaller, cleaner
+// context gives far better judgement than dumping the whole state machine.
+function homeContext(states) {
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+  const fname = (e) => (e.attributes && e.attributes.friendly_name) || e.entity_id;
+  // Minutes since an entity last changed — "how long has it been like this".
+  const mins = (id) => {
+    const lc = m[id] && m[id].last_changed;
+    if (!lc) return null;
+    const d = (Date.now() - Date.parse(lc)) / 60000;
+    return Number.isFinite(d) ? Math.round(d) : null;
+  };
+
+  const sast = new Date(Date.now() + 2 * 3600_000);
+  const hour = sast.getUTCHours();
+  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][sast.getUTCDay()];
+
+  const lightsOn = states
+    .filter((e) => /^(light|switch)\./.test(e.entity_id) && e.state === "on" && /light|lamp|spot/i.test(fname(e)))
+    .map((e) => ({ name: fname(e), onFor: mins(e.entity_id) }));
+
+  const openings = [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+    ["binary_sensor.helloliam_alarm_zone_024_door_lounge", "Lounge door"],
+    ["binary_sensor.helloliam_alarm_zone_030_beam_garage", "Garage"],
+  ].filter(([id]) => on(id)).map(([id, label]) => ({ name: label, openFor: mins(id) }));
+
+  // Power matters more than switch state here. Several of these are always-on
+  // plugs or pressure-driven pumps that sit energised and idle — the water pump
+  // reads "on" for 12h while drawing 3W. Reporting the switch alone made the
+  // model cry leak; reporting watts lets it tell "running" from "merely on".
+  const POWER_OF = {
+    "switch.pool_pump": "sensor.pool_pump_power_now",
+    "switch.borehole_pump": "sensor.borehole_pump_power_now",
+    "switch.water_pump": "sensor.water_pump_power",
+    "switch.kettle": "sensor.kettle_current_consumption",
+    "switch.study_heater": "sensor.study_heater_current_consumption",
+    "switch.tumble_dryer": "sensor.tumble_dryer_energy_power",
+    "switch.washing_machine": "sensor.washing_machine_energy_power",
+    "switch.top_loader": "sensor.top_loader_current_consumption",
+    "switch.dishwasher": "sensor.dishwasher_current_consumption",
+    "switch.air_fryer": "sensor.air_fryer_current_consumption",
+    "switch.microwave": "sensor.microwave_current_consumption",
+    "switch.nespresso": "sensor.nespresso_current_consumption",
+    "switch.work_pc": "sensor.work_pc_current_consumption",
+  };
+  // Above this many watts the device is genuinely doing work, not idling.
+  const RUNNING_W = { "switch.water_pump": 20, "switch.borehole_pump": 40, "switch.pool_pump": 40 };
+  const describe = (id) => {
+    const w = POWER_OF[id] ? num(POWER_OF[id]) : null;
+    const floor = RUNNING_W[id] ?? 5;
+    return {
+      name: fname(m[id]),
+      switchOnFor: mins(id),
+      watts: w,
+      actuallyRunning: w == null ? null : w > floor,
+    };
+  };
+
+  const appliances = states
+    .filter((e) => /^switch\./.test(e.entity_id) && e.state === "on" && /kettle|heater|dryer|washing|dishwasher|air_fryer|microwave|nespresso|top_loader|iron|pc/i.test(e.entity_id))
+    .map((e) => describe(e.entity_id));
+
+  const pumps = ["switch.pool_pump", "switch.borehole_pump", "switch.water_pump"]
+    .filter((id) => on(id))
+    .map(describe);
+
+  return {
+    time: `${String(hour).padStart(2, "0")}:${String(sast.getUTCMinutes()).padStart(2, "0")} SAST`,
+    dayOfWeek: dow,
+    partOfDay: hour < 6 ? "night" : hour < 12 ? "morning" : hour < 17 ? "afternoon" : hour < 21 ? "evening" : "late evening",
+    alarm: st("alarm_control_panel.olarm_alarm") || "unknown",
+    occupancy: st("sensor.home_occupancy") || "unknown",
+    nobodyHome: on("binary_sensor.nobody_home"),
+    batterySoc: num("sensor.victron_battery_soc"),
+    solarNowW: num("sensor.victron_total_pv_power"),
+    gridStatus: st("sensor.victron_grid_lost_alarm") || "unknown",
+    loadshedding: st("sensor.loadshedding") || "unknown",
+    tankLevelPct: num("sensor.jojo_tank_monitor_tank_water_level"),
+    indoorTempC: num("sensor.indoor_average_temperature"),
+    outdoorTempC: num("sensor.outdoor_temperature"),
+    weather: st("weather.home") || "unknown",
+    lightsOn,
+    openings,
+    appliancesOn: appliances,
+    pumpsRunning: pumps,
+  };
+}
+
+const NUDGE_SCHEMA = {
+  type: "object",
+  properties: {
+    nudges: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          key: { type: "string", description: "short stable slug, e.g. garage-open-late" },
+          title: { type: "string", description: "max 6 words, may start with one emoji" },
+          body: { type: "string", description: "one plain sentence naming the observation and why it matters now" },
+          confidence: { type: "number", description: "0-1, how sure you are this is genuinely worth interrupting a person" },
+          urgent: { type: "boolean", description: "true only if it should break quiet hours (safety/security/damage)" },
+          view: { type: "string", description: "portal view to open: home, security, energy, lights, water, appliances, cameras, climate" },
+        },
+        required: ["key", "title", "body", "confidence", "urgent", "view"],
+      },
+    },
+  },
+  required: ["nudges"],
+};
+
+async function askGeminiForNudges(ctx) {
+  const prompt = `You are the watchful assistant for a family home in Pretoria, South Africa (solar + battery, load-shedding is normal, family of four with two young boys).
+
+Here is the CURRENT state of the house:
+${JSON.stringify(ctx, null, 1)}
+
+Identify anything genuinely ANOMALOUS or worth a gentle heads-up RIGHT NOW, given the time of day, who is home, and how long things have been in their current state.
+
+Good nudges look like: "the garage has been open 40 minutes and everyone's out", "the heater's been on 6 hours in an empty house", "the pool pump has run 11 hours today", "tank is low and no rain forecast".
+
+CRITICAL — "switched on" is NOT "running". Several plugs and pumps sit energised
+and idle all day. For anything with a \`watts\` field, judge by \`actuallyRunning\`
+and \`watts\`, NEVER by \`switchOnFor\` alone:
+- The water pump is pressure-driven: it normally reads on 24/7 at ~3W and only
+  draws real power on demand. \`actuallyRunning: false\` means it is IDLE and fine.
+- The kettle, air fryer and similar are on smart plugs left switched on at 0W.
+- Only flag one of these if \`actuallyRunning\` is true AND it has been so for an
+  unreasonable length of time.
+
+Rules:
+- Only report things a reasonable person would WANT to be interrupted about. Silence is the correct answer most of the time — return an empty array if nothing stands out.
+- Do NOT report: normal daytime lighting, solar/battery behaviour that is expected, pumps that have run a normal amount, anything that is obviously routine for the time of day.
+- Do NOT report a device as "left on" or "running long" when \`actuallyRunning\` is false or \`watts\` is near zero.
+- Do NOT invent state that isn't in the data. Never guess.
+- Be specific and quantitative — name the thing and how long.
+- confidence: below 0.7 means you're speculating; be honest.
+- urgent: reserve for safety, security or property damage.
+- Maximum 3 nudges. Prefer 0 or 1.`;
+
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: NUDGE_SCHEMA },
+  });
+  const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  let lastErr = "no model";
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body,
+      });
+      const j = await r.json();
+      if (r.ok) {
+        const txt = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text;
+        const parsed = JSON.parse(txt || "{}");
+        return Array.isArray(parsed.nudges) ? parsed.nudges : [];
+      }
+      lastErr = (j && j.error && j.error.message) || `gemini ${r.status}`;
+    } catch (e) { lastErr = String((e && e.message) || e); }
+  }
+  logger.warn("nudge gemini failed", { lastErr });
+  return [];
+}
+
+async function runNudgeScan({ dryRun = false } = {}) {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+
+  const ctx = homeContext(states);
+  const candidates = await askGeminiForNudges(ctx);
+
+  // ---- Stage 2: the surfacing gate (deterministic, not the model's call) ----
+  const sast = new Date(Date.now() + 2 * 3600_000);
+  const minsOfDay = sast.getUTCHours() * 60 + sast.getUTCMinutes();
+  const quietHours = minsOfDay >= 21 * 60 + 30 || minsOfDay < 6 * 60;
+
+  // Don't duplicate anything the deterministic watchdog is already shouting about.
+  const wdSnap = await db.collection("watchdogState").where("active", "==", true).get();
+  const watchdogActive = wdSnap.docs.length > 0;
+
+  const since = Date.now() - 86_400_000;
+  const todaySnap = await db.collection("nudges").where("ts", ">=", since).get();
+  const sentToday = todaySnap.docs.length;
+  const recentByKey = new Map(todaySnap.docs.map((d) => [d.data().key, d.data().ts]));
+
+  const rejected = [];
+  const eligible = [];
+  for (const nd of candidates) {
+    if (!nd || !nd.key || !nd.title || !nd.body) { rejected.push({ key: nd && nd.key, why: "malformed" }); continue; }
+    if (typeof nd.confidence !== "number" || nd.confidence < 0.7) { rejected.push({ key: nd.key, why: `low confidence ${nd.confidence}` }); continue; }
+    const last = recentByKey.get(nd.key);
+    if (last && Date.now() - last < NUDGE_COOLDOWN_MS) { rejected.push({ key: nd.key, why: "cooldown" }); continue; }
+    if (quietHours && !nd.urgent) { rejected.push({ key: nd.key, why: "quiet hours" }); continue; }
+    eligible.push(nd);
+  }
+
+  // Highest confidence first; urgent always outranks non-urgent.
+  eligible.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || b.confidence - a.confidence);
+
+  let pushed = 0;
+  const surfaced = [];
+  for (const nd of eligible) {
+    if (sentToday + pushed >= NUDGE_DAILY_CAP) { rejected.push({ key: nd.key, why: "daily cap" }); continue; }
+    if (pushed >= 1) { rejected.push({ key: nd.key, why: "one per run" }); continue; }
+    if (watchdogActive && !nd.urgent) { rejected.push({ key: nd.key, why: "watchdog already alerting" }); continue; }
+    if (!dryRun) {
+      await db.collection("nudges").add({
+        key: nd.key, title: nd.title, body: nd.body, view: nd.view || "home",
+        confidence: nd.confidence, urgent: !!nd.urgent,
+        ts: Date.now(), dismissed: false,
+      });
+      await pushToAll(nd.title, nd.body, `nudge-${nd.key}`);
+    }
+    surfaced.push(nd);
+    pushed++;
+  }
+
+  logger.info("nudgeScan", { candidates: candidates.length, surfaced: surfaced.map((n) => n.key), rejected, quietHours, sentToday });
+  return { context: ctx, candidates, surfaced, rejected, quietHours, sentToday, dryRun };
+}
+
+exports.anomalyNudges = onSchedule(
+  { schedule: "every 2 hours", secrets: [HA_URL, HA_TOKEN, GEMINI_API_KEY], region: "us-central1", maxInstances: 1 },
+  async () => { await runNudgeScan(); },
+);
+
+// Manual trigger — `?dry=1` evaluates and reports without pushing or storing,
+// which is how you tune the prompt without spamming the family's phones.
+exports.anomalyNudgesNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN, GEMINI_API_KEY], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try {
+      const out = await runNudgeScan({ dryRun: req.query.dry === "1" });
+      res.status(200).json({ ok: true, ...out });
+    } catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Daily briefings ------------------------------------------------------
+// A morning ("today at a glance") and evening ("wind-down") digest composed
+// from Home Assistant + the reminders calendar, delivered as an FCM push at
+// 06:30 / 20:30 SAST and shown live in the Overview "briefing" card.
+
+const WX_EMOJI = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", fog: "🌫️", windy: "💨", hail: "🌨️", snowy: "❄️" };
+
+// SAST wall-clock via UTC getters on a +2h-shifted Date.
+const sastDate = () => new Date(Date.now() + 2 * 3600_000);
+function fmtSastTime(iso) {
+  try {
+    const s = new Date(new Date(iso).getTime() + 2 * 3600_000);
+    let h = s.getUTCHours(); const mm = s.getUTCMinutes();
+    const ap = h < 12 ? "am" : "pm"; h = h % 12 || 12;
+    return `${h}${mm ? ":" + String(mm).padStart(2, "0") : ""}${ap}`;
+  } catch { return ""; }
+}
+
+async function haCalendarDay(base, tok, cal, dayOffset) {
+  const s = sastDate();
+  const startUTC = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate() + dayOffset, 0, 0, 0) - 2 * 3600_000);
+  const endUTC = new Date(Date.UTC(s.getUTCFullYear(), s.getUTCMonth(), s.getUTCDate() + dayOffset, 23, 59, 59) - 2 * 3600_000);
+  try {
+    const r = await fetch(`${base}/api/calendars/${cal}?start=${startUTC.toISOString()}&end=${endUTC.toISOString()}`, { headers: { Authorization: `Bearer ${tok}` } });
+    if (!r.ok) return [];
+    const ev = await r.json();
+    return (ev || []).map((e) => ({ summary: e.summary || "(busy)", start: (e.start && (e.start.dateTime || e.start.date)) || null, allDay: !(e.start && e.start.dateTime) }))
+      .sort((a, b) => String(a.start).localeCompare(String(b.start)));
+  } catch { return []; }
+}
+
+async function composeBriefing(period) {
+  const base = HA_URL.value().replace(/\/+$/, ""); const tok = HA_TOKEN.value();
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${tok}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const st = (id) => m[id] && m[id].state;
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const on = (id) => st(id) === "on";
+
+  const lines = [];
+  const wx = WX_EMOJI[st("weather.home")] || "🌡️";
+  const outdoor = num("sensor.outdoor_temperature");
+  const loadshed = st("sensor.loadshedding");
+  const lsActive = on("binary_sensor.national_loadshedding_active");
+  const soc = num("sensor.victron_battery_soc");
+
+  if (period === "morning") {
+    const events = await haCalendarDay(base, tok, "calendar.reminders", 0);
+    const readiness = num("sensor.oura_readiness_score");
+    const sleep = num("sensor.oura_sleep_score");
+    const solarFc = num("sensor.solcast_forecast_today") ?? num("sensor.energy_production_today");
+    if (outdoor != null) lines.push({ icon: wx, text: `${outdoor.toFixed(0)}° out now${(st("weather.home") || "").includes("rain") ? " · rain about" : ""}` });
+    if (readiness != null) lines.push({ icon: "💍", text: `Readiness ${readiness.toFixed(0)}${sleep != null ? ` · slept ${sleep.toFixed(0)}` : ""}` });
+    if (events.length) {
+      const first = events.find((e) => !e.allDay) || events[0];
+      lines.push({ icon: "📅", text: `${events.length} today · first ${first.allDay ? first.summary : fmtSastTime(first.start) + " " + first.summary}` });
+    } else lines.push({ icon: "📅", text: "Nothing on the calendar today" });
+    if (lsActive) lines.push({ icon: "⚡", text: `Loadshedding — ${loadshed}` });
+    else if (loadshed) lines.push({ icon: "🔌", text: `${loadshed}` });
+    if (solarFc != null) lines.push({ icon: "☀️", text: `${solarFc.toFixed(0)} kWh solar expected` });
+    if (soc != null) lines.push({ icon: "🔋", text: `Battery ${soc.toFixed(0)}%` });
+    const summary = lines.slice(0, 3).map((l) => l.text).join(" · ");
+    return { period, title: "Good morning, Christo", lines, summary, speech: `Good morning. ${lines.map((l) => l.text).join(". ")}.` };
+  }
+
+  // evening
+  const tomorrow = await haCalendarDay(base, tok, "calendar.reminders", 1);
+  const litSwitches = states.filter((e) => (e.entity_id.startsWith("light.") || (e.entity_id.startsWith("switch.") && /light|lamp/.test(e.entity_id))) && e.state === "on").length;
+  const armed = (st("alarm_control_panel.olarm_alarm") || "").startsWith("armed");
+  const tankDays = num("sensor.jojo_tank_days_remaining");
+  if (tomorrow.length) {
+    const first = tomorrow.find((e) => !e.allDay) || tomorrow[0];
+    lines.push({ icon: "📅", text: `Tomorrow: ${tomorrow.length} on · first ${first.allDay ? first.summary : fmtSastTime(first.start) + " " + first.summary}` });
+  } else lines.push({ icon: "📅", text: "Tomorrow's calendar is clear" });
+  lines.push({ icon: "💡", text: `${litSwitches} light${litSwitches === 1 ? "" : "s"} still on` });
+  lines.push({ icon: "🛡️", text: armed ? "Alarm is armed" : "Alarm is off — arm before bed?" });
+  if (soc != null) lines.push({ icon: "🔋", text: `Battery reserve ${soc.toFixed(0)}%${lsActive ? " · loadshedding now" : ""}` });
+  if (tankDays != null && tankDays < 5) lines.push({ icon: "💧", text: `Water tank ~${tankDays.toFixed(1)} days` });
+  const summary = lines.slice(0, 3).map((l) => l.text).join(" · ");
+  return { period, title: "Winding down", lines, summary, speech: `Good evening. ${lines.map((l) => l.text).join(". ")}.` };
+}
+
+// Live briefing for the Overview card (authed). ?period=morning|evening, else auto.
+exports.getBriefing = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 3 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    const q = String((req.query && req.query.period) || "");
+    const period = q === "morning" || q === "evening" ? q : (sastDate().getUTCHours() < 15 ? "morning" : "evening");
+    try { const b = await composeBriefing(period); res.status(200).json({ ok: true, ...b }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// pushBriefing is gone with the two schedules that called it. Its one job —
+// push the briefing — is now runDigest's, which does it with the time in the
+// title, the attention list, the watcher lines and the all-clear folded in.
+
+// morningBriefing / eveningBriefing (06:30 and 20:30) are RETIRED as schedules.
+// sendDigest owns 06:30 and 21:00 now, and leaving both in place meant two
+// separate pushes landing at 06:30 — which is exactly the notification-stream
+// failure the three classes exist to prevent. composeBriefing is still the
+// digest's content source, and getBriefing still serves the live Overview card,
+// so nothing is lost but the duplicate push.
+
+// ---- Notifications: three classes -----------------------------------------
+// Phase 2.3. The rule that makes the whole thing work is that MOST THINGS ARE
+// NOT A PUSH. A notification budget that is never enforced becomes a
+// notification stream, and a stream is indistinguishable from silence because
+// nobody reads it.
+//
+//   Interrupt — target under 2 a week. Alarm triggered, water where it should
+//     not be, gate open after 23:00, battery below reserve with no sun coming,
+//     an alarm transition with no actor. These are allowed to break through.
+//   Digest    — everything else, coalesced into 06:30 and 21:00. It ALWAYS
+//     sends, even when nothing happened: if the digest only arrives when
+//     something is wrong, its absence becomes a claim, and a missed push then
+//     reads as "all fine".
+//   Badge     — the long tail. Stale sensors, chores, bin day. Never pushes.
+//
+// All-clear is NEVER a push. It is the badge going to zero plus one line in the
+// next digest. "It is fixed" is not worth interrupting anyone for.
+//
+// iOS is the constraint behind the title format: it stacks notifications
+// forever and `tag` does not replace an existing one, so the reader is looking
+// at a pile. Putting the time in the TITLE is the only way they can tell which
+// one is current.
+const INTERRUPT_TAG = "interrupt";
+
+// Phase 5.3: generated text follows the READER's language, not the device's.
+// One line, appended to the prompt, rather than translating model output
+// afterwards — a second translation pass introduces errors the model would not
+// have made. Mirrors src/lib/lang.ts promptLanguage().
+const AF_PROMPT =
+  "Write your entire reply in Afrikaans, in the natural register a South African family uses at home — not formal or literary Afrikaans. Use af-ZA number formatting: a comma for the decimal (R48,50) and a space for thousands (4 623). Keep entity ids, Home Assistant terms and units in English.";
+const langLine = (lang) => (lang === "af" ? `\n\n${AF_PROMPT}` : "");
+
+async function sendInterrupt(title, body, key) {
+  // Deduped for an hour on `key`. An interrupt that repeats every five minutes
+  // trains you to swipe it away without reading, which defeats the class.
+  const ref = db.collection("interruptLog").doc(key);
+  const prev = await ref.get();
+  if (prev.exists && Date.now() - (prev.data().at ?? 0) < 3_600_000) {
+    logger.info("interrupt suppressed (deduped)", { key });
+    return { sent: 0, deduped: true };
+  }
+  await ref.set({ at: Date.now(), title, body });
+  const r = await pushToAll(title, body, `${INTERRUPT_TAG}-${key}`);
+  logger.info("interrupt sent", { key, ...r });
+  return r;
+}
+
+/**
+ * syncBadge — the count of open attention items.
+ *
+ * Never pushes. Falls to zero on its own as things resolve, which is what makes
+ * the badge trustworthy enough to be the all-clear channel.
+ */
+exports.syncBadge = onCall(
+  { region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+    const count = Math.max(0, Number(request.data?.count) || 0);
+    await db.collection("badge").doc("current").set({ count, at: Date.now(), by: email });
+    return { count };
+  },
+);
+
+/**
+ * sendDigest — 06:30 and 21:00, always.
+ *
+ * Composes from the briefing, mentions each resolved item exactly once (so the
+ * all-clear lands here rather than as its own push), and carries the
+ * chore-approval action.
+ */
+/**
+ * Open attention items, server-side.
+ *
+ * composeBriefing returns { period, title, lines, summary, speech } and NO
+ * attention list, so the digest cannot borrow one from it — reading b.attention
+ * would have been undefined every time, which makes `resolved` always empty and
+ * the digest permanently claim nothing needs you. Computed here instead, from
+ * the same HA snapshot the watchers use.
+ */
+async function openAttention() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const st = (id) => m[id] && m[id].state;
+
+  const items = [];
+  const soc = num("sensor.battery_soc_clean");
+  if (soc != null && soc < 30) items.push({ key: "battery-low", text: `Battery at ${Math.round(soc)}%` });
+  const tank = num("sensor.jojo_tank_level_validated");
+  if (tank != null && tank < 25) items.push({ key: "tank-low", text: `Tank at ${Math.round(tank)}%` });
+  if (st("binary_sensor.water_leak_detected") === "on") items.push({ key: "leak", text: "Water where it should not be" });
+  for (const [id, label] of [
+    ["binary_sensor.helloliam_alarm_zone_013_front_door", "Front door"],
+    ["binary_sensor.helloliam_alarm_zone_020_door_kitchen", "Kitchen door"],
+  ]) {
+    if (st(id) === "on") items.push({ key: `open-${id}`, text: `${label} open` });
+  }
+  return items;
+}
+
+async function runDigest(period) {
+  const b = await composeBriefing(period);
+  const t = period === "morning" ? "06:30" : "21:00";
+  const open = await openAttention();
+
+  // Resolved-since-last-digest, mentioned ONCE. Without the "once" the same
+  // fixed item reappears every digest until something else changes, and the
+  // digest stops being a description of the day.
+  const openRef = db.collection("digestState").doc("open");
+  const prevSnap = await openRef.get();
+  const prevOpen = new Map(Object.entries((prevSnap.exists && prevSnap.data().items) || {}));
+  const nowOpen = new Map(open.map((a) => [a.key, a.text]));
+  const resolved = [...prevOpen.entries()].filter(([k]) => !nowOpen.has(k)).map(([, v]) => v);
+  await openRef.set({ items: Object.fromEntries(nowOpen), at: Date.now() });
+
+  // Watcher findings ride the digest — one line each, never their own push.
+  let watchLines = [];
+  try { watchLines = [...(await runWaterWatch()), ...(await runSolarWatch())]; }
+  catch (e) { logger.warn("digest watchers failed", { error: String((e && e.message) || e) }); }
+
+  let body = b.summary || "";
+  if (watchLines.length) body += `${body ? " " : ""}${watchLines.slice(0, 2).join(" ")}`;
+  if (nowOpen.size) body += `${body ? " " : ""}Wants you: ${[...nowOpen.values()].slice(0, 3).join(", ")}.`;
+  // The all-clear lands HERE and nowhere else — it is never its own push.
+  if (resolved.length) body += `${body ? " " : ""}Cleared since last time: ${resolved.slice(0, 3).join(", ")}.`;
+  if (!nowOpen.size && !resolved.length) {
+    // The "house is fine" digest still sends. Silence must never be ambiguous.
+    body = body || "Nothing needs you. The house is fine.";
+  }
+
+  const r = await pushToAll(`${t} · ${b.title}`, body, `digest-${period}`);
+  logger.info("digest sent", { period, open: nowOpen.size, resolved: resolved.length, ...r });
+  return { period, body, open: [...nowOpen.values()], resolved };
+}
+
+exports.sendDigest = onSchedule(
+  { schedule: "30 6,21 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => {
+    const h = Number(
+      new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", hour: "2-digit", hour12: false }),
+    );
+    await runDigest(h < 12 ? "morning" : "evening");
+  },
+);
+
+exports.sendDigestNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try {
+      const period = req.query.period === "evening" ? "evening" : "morning";
+      res.status(200).json({ ok: true, ...(await runDigest(period)) });
+    } catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Watchers that ride the digest ----------------------------------------
+// Each of these produces at most ONE digest line. None of them push on their
+// own — that is the whole point of the three classes.
+
+/**
+ * waterWatch — a still-night tank drop, a pump running past its own p95, or
+ * borehole cycles drifting week on week.
+ *
+ * "Still-night" matters: a tank falling while the house is asleep and no pump
+ * is running is a leak, and it is the one water fault you cannot see by day
+ * because normal use masks it.
+ */
+async function runWaterWatch() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const findings = [];
+  const lo = num("sensor.tank_level_min_today");
+  const hi = num("sensor.tank_level_max_today");
+  const boreholeToday = num("sensor.borehole_pump_water_pumped_today");
+  if (lo != null && hi != null && hi - lo >= 6 && (boreholeToday ?? 0) < 50) {
+    findings.push(`The tank fell ${Math.round(hi - lo)}% with the borehole idle — worth checking for a leak.`);
+  }
+  const runToday = num("sensor.water_pump_runtime_today");
+  const runBase = num("sensor.borehole_runtime_90d_baseline");
+  if (runToday != null && runBase != null && runBase > 0 && runToday > runBase * 1.8) {
+    findings.push(`The pressure pump ran ${Math.round(runToday)} min against a 90-day norm of ${Math.round(runBase)}.`);
+  }
+  return findings;
+}
+
+/** solarWatch — actual against forecast over clear days. One line when short. */
+async function runSolarWatch() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const actual = num("sensor.victron_total_pv_yield_today");
+  const expected = num("sensor.expected_solar_yield_today");
+  if (actual == null || expected == null || expected <= 0) return [];
+  const shortfall = 1 - actual / expected;
+  // 15%: below that it is weather and measurement noise, and a watcher that
+  // fires on noise is one you stop reading.
+  if (shortfall < 0.15) return [];
+  return [`Solar came in ${Math.round(shortfall * 100)}% under forecast — ${actual.toFixed(1)} of ${expected.toFixed(1)} kWh.`];
+}
+
+/**
+ * The Interrupt sweep.
+ *
+ * Every 30 minutes, and it should almost always do nothing — the target is
+ * under two of these a week. The alarm's own interrupts are raised HA-side by
+ * feature_alarm_provenance.yaml, because that has to fire the instant the
+ * transition happens rather than up to half an hour later. What is left here is
+ * the set that only a scheduled look can see: a condition that has to be true
+ * for a while, or one that depends on a forecast.
+ */
+async function runInterruptSweep() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const m = Object.fromEntries((await r.json()).map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+  const st = (id) => m[id] && m[id].state;
+
+  const hour = Number(
+    new Date().toLocaleString("en-ZA", { timeZone: "Africa/Johannesburg", hour: "2-digit", hour12: false }),
+  );
+  const sent = [];
+
+  // 1. Water where it should not be. Never not an interrupt.
+  if (st("binary_sensor.water_leak_detected") === "on") {
+    sent.push(await sendInterrupt("💧 Water detected", "A leak sensor is wet. Check before it spreads.", "leak"));
+  }
+
+  // 2. Gate open after 23:00. Before 23:00 it is someone arriving.
+  if (hour >= 23 && st("binary_sensor.main_gate_open") === "on") {
+    sent.push(await sendInterrupt("🚧 Gate is open", "The main gate has been open past 23:00.", "gate-late"));
+  }
+
+  // 3. Battery below reserve with no sun coming. Either half alone is normal —
+  //    a low battery at dusk is Tuesday, and a poor forecast with a full battery
+  //    is fine. Together they mean the house runs out overnight.
+  const soc = num("sensor.battery_soc_clean");
+  const tomorrow = num("sensor.energy_production_tomorrow") ?? num("sensor.solcast_forecast_tomorrow");
+  if (soc != null && soc < 30 && tomorrow != null && tomorrow < 8) {
+    sent.push(
+      await sendInterrupt(
+        "🔋 Battery below reserve",
+        `${Math.round(soc)}% with only ${tomorrow.toFixed(1)} kWh forecast tomorrow. It will not carry the night.`,
+        "battery-reserve",
+      ),
+    );
+  }
+
+  return { checked: 3, sent: sent.filter((s) => s && s.sent).length };
+}
+
+exports.interruptSweep = onSchedule(
+  { schedule: "*/30 * * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runInterruptSweep(); },
+);
+
+exports.waterWatchNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, findings: [...(await runWaterWatch()), ...(await runSolarWatch())] }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Kids' allowance payout → Steyn Finance -------------------------------
+// The portal already recorded the payout + reset the balance client-side; this
+// posts the amount into the finance project so it lands as income there. Writing
+// cross-project needs the function's service account to have roles/datastore.user
+// on steyn-family-finance — if it's missing this returns posted:false (the
+// portal-side payout still stands), so it degrades gracefully.
+exports.kidPayout = onRequest(
+  { region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    let email;
+    try { email = (await admin.auth().verifyIdToken(idToken)).email || null; }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    const { slug, amount } = { ...req.query, ...(req.body || {}) };
+    const amt = Number(amount);
+    if (!slug || !(amt > 0)) { res.status(400).json({ ok: false, error: "slug + positive amount required" }); return; }
+    try {
+      const fin = new Firestore({ projectId: HQ_PROJECT });
+      await fin.collection("portal_allowance_payouts").add({
+        slug, amount: amt, by: email, ts: Date.now(), source: "ha-portal",
+      });
+      res.status(200).json({ ok: true, posted: true });
+    } catch (e) {
+      logger.warn("kidPayout finance post failed", { error: String((e && e.message) || e) });
+      res.status(200).json({ ok: true, posted: false, note: String((e && e.message) || e) });
+    }
+  },
+);
+
+// ---- BigQuery warehouse -----------------------------------------------------
+// A nightly snapshot of the home's key metrics into BigQuery, so months/years
+// of history can be queried in SQL and charted in Looker Studio — the long-term
+// store InfluxDB (operational) doesn't give us for cross-source joins.
+// Dataset/table are auto-created; the function's service account needs BigQuery
+// access (project Editor covers it, else grant roles/bigquery.dataEditor +
+// roles/bigquery.jobUser).
+const BQ_DATASET = "home";
+const BQ_TABLE = "daily";
+// [HA entity_id, BigQuery column] — numeric daily metrics.
+//
+// Two rules, both learned the hard way:
+//
+// 1. EVERY ID HERE MUST EXIST. `num()` silently returns null for an entity that
+//    isn't there, so a typo doesn't fail — it writes a NULL column for months
+//    and looks like a working warehouse. Five of the original fifteen were
+//    wrong (victron_battery_soc, solar_yield_today, victron_grid_import_today,
+//    vehicles_today, pedestrians_today), which is a third of the table empty.
+//    Verify against .storage/core.entity_registry before adding a row here.
+//
+// 2. ONLY CUMULATIVE-OR-DAILY SOURCES. The snapshot reads /api/states at 23:55,
+//    so an instantaneous sensor lands as "its value at five to midnight" — a
+//    column called battery_soc that can't answer "how low did it get". Those
+//    now read the ratcheted daily extremes from feature_warehouse_daily.yaml.
+const WAREHOUSE_METRICS = [
+  // --- energy ---------------------------------------------------------------
+  ["sensor.battery_soc_clean", "battery_soc"], // end-of-day level
+  ["sensor.battery_soc_min_today", "battery_soc_min"], // the useful one
+  ["sensor.battery_soc_max_today", "battery_soc_max"],
+  ["sensor.victron_total_pv_yield_today", "solar_kwh"],
+  ["sensor.victron_grid_import_daily", "grid_import_kwh"],
+  ["sensor.grid_independence_today", "grid_independence_pct"],
+  ["sensor.self_consumption", "self_consumption_pct"],
+  ["sensor.energy_cost_today", "energy_cost"],
+  ["sensor.house_load_min_today", "base_load_w"], // always-on floor
+  ["sensor.house_load_peak_today", "peak_load_w"], // day's ceiling
+  ["sensor.battery_runtime_off_grid_today", "off_grid_hours"],
+  ["sensor.load_shedding_urgency", "loadshed_urgency"],
+  // --- water ----------------------------------------------------------------
+  ["sensor.water_used_today", "water_l"],
+  ["sensor.borehole_pump_water_pumped_today", "borehole_l"],
+  ["sensor.water_pump_runtime_today", "water_pump_min"],
+  ["sensor.jojo_tank_monitor_tank_water_level", "tank_pct"], // end-of-day level
+  ["sensor.tank_level_min_today", "tank_pct_min"],
+  ["sensor.tank_level_max_today", "tank_pct_max"],
+  // --- climate --------------------------------------------------------------
+  ["sensor.indoor_average_temperature", "indoor_temp"], // end-of-day reading
+  ["sensor.indoor_temp_min_today", "indoor_temp_min"],
+  ["sensor.indoor_temp_max_today", "indoor_temp_max"],
+  ["sensor.outdoor_temperature", "outdoor_temp"], // end-of-day reading
+  ["sensor.outdoor_temp_min_today", "outdoor_temp_min"],
+  ["sensor.outdoor_temp_max_today", "outdoor_temp_max"],
+  // --- security -------------------------------------------------------------
+  ["sensor.alarm_armed_hours_today", "alarm_armed_hours"],
+  ["input_number.sidewalk_vehicles_total_today", "vehicles"],
+  ["input_number.sidewalk_pedestrians_total_today", "pedestrians"],
+  // --- health ---------------------------------------------------------------
+  ["sensor.oura_readiness_score", "oura_readiness"],
+  ["sensor.oura_sleep_score", "oura_sleep"],
+];
+
+async function runWarehouseSnapshot() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const r = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${HA_TOKEN.value()}` } });
+  if (!r.ok) throw new Error(`HA ${r.status}`);
+  const states = await r.json();
+  const m = Object.fromEntries(states.map((e) => [e.entity_id, e]));
+  const num = (id) => { const v = parseFloat(m[id] && m[id].state); return Number.isFinite(v) ? v : null; };
+
+  const s = sastDate();
+  const row = { date: `${s.getUTCFullYear()}-${String(s.getUTCMonth() + 1).padStart(2, "0")}-${String(s.getUTCDate()).padStart(2, "0")}` };
+  const missing = [];
+  for (const [id, col] of WAREHOUSE_METRICS) {
+    row[col] = num(id);
+    if (row[col] === null) missing.push(id);
+  }
+  // Loud, every night. A null column is indistinguishable from a healthy one in
+  // BigQuery, which is exactly how five wrong entity IDs survived for months.
+  if (missing.length) logger.warn("warehouseSnapshot: no value for", { missing, count: missing.length });
+
+  const bq = new BigQuery();
+  const dataset = bq.dataset(BQ_DATASET);
+  const [dsExists] = await dataset.exists();
+  if (!dsExists) await dataset.create();
+  const table = dataset.table(BQ_TABLE);
+  const [tExists] = await table.exists();
+  if (!tExists) {
+    const schema = [{ name: "date", type: "DATE" }, ...WAREHOUSE_METRICS.map(([, col]) => ({ name: col, type: "FLOAT" }))];
+    await table.create({ schema });
+  } else {
+    // Additive schema migration. BigQuery rejects an insert containing a field
+    // the table doesn't have, so growing WAREHOUSE_METRICS has to grow the table
+    // too. Adding NULLABLE columns is free and non-destructive — existing rows
+    // read as null for the new columns, which is the truth: we weren't
+    // measuring them yet. Nothing is ever renamed or dropped here; a column
+    // whose meaning changes gets a NEW name so a series never silently shifts
+    // definition mid-history.
+    const [md] = await table.getMetadata();
+    const have = new Set((md.schema.fields || []).map((f) => f.name));
+    const add = WAREHOUSE_METRICS.map(([, col]) => col).filter((c) => !have.has(c));
+    if (add.length) {
+      md.schema.fields = [...(md.schema.fields || []), ...add.map((name) => ({ name, type: "FLOAT", mode: "NULLABLE" }))];
+      await table.setMetadata(md);
+      logger.info("warehouseSnapshot: schema extended", { added: add });
+    }
+
+    // Idempotent per day: clear any existing row for this date first. Best-effort
+    // (a no-op if a prior row is still in the streaming buffer — worst case a dupe).
+    try { await bq.query({ query: `DELETE FROM \`${BQ_DATASET}.${BQ_TABLE}\` WHERE date = DATE(@d)`, params: { d: row.date } }); }
+    catch (e) { logger.warn("warehouse dedup skipped", { error: String((e && e.message) || e) }); }
+  }
+  await table.insert([row]);
+  logger.info("warehouseSnapshot", { date: row.date, cols: Object.keys(row).length });
+  return row;
+}
+
+exports.warehouseSnapshot = onSchedule(
+  { schedule: "55 23 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1 },
+  async () => { await runWarehouseSnapshot(); },
+);
+
+exports.warehouseSnapshotNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 2 },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { const row = await runWarehouseSnapshot(); res.status(200).json({ ok: true, row }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- Explain this chart ------------------------------------------------
+// One shared endpoint behind every chart in the portal. Two design choices keep
+// this cheap enough to leave switched on:
+//
+//  1. It is given the RENDERED SERIES ONLY — the handful of points already on
+//     screen — never the warehouse. Small prompt, small bill, and the answer
+//     can only talk about what the user is actually looking at.
+//  2. Answers are cached in Firestore on a hash of (chart + rounded series +
+//     prompt version). For a daily-granularity chart that means ONE model call
+//     per chart per day no matter how many times it's opened, across every
+//     device in the house. Bump PROMPT_V to invalidate everything at once.
+//
+// Deliberately brief: two sentences. A dashboard caption, not an essay.
+
+const PROMPT_V = "v1";
+
+function chartCacheKey(payload) {
+  const rounded = (payload.points || []).map((p) => {
+    const v = typeof p.v === "number" ? Math.round(p.v * 100) / 100 : p.v;
+    return `${p.t}:${v}`;
+  }).join(",");
+  // lang is part of the key. Without it the first reader's language wins and
+  // everyone else gets their caption in it — the cache would serve Mandri the
+  // English text Christo generated a minute earlier.
+  const raw = `${PROMPT_V}|${payload.chartId}|${payload.unit || ""}|${payload.lang || "en"}|${rounded}`;
+  return require("crypto").createHash("sha1").update(raw).digest("hex");
+}
+
+exports.explainChart = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const p = request.data || {};
+    const points = Array.isArray(p.points) ? p.points.slice(0, 200) : [];
+    if (!p.chartId || points.length < 2) {
+      throw new HttpsError("invalid-argument", "Need chartId and at least 2 points.");
+    }
+
+    const key = chartCacheKey({ ...p, points });
+    const ref = db.collection("chartExplain").doc(key);
+    const hit = await ref.get();
+    if (hit.exists) return { text: hit.data().text, cached: true };
+
+    const vals = points.map((x) => Number(x.v)).filter((n) => Number.isFinite(n));
+    const stats = vals.length
+      ? { min: Math.min(...vals), max: Math.max(...vals), first: vals[0], last: vals[vals.length - 1],
+          avg: Math.round((vals.reduce((a, b) => a + b, 0) / vals.length) * 100) / 100 }
+      : {};
+
+    const prompt = `You are explaining one chart on a South African family's home dashboard (solar + battery, borehole, pool).
+
+Chart: ${p.title || p.chartId}
+Unit: ${p.unit || "unknown"}
+Period: ${p.period || "recent"}
+Summary: ${JSON.stringify(stats)}
+Series (time,value): ${points.map((x) => `${x.t},${x.v}`).join(" ")}
+
+Write AT MOST TWO SHORT SENTENCES for a caption under the chart.
+Say what actually happened and, if there is one, the single most likely reason.
+Use the unit. Plain language, no preamble, no bullet points, no markdown.
+If nothing notable happened, say so plainly in one sentence.${langLine(p.lang)}`;
+
+    const body = JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      generationConfig: { temperature: 0.2, maxOutputTokens: 120 },
+    });
+    // Flash-Lite: this is a small, frequent, low-stakes call — exactly the tier
+    // Google recommends for it, and a fraction of the cost of full Flash.
+    // gemini-2.5-* are gone for new keys ("no longer available to new users"),
+    // verified 2026-08-09 — leaving them in just burns a failed round-trip each call.
+    const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-lite-latest"];
+    let lastErr = "no model";
+    for (const model of models) {
+      try {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+          method: "POST", headers: { "Content-Type": "application/json" }, body,
+        });
+        const j = await r.json();
+        if (r.ok) {
+          const text = (j?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+          if (text) {
+            await ref.set({ text, chartId: p.chartId, ts: Date.now(), model });
+            return { text, cached: false };
+          }
+        }
+        lastErr = j?.error?.message || `gemini ${r.status}`;
+      } catch (e) { lastErr = String((e && e.message) || e); }
+    }
+    logger.warn("explainChart failed", { lastErr, chartId: p.chartId });
+    throw new HttpsError("unavailable", "Couldn't explain this chart right now.");
+  },
+);
+
+// ---- Ask the warehouse -------------------------------------------------
+// Assist talks to HA's conversation agent, which only knows the present:
+// "is the alarm armed", "what's the battery level". Nothing in the house could
+// answer "what did we spend on electricity in July" — and the warehouse, the
+// one store that could, had never been read by any code at all.
+//
+// A one-row-per-day, single-table, ~30-column schema is close to the ideal
+// text-to-SQL target: no joins, no ambiguity, whole schema fits in the prompt.
+// So the model writes SQL and code decides whether to run it — model proposes,
+// code decides, same rule as the rest of the LLM surface here.
+//
+// Three independent guards, because "the model wrote it" is not a safety story:
+//   1. Shape: one statement, must start with SELECT/WITH, must reference only
+//      the one table, and a keyword denylist for anything that writes.
+//   2. Dry run: BigQuery itself validates and reports bytes. Catches invented
+//      column names for free, which is the most common failure by far.
+//   3. maximumBytesBilled: a hard ceiling the query cannot exceed even if the
+//      first two guards were somehow wrong. The table is kilobytes; 64MB is
+//      already absurdly generous, so tripping it means something is off.
+const SQL_FORBIDDEN =
+  /\b(insert|update|delete|merge|drop|create|alter|truncate|grant|revoke|call|export|load|begin|commit|rollback|session|assert|script)\b/i;
+
+function validateWarehouseSql(sql) {
+  const s = String(sql || "").trim().replace(/;\s*$/, "");
+  if (!s) return { ok: false, why: "empty query" };
+  if (s.includes(";")) return { ok: false, why: "only one statement allowed" };
+  if (!/^(select|with)\b/i.test(s)) return { ok: false, why: "must be a SELECT" };
+  if (SQL_FORBIDDEN.test(s)) return { ok: false, why: "query tries to modify data" };
+  // Every table reference must be the daily table. Catches attempts to read
+  // INFORMATION_SCHEMA or another dataset in the same project.
+  const refs = [...s.matchAll(/\bfrom\s+([`\w.\-]+)|\bjoin\s+([`\w.\-]+)/gi)].map((m) =>
+    (m[1] || m[2]).replace(/`/g, "").toLowerCase(),
+  );
+  const allowed = new Set([`${BQ_DATASET}.${BQ_TABLE}`, BQ_TABLE, `home.${BQ_TABLE}`]);
+  // CTE names are legitimate FROM targets. Month-over-month and "days above
+  // average" questions genuinely want a WITH clause, so refusing them would
+  // push the model into worse SQL rather than making anything safer — the CTE
+  // can only ever be built from an already-allowed table.
+  for (const m of s.matchAll(/(?:\bwith\s+|,\s*)([a-z_]\w*)\s+as\s*\(/gi)) allowed.add(m[1].toLowerCase());
+  const bad = refs.filter((r) => !allowed.has(r) && !allowed.has(r.split(".").slice(-2).join(".")));
+  if (bad.length) return { ok: false, why: `can only read ${BQ_DATASET}.${BQ_TABLE}` };
+  const limited = /\blimit\s+\d+/i.test(s) ? s : `${s}\nLIMIT 500`;
+  return { ok: true, sql: limited };
+}
+
+async function geminiJson(prompt, maxTokens = 700) {
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0, maxOutputTokens: maxTokens, responseMimeType: "application/json" },
+  });
+  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
+  let lastErr = "no model";
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body,
+      });
+      const j = await r.json();
+      if (r.ok) {
+        const text = (j?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+        if (text) {
+          try { return { data: JSON.parse(text), model }; }
+          catch { lastErr = "model returned non-JSON"; continue; }
+        }
+      }
+      lastErr = j?.error?.message || `gemini ${r.status}`;
+    } catch (e) { lastErr = String((e && e.message) || e); }
+  }
+  throw new HttpsError("unavailable", lastErr);
+}
+
+// Column meanings the model cannot infer from a name. Only the ones where a
+// wrong reading would produce a confidently wrong answer.
+const COLUMN_NOTES = {
+  battery_soc: "battery level at end of day (23:55), NOT the day's low",
+  battery_soc_min: "lowest battery level reached that day — use this for 'how low did it get'",
+  tank_pct: "tank level at end of day, NOT the day's low",
+  indoor_temp: "indoor temperature at 23:55, NOT a daily average — use indoor_temp_min/max for extremes",
+  outdoor_temp: "outdoor temperature at 23:55, NOT a daily average",
+  energy_cost: "grid electricity cost for that day, in South African rand",
+  grid_independence_pct: "percent of the day's energy that did not come from the grid",
+  base_load_w: "always-on floor: the lowest the house load got, in watts",
+  peak_load_w: "highest the house load reached, in watts",
+  off_grid_hours: "hours the house ran without the grid",
+  loadshed_urgency: "load shedding urgency score, higher is worse",
+  water_pump_min: "pressure pump runtime in minutes",
+  alarm_armed_hours: "hours the house alarm was armed",
+  vehicles: "vehicles counted passing the property",
+  pedestrians: "pedestrians counted passing the property",
+  oura_readiness: "Christo's Oura readiness score",
+  oura_sleep: "Christo's Oura sleep score",
+};
+
+exports.askWarehouse = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5, timeoutSeconds: 60 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const question = String((request.data && request.data.question) || "").trim().slice(0, 400);
+    if (question.length < 3) throw new HttpsError("invalid-argument", "Ask a question.");
+
+    const bq = new BigQuery();
+    const table = bq.dataset(BQ_DATASET).table(BQ_TABLE);
+    const [tExists] = await table.exists();
+    if (!tExists) throw new HttpsError("failed-precondition", "No history stored yet.");
+
+    // Schema is read live, so the answer surface grows with the table on its own
+    // — adding a column to WAREHOUSE_METRICS makes it askable the same night.
+    const [md] = await table.getMetadata();
+    const fields = (md.schema.fields || []).map((f) => f.name);
+    const schemaText = fields
+      .map((f) => (COLUMN_NOTES[f] ? `  ${f} — ${COLUMN_NOTES[f]}` : `  ${f}`))
+      .join("\n");
+
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+    const plan = await geminiJson(`You write BigQuery Standard SQL for one table of daily home metrics.
+
+Table: \`${BQ_DATASET}.${BQ_TABLE}\` — exactly one row per calendar day.
+Today is ${today} (Africa/Johannesburg). Columns:
+${schemaText}
+
+Question: ${question}
+
+Return JSON only:
+{"sql": "...", "title": "short chart title", "unit": "unit or empty string",
+ "x": "column for the x axis or empty", "y": ["value columns"], "chart": "line|bar|none"}
+
+Rules:
+- One SELECT statement. Never modify data. Only this table.
+- Any column may be NULL for days it wasn't measured — ignore NULLs rather than treating them as zero.
+- Prefer explicit date filters over relying on row order, and ORDER BY date for time series.
+- If the question needs a column that does not exist, return {"sql":"","title":"","unit":"","x":"","y":[],"chart":"none"}.`);
+
+    const raw = (plan.data && plan.data.sql) || "";
+    if (!raw) throw new HttpsError("not-found", "The house doesn't record that yet.");
+
+    const v = validateWarehouseSql(raw);
+    if (!v.ok) {
+      logger.warn("askWarehouse rejected sql", { why: v.why, question, sql: raw.slice(0, 300) });
+      throw new HttpsError("invalid-argument", `Couldn't run that safely: ${v.why}.`);
+    }
+
+    // Dry run first: BigQuery validates the SQL and prices it before anything
+    // executes, so an invented column name costs nothing and returns a real
+    // error message rather than a plausible wrong answer.
+    try {
+      await bq.createQueryJob({ query: v.sql, dryRun: true, useLegacySql: false });
+    } catch (e) {
+      const why = String((e && e.message) || e).split("\n")[0].slice(0, 200);
+      logger.warn("askWarehouse dry run failed", { why, sql: v.sql.slice(0, 300) });
+      throw new HttpsError("invalid-argument", "I couldn't turn that into a valid query. Try asking it a different way.");
+    }
+
+    const [rows] = await bq.query({ query: v.sql, useLegacySql: false, maximumBytesBilled: "67108864" });
+
+    // Dates come back as BigQuery date objects; flatten to plain values so the
+    // portal and the summariser see the same thing.
+    const flat = rows.slice(0, 500).map((r) =>
+      Object.fromEntries(Object.entries(r).map(([k, val]) => [k, val && typeof val === "object" && "value" in val ? val.value : val])),
+    );
+
+    // Summarise the ACTUAL rows, not the question. The model never gets to
+    // invent the number — it only puts words around what the query returned.
+    let answer = "";
+    if (flat.length) {
+      try {
+        const sum = await geminiJson(`A South African family asked about their home's history: "${question}"
+
+The query returned these rows (JSON): ${JSON.stringify(flat.slice(0, 60))}
+Unit: ${plan.data.unit || "unknown"}
+
+Return JSON: {"answer": "..."}
+At most two short sentences answering the question directly from these rows.
+Use the numbers as given, rounded sensibly, with the unit. Rand amounts as R123.
+Plain language, no preamble, no markdown. If the rows don't answer it, say so.`, 200);
+        answer = String((sum.data && sum.data.answer) || "").trim();
+      } catch (e) {
+        logger.warn("askWarehouse summary failed", { error: String((e && e.message) || e) });
+      }
+    } else {
+      answer = "No days match that.";
+    }
+
+    return {
+      answer,
+      rows: flat,
+      sql: v.sql,
+      title: String(plan.data.title || "").slice(0, 80),
+      unit: String(plan.data.unit || "").slice(0, 16),
+      x: String(plan.data.x || ""),
+      y: Array.isArray(plan.data.y) ? plan.data.y.slice(0, 4).map(String) : [],
+      chart: ["line", "bar"].includes(plan.data.chart) ? plan.data.chart : "none",
+    };
+  },
+);
+
+// ---- cadenceJob — the freshness thresholds the portal is blocked on ---------
+//
+// PLATFORM-CONCEPTS puts this in BigQuery as a scheduled query. IT CANNOT LIVE
+// THERE: the warehouse holds ONE ROW PER DAY with 29 aggregate columns, so it has
+// no per-entity state-change history to take a p95 of. The original HA brief B
+// was right that the data is in the time-series store, not the warehouse.
+//
+// So this reads HA's own recorder over 14 days, with `minimal_response` and
+// `no_attributes` — we need timestamps, not values, and asking for attributes on
+// 304 entities over a fortnight is the difference between a few MB and a few
+// hundred.
+//
+// What it produces: for each curated entity, the p95 interval between state
+// changes. That becomes the freshness threshold (×2.5, clamped 60s–26h), which is
+// the number every "14 min old" badge in the app is currently guessing at from a
+// per-domain default.
+const CURATED = require("./curated-entities.json").ids;
+
+/** p95 by nearest rank — an interpolated percentile is an interval that never occurred. */
+function p95(sorted) {
+  if (sorted.length < 3) return null;
+  const i = Math.min(sorted.length - 1, Math.ceil(0.95 * sorted.length) - 1);
+  return sorted[i];
+}
+
+async function runCadenceJob() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const tok = HA_TOKEN.value();
+  const end = new Date();
+  const start = new Date(end.getTime() - 14 * 86_400_000);
+
+  // Chunked: a filter_entity_id with 304 ids is a URL nothing will accept, and
+  // one request per entity would be 304 round trips.
+  const CHUNK = 20;
+  const cadence = {};
+  const skipped = [];
+
+  for (let i = 0; i < CURATED.length; i += CHUNK) {
+    const batch = CURATED.slice(i, i + CHUNK);
+    const url =
+      `${base}/api/history/period/${start.toISOString()}` +
+      `?end_time=${end.toISOString()}` +
+      `&filter_entity_id=${batch.join(",")}` +
+      `&minimal_response&no_attributes`;
+    let series;
+    try {
+      const r = await fetch(url, { headers: { Authorization: `Bearer ${tok}` } });
+      if (!r.ok) { skipped.push(...batch); continue; }
+      series = await r.json();
+    } catch { skipped.push(...batch); continue; }
+
+    for (const arr of series) {
+      if (!Array.isArray(arr) || arr.length < 4) continue;
+      const id = arr[0].entity_id;
+      if (!id) continue;
+
+      // Intervals between CHANGES, ignoring unavailable/unknown: an entity that
+      // drops out and returns has not "changed" in any sense the reader cares
+      // about, and counting those would make a flaky sensor look chatty.
+      const stamps = [];
+      let prev = null;
+      for (const s of arr) {
+        const st = s.state;
+        if (st === "unavailable" || st === "unknown") continue;
+        const t = Date.parse(s.last_changed || s.last_updated || "");
+        if (!Number.isFinite(t)) continue;
+        if (prev !== null && st === prev.state) continue;
+        stamps.push(t);
+        prev = { state: st };
+      }
+      if (stamps.length < 4) { skipped.push(id); continue; }
+
+      const gaps = [];
+      for (let k = 1; k < stamps.length; k++) {
+        const d = (stamps[k] - stamps[k - 1]) / 1000;
+        if (d > 0) gaps.push(d);
+      }
+      gaps.sort((a, b) => a - b);
+      const v = p95(gaps);
+      if (v == null) { skipped.push(id); continue; }
+      // Clamp 60s–26h. The ceiling matters: an event-driven entity that genuinely
+      // changes twice a month would otherwise get a threshold of weeks, and never
+      // be reported stale even when its integration had died.
+      cadence[id] = Math.round(Math.min(26 * 3600, Math.max(60, v)));
+    }
+  }
+
+  await db.collection("config").doc("cadence").set({
+    generatedAt: Date.now(),
+    windowDays: 14,
+    measured: Object.keys(cadence).length,
+    skipped: skipped.length,
+    cadence,
+  });
+  logger.info("cadenceJob", { measured: Object.keys(cadence).length, skipped: skipped.length });
+  return { measured: Object.keys(cadence).length, skipped: skipped.length };
+}
+
+exports.cadenceJob = onSchedule(
+  { schedule: "10 2 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async () => { await runCadenceJob(); },
+);
+
+exports.cadenceJobNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, ...(await runCadenceJob()) }); }
+    catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
+  },
+);
+
+// ---- applianceDrift — each metered plug against its own baseline ------------
+//
+// Same correction as cadenceJob: the warehouse has no per-appliance columns, so
+// this reads the recorder too.
+//
+// STEP CHANGES ONLY. A drift detector that reports 8% wobble is one nobody reads,
+// and the useful signal is a compressor that started drawing a third more on a
+// particular day and never went back — not the daily variation around it.
+async function runApplianceDrift() {
+  const base = HA_URL.value().replace(/\/+$/, "");
+  const tok = HA_TOKEN.value();
+  const r0 = await fetch(`${base}/api/states`, { headers: { Authorization: `Bearer ${tok}` } });
+  if (!r0.ok) throw new Error(`HA ${r0.status}`);
+  const states = await r0.json();
+
+  // Every power sensor that looks like a metered plug.
+  const plugs = states
+    .map((e) => e.entity_id)
+    .filter((id) => /^sensor\..*(current_consumption|_power)$/.test(id) && !/victron|solar|grid|battery/.test(id));
+
+  const end = new Date();
+  const start = new Date(end.getTime() - 30 * 86_400_000);
+  const findings = [];
+
+  for (const id of plugs) {
+    let arr;
+    try {
+      const r = await fetch(
+        `${base}/api/history/period/${start.toISOString()}?end_time=${end.toISOString()}&filter_entity_id=${id}&minimal_response&no_attributes`,
+        { headers: { Authorization: `Bearer ${tok}` } },
+      );
+      if (!r.ok) continue;
+      const j = await r.json();
+      arr = j[0];
+    } catch { continue; }
+    if (!Array.isArray(arr) || arr.length < 50) continue;
+
+    // Daily means, then compare the last 7 days against the 30-day trailing
+    // baseline. Means rather than totals so a day with a gap does not read as a
+    // drop in consumption.
+    const byDay = new Map();
+    for (const s of arr) {
+      const v = parseFloat(s.state);
+      if (!Number.isFinite(v)) continue;
+      const t = Date.parse(s.last_changed || s.last_updated || "");
+      if (!Number.isFinite(t)) continue;
+      const day = new Date(t).toISOString().slice(0, 10);
+      const cur = byDay.get(day) || { sum: 0, n: 0 };
+      cur.sum += v; cur.n += 1;
+      byDay.set(day, cur);
+    }
+    const days = [...byDay.entries()].sort().map(([d, x]) => ({ d, mean: x.sum / x.n }));
+    if (days.length < 14) continue;
+
+    const recent = days.slice(-7);
+    const baseline = days.slice(0, -7);
+    const mAvg = (xs) => xs.reduce((a, b) => a + b.mean, 0) / xs.length;
+    const rec = mAvg(recent);
+    const bas = mAvg(baseline);
+    if (!(bas > 1)) continue; // a plug averaging under a watt has nothing to drift
+
+    const change = (rec - bas) / bas;
+    // 25%: below that it is seasonal and load variation.
+    if (Math.abs(change) < 0.25) continue;
+    findings.push({
+      entity: id,
+      baselineW: Math.round(bas),
+      recentW: Math.round(rec),
+      changePct: Math.round(change * 100),
+    });
+  }
+
+  findings.sort((a, b) => Math.abs(b.changePct) - Math.abs(a.changePct));
+  await db.collection("config").doc("applianceDrift").set({
+    generatedAt: Date.now(),
+    checked: plugs.length,
+    findings: findings.slice(0, 12),
+  });
+  logger.info("applianceDrift", { checked: plugs.length, flagged: findings.length });
+  return { checked: plugs.length, findings };
+}
+
+exports.applianceDrift = onSchedule(
+  { schedule: "20 2 * * *", timeZone: "Africa/Johannesburg", secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async () => { await runApplianceDrift(); },
+);
+
+exports.applianceDriftNow = onRequest(
+  { secrets: [HA_URL, HA_TOKEN], region: "us-central1", maxInstances: 1, timeoutSeconds: 540, memory: "512MiB" },
+  async (req, res) => {
+    const idToken = (req.headers.authorization || "").replace("Bearer ", "");
+    try { await admin.auth().verifyIdToken(idToken); }
+    catch { res.status(401).json({ ok: false, error: "unauthenticated" }); return; }
+    try { res.status(200).json({ ok: true, ...(await runApplianceDrift()) }); }
     catch (e) { res.status(500).json({ ok: false, error: String((e && e.message) || e) }); }
   },
 );

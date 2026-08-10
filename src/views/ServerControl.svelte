@@ -95,7 +95,7 @@
   .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; padding: 18px; }
   .card.danger { border-color: color-mix(in srgb, var(--danger, #ff5a5a) 40%, transparent); }
   .ch { margin-bottom: 4px; }
-  .lb { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 700; }
+  .lb { font-size: 12px; color: var(--muted); font-weight: 700; }
   .hint { font-size: 13px; color: var(--muted); margin: 4px 0 14px; line-height: 1.45; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
   .rbtn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); color: var(--text); font-weight: 600; font-size: 13.5px; transition: background 0.15s, border-color 0.15s; }

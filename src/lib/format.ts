@@ -99,10 +99,21 @@ export function dailyMax(
 }
 
 /** Map a temperature to a comfort colour. */
+/**
+ * Temperature colour, on the same five-band heat ramp as the floor plan.
+ *
+ * Was its own scale with its own breakpoints (16 / 20 / 24 / 26) AND its own
+ * colours (--water, --success, --warning, --error), so a room could read
+ * "Comfortable" in green on the detail panel while its shape on the plan sat in
+ * the amber band. Two scales for one quantity is one scale too many.
+ *
+ * Bands are 14 / 17 / 21.5 / 25, matching --heat-1..5.
+ */
 export function tempColor(t: number | null): string {
-  if (t == null) return "var(--muted)";
-  if (t < 16) return "var(--water)";
-  if (t > 26) return "var(--error)";
-  if (t >= 20 && t <= 24) return "var(--success)";
-  return "var(--warning)";
+  if (t == null) return "var(--mut)";
+  if (t < 14) return "var(--heat-1)";
+  if (t < 17) return "var(--heat-2)";
+  if (t < 21.5) return "var(--heat-3)";
+  if (t < 25) return "var(--heat-4)";
+  return "var(--heat-5)";
 }

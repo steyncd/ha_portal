@@ -8,6 +8,10 @@ import {
 } from "./ha";
 import { HASS_URL } from "./config";
 import { loadHaConnection } from "./haConfig";
+import { timeMachine } from "./timeMachine.svelte";
+import { toReading, toNumReading, type Reading } from "./freshness";
+import { queue, isQueueable } from "./queue.svelte";
+import { toast } from "./toast.svelte";
 
 type Status = "connecting" | "connected" | "error";
 
@@ -66,6 +70,18 @@ class HAStore {
   entities = $state.raw<HassEntities>({});
   status = $state<Status>("connecting");
   error = $state("");
+
+  // ---- link liveness (Phase 1.1 / 2.2) ----
+  //
+  // `status` only described the INITIAL connect, so a mid-session drop was
+  // invisible: the app kept rendering the last snapshot as though it were live.
+  // This is the app-level signal the brief asks for — one bar, not 179 badges.
+  //
+  // Driven by the library's own connection events rather than inferred from
+  // silence, because a quiet house is not the same thing as a dead socket.
+  link = $state<"live" | "offline">("live");
+  /** When the socket last dropped — powers "the house as it was at 19:04". */
+  lastFrameAt = $state<number | null>(null);
   #conn: Connection | undefined;
   #auth: { accessToken: string; expired: boolean; refreshAccessToken: () => Promise<void> } | undefined;
   #mock = false;
@@ -124,7 +140,25 @@ class HAStore {
       }
       this.#conn = connection;
       this.#auth = auth;
-      subscribeEntities(connection, (ents) => this.#applyEntities(ents));
+      subscribeEntities(connection, (ents) => {
+        this.lastFrameAt = Date.now();
+        this.#applyEntities(ents);
+      });
+
+      // Liveness from the library's own events. On reconnect we open the queue
+      // for review rather than replaying silently — the house may have changed
+      // while we were blind, so each queued action needs a fresh decision.
+      connection.addEventListener("disconnected", () => {
+        this.link = "offline";
+      });
+      connection.addEventListener("ready", () => {
+        this.link = "live";
+        this.lastFrameAt = Date.now();
+        queue.review();
+      });
+
+      this.link = "live";
+      this.lastFrameAt = Date.now();
       this.status = "connected";
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
@@ -133,15 +167,23 @@ class HAStore {
   }
 
   // ---- readers ----
+  //
+  // These are the single choke point the time machine hooks into: when it's
+  // active they answer from the historical snapshot instead of live state, so
+  // every view in the app scrubs through history without knowing it exists.
+  // `attr()` deliberately stays live — history is fetched with minimal_response
+  // (no attributes), and the attributes that matter here (friendly_name, unit)
+  // are static anyway.
   exists(id: string) {
     return id in this.entities;
   }
   state(id: string): string | undefined {
+    if (timeMachine.active) return timeMachine.snapshot[id];
     return this.entities[id]?.state;
   }
   /** Numeric state, or null when missing / non-numeric / unavailable. */
   num(id: string): number | null {
-    const s = this.entities[id]?.state;
+    const s = this.state(id);
     if (s == null || s === "unavailable" || s === "unknown") return null;
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
@@ -153,15 +195,56 @@ class HAStore {
     return (this.attr(id, "friendly_name") as string) ?? id;
   }
   isOn(id: string) {
-    return this.entities[id]?.state === "on";
+    return this.state(id) === "on";
   }
   /** True when the entity exists and is reporting a real (non-offline) state. */
   available(id: string) {
-    const s = this.entities[id]?.state;
+    const s = this.state(id);
     return s != null && s !== "unavailable" && s !== "unknown";
   }
   unit(id: string): string {
     return (this.attr(id, "unit_of_measurement") as string) ?? "";
+  }
+
+  // ---- freshness-aware reads (Phase 1.1) ----
+  //
+  // These are the reads new code should use. The plain state()/num() above stay
+  // for existing views — migrating 37 views at once would be reckless — but
+  // anything that renders a number a person might act on should move to these,
+  // because they carry the evidence with the value.
+  //
+  // While the time machine is active the age is measured against the viewed
+  // moment, not now, so a historical snapshot doesn't read as universally stale.
+
+  #now(): number {
+    return timeMachine.active ? timeMachine.at : Date.now();
+  }
+
+  /** Raw-state reading with freshness. */
+  reading(id: string): Reading<string | null> {
+    if (timeMachine.active) {
+      const v = timeMachine.snapshot[id];
+      // History has no per-point timestamp here, so trust the snapshot moment.
+      return v == null
+        ? { value: null, at: null, state: "none", id }
+        : { value: v, at: timeMachine.at, state: "live", id };
+    }
+    const e = this.entities[id];
+    return toReading(id, e?.state, e?.last_updated, this.#now());
+  }
+
+  /** Numeric reading with freshness. Never coerces a missing value to 0. */
+  readingNum(id: string): Reading<number | null> {
+    if (timeMachine.active) {
+      const r = this.reading(id);
+      if (r.value == null) return { ...r, value: null };
+      const n = Number(r.value);
+      return Number.isFinite(n)
+        ? { value: n, at: r.at, state: r.state, id }
+        : { value: null, at: r.at, state: "none", id };
+    }
+    const e = this.entities[id];
+    return toNumReading(id, e?.state, e?.last_updated, this.#now());
   }
 
   // ---- history ----
@@ -394,8 +477,93 @@ class HAStore {
     }
   }
 
+  // ---- time machine ----
+  /**
+   * Load a historical snapshot for `at` (epoch ms) and switch the whole app
+   * over to it. Uses one batched history request: HA returns the state as it
+   * was at the START of the window, so a short window is enough to resolve
+   * every entity — including ones that haven't changed in days.
+   */
+  async timeTravel(at: number, ids: string[]): Promise<void> {
+    timeMachine.loading = true;
+    timeMachine.error = "";
+    try {
+      if (this.#mock) {
+        // Mock mode has no recorder — just freeze the current values so the UI
+        // is still explorable in demo/QA.
+        const snap: Record<string, string> = {};
+        for (const id of ids) { const e = this.entities[id]; if (e) snap[id] = e.state; }
+        timeMachine.snapshot = snap;
+        timeMachine.at = at;
+        timeMachine.active = true;
+        return;
+      }
+      if (!this.#conn) throw new Error("not connected");
+      const start = new Date(at - 60 * 60_000);
+      const end = new Date(at);
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "history/history_during_period",
+          start_time: start.toISOString(),
+          end_time: end.toISOString(),
+          entity_ids: ids,
+          minimal_response: true,
+          no_attributes: true,
+          include_start_time_state: true,
+        }),
+        25_000,
+        {},
+      )) as Record<string, Array<Record<string, unknown>>>;
+
+      const snap: Record<string, string> = {};
+      for (const [id, arr] of Object.entries(res ?? {})) {
+        if (!Array.isArray(arr) || !arr.length) continue;
+        // Last entry at or before `at` is the state as of that moment.
+        const last = arr[arr.length - 1];
+        const s = (last.s ?? last.state) as string | undefined;
+        if (typeof s === "string") snap[id] = s;
+      }
+      timeMachine.snapshot = snap;
+      timeMachine.at = at;
+      timeMachine.active = true;
+    } catch (e) {
+      timeMachine.error = e instanceof Error ? e.message : "History unavailable";
+    } finally {
+      timeMachine.loading = false;
+    }
+  }
+
   // ---- writers ----
   #svc(domain: string, service: string, data: object) {
+    // Hard interlock: while viewing the past, every write is refused. Without
+    // this you could be looking at 14:00, tap a light that was on then, and
+    // switch something now — acting on a state that hasn't been true for hours.
+    if (timeMachine.active) return;
+
+    // Offline: queue what is safe to queue, and fail LOUDLY for what isn't.
+    // Doing this here rather than at ~20 call sites means every writer method
+    // gets the behaviour, and none of them can forget it.
+    if (this.link === "offline" && !this.#mock) {
+      const target = (data as { entity_id?: string | string[] }).entity_id;
+      const first = Array.isArray(target) ? target[0] : target;
+      const probe = first ?? domain;
+
+      if (!isQueueable(probe)) {
+        // Alarm, gate, lock, scripts, scenes: never queued. You must know now.
+        toast.show(`Can't reach the house — ${domain}.${service} not sent`, 4000);
+        return;
+      }
+      const label = `${this.name(first ?? "") || first || domain} · ${service.replace(/_/g, " ")}`;
+      queue.push({
+        key: `${domain}.${service}:${first ?? "all"}`,
+        label,
+        target: probe,
+        run: () => { if (this.#conn) callService(this.#conn, domain, service, data); },
+      });
+      toast.show(`Offline — queued ${queue.count === 1 ? "1 action" : `${queue.count} actions`}`);
+      return;
+    }
+
     if (this.#conn) return callService(this.#conn, domain, service, data);
   }
   #setMock(ids: string | string[], state: string) {
@@ -406,10 +574,42 @@ class HAStore {
     }
     this.entities = next;
   }
-  toggle(entity_id: string) {
+  /**
+   * Toggle with an undo offer.
+   *
+   * The brief's rule is that one tap plus a 5s undo REPLACES confirmation
+   * dialogs everywhere except arming — a confirm taxes every correct action to
+   * guard the rare wrong one, undo taxes only the mistake.
+   *
+   * The undo restores the state that was ACTUALLY read before the call, not a
+   * hardcoded inverse. Those differ more often than you would think: a group
+   * that was partly on, a light that was already off when the tile looked on
+   * because the tile was reading a stale frame. Inverting "what the tile
+   * showed" would then move the house somewhere it had never been.
+   *
+   * `label` is what the toast says; pass the friendly name, not the entity id.
+   */
+  toggle(entity_id: string, label?: string) {
     if (!this.exists(entity_id)) return;
-    if (this.#mock) return this.#setMock(entity_id, this.isOn(entity_id) ? "off" : "on");
-    return this.#svc("homeassistant", "toggle", { entity_id });
+    const prior = this.state(entity_id);
+    const undoable = prior === "on" || prior === "off";
+    const name = label || this.name(entity_id) || entity_id;
+
+    const done = this.#mock
+      ? this.#setMock(entity_id, this.isOn(entity_id) ? "off" : "on")
+      : this.#svc("homeassistant", "toggle", { entity_id });
+
+    // No undo offered when the prior state was unknown or unavailable: there is
+    // nothing truthful to put back, and an Undo button that cannot restore is
+    // worse than no button. The Undo control only renders when toast.action is
+    // set, so this is also what keeps it from appearing on nothing.
+    if (undoable && !timeMachine.active) {
+      toast.showUndo(`${name} ${prior === "on" ? "off" : "on"}`, () => {
+        if (this.#mock) { this.#setMock(entity_id, prior); return; }
+        this.#svc("homeassistant", prior === "on" ? "turn_on" : "turn_off", { entity_id });
+      });
+    }
+    return done;
   }
   turnOn(entity_id: string | string[]) {
     if (this.#mock) return this.#setMock(entity_id, "on");
@@ -465,6 +665,15 @@ class HAStore {
   scene(entity_id: string) {
     if (this.#mock) return;
     return this.#svc("scene", "turn_on", { entity_id });
+  }
+  /**
+   * Apply a room-aware scene (script.room_scene) — the same verb resolves
+   * differently per room. See packages/feature_room_scenes.yaml for the
+   * per-room bright/soft light sets.
+   */
+  roomScene(room: string, scene: "bright" | "relax" | "off" | "goodnight") {
+    if (this.#mock) return;
+    return this.#svc("script", "room_scene", { room, scene });
   }
   script(entity_id: string) {
     if (this.#mock) return;

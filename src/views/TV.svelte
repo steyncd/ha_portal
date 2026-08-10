@@ -3,6 +3,7 @@
   import { ha } from "../lib/store.svelte";
   import { E, ROOMS, CAMERAS } from "../lib/entities";
   import { n, greeting, clock as fmtClock, sastHour } from "../lib/format";
+  import { stable, sig } from "../lib/stable";
   import PowerFlow from "../lib/components/PowerFlow.svelte";
 
   let { onexit }: { onexit: () => void } = $props();
@@ -35,6 +36,9 @@
   const camsOnline = $derived(CAMERAS.filter((c) => ha.available(c.id)).length);
 
   type Alert = { sev: "critical" | "warning"; icon: string; text: string };
+  // Memoised: this list changes maybe twice an hour, but without a stable
+  // reference its {#each} re-rendered every 300ms forever on the wall display.
+  const alertsMemo = stable<Alert[]>();
   const alerts = $derived.by<Alert[]>(() => {
     const a: Alert[] = [];
     const soc = ha.num(E.batterySoc);
@@ -48,7 +52,8 @@
       a.push({ sev: "warning", icon: "💧", text: `Water low${water != null ? " — " + Math.round(water) + "%" : ""}${days != null ? " · " + Math.round(days) + "d left" : ""}` });
     if (camsOnline < CAMERAS.length) a.push({ sev: "warning", icon: "📷", text: `${CAMERAS.length - camsOnline} camera${CAMERAS.length - camsOnline > 1 ? "s" : ""} offline` });
     if (nobody && !armed) a.push({ sev: "warning", icon: "🛡️", text: "Nobody home · alarm off" });
-    return a.sort((x, y) => (x.sev === "critical" ? 0 : 1) - (y.sev === "critical" ? 0 : 1));
+    a.sort((x, y) => (x.sev === "critical" ? 0 : 1) - (y.sev === "critical" ? 0 : 1));
+    return alertsMemo(a, sig(a, "sev", "text"));
   });
   const topAlert = $derived(alerts[0] ?? null);
   const health = $derived.by(() => {
@@ -58,7 +63,13 @@
   });
 
   // ---- tiles ----
-  const warm = $derived([...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0)));
+  // Room order only changes when the ranking actually flips, not on every
+  // temperature decimal — so the signature is the resulting order, not the values.
+  const warmMemo = stable<typeof ROOMS>();
+  const warm = $derived.by(() => {
+    const r = [...ROOMS].sort((a, b) => (ha.num(b.id) ?? 0) - (ha.num(a.id) ?? 0));
+    return warmMemo(r, r.map((x) => x.id).join(""));
+  });
   const battDir = $derived((ha.num(E.batteryPower) ?? 0) < 0 ? "Discharging" : (ha.num(E.batteryPower) ?? 0) > 0 ? "Charging" : "Idle");
 
   // ---- rotating secondary strip data ----
@@ -186,11 +197,11 @@
   /* hero energy flow — dominant, high contrast */
   .hero { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: clamp(14px,1.6vw,26px) clamp(16px,1.8vw,30px); border-radius: clamp(18px,1.6vw,28px);
     background: rgba(255,255,255,0.055); border: 1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); }
-  .cap { display: flex; align-items: center; gap: 9px; font-size: clamp(12px,1.15vw,20px); font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #cbd5e1; }
+  .cap { display: flex; align-items: center; gap: 9px; font-size: clamp(12px,1.15vw,20px); font-weight: 700; letter-spacing: 0.1em; color: #cbd5e1; }
   .cap .live { width: 9px; height: 9px; border-radius: 50%; background: var(--solar); animation: pulse 1.7s infinite; }
   .flow { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 0.6vh 0; }
   .herostats { display: flex; justify-content: center; gap: clamp(28px,5vw,90px); }
-  .hl { font-size: clamp(11px,1vw,17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; text-align: center; }
+  .hl { font-size: clamp(11px,1vw,17px); color: var(--dim); font-weight: 700; text-align: center; }
   .hv { font-size: clamp(22px,2.6vw,44px); font-weight: 800; letter-spacing: -0.02em; text-align: center; margin-top: 0.3vh; }
 
   /* status tiles — solid, distinct, large (glanceable) */
@@ -211,7 +222,7 @@
   .fcc { flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.7vw; font-size: clamp(14px,1.4vw,26px); color: var(--text); }
   .fcc.now b { color: var(--acc); } .fcc .h { color: var(--dim); } .fcc .i { font-size: 1.25em; }
   .mkc { display: flex; flex-direction: column; gap: 2px; }
-  .mkl { font-size: clamp(11px,1vw,17px); text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); font-weight: 700; }
+  .mkl { font-size: clamp(11px,1vw,17px); color: var(--dim); font-weight: 700; }
   .mkc b { font-size: clamp(20px,2.3vw,40px); font-weight: 800; }
   .mkc b.down { color: var(--success); } .mkc b.up { color: var(--warning); }
   .dots { position: absolute; right: 16px; bottom: -18px; display: flex; gap: 6px; }

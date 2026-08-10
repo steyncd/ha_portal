@@ -64,8 +64,8 @@
   </div>
 
   <div class="kpis">
-    <div class="card k"><div class="lb">↓ Download</div><div class="big">{n(ha.num(E.routerDown), 1)}<span class="u"> Mbps</span></div></div>
-    <div class="card k"><div class="lb">↑ Upload</div><div class="big">{n(ha.num(E.routerUp), 1)}<span class="u"> Mbps</span></div></div>
+    <div class="card k"><div class="lb">↓ Download</div><div class="big">{n(ha.num(E.routerDown), 1)}<span class="u">Mbps</span></div></div>
+    <div class="card k"><div class="lb">↑ Upload</div><div class="big">{n(ha.num(E.routerUp), 1)}<span class="u">Mbps</span></div></div>
     <div class="card k"><div class="lb">Devices</div><div class="big">{n(ha.num(E.routerDevices))}</div><div class="sub" style="color:var(--success)">online</div></div>
     <div class="card k"><div class="lb">Battery health</div><div class="big">{n(ha.num(E.batteryHealth))}<span class="u">%</span></div><div class="sub">grade {ha.state(E.energyGrade) ?? "—"}{ha.num(E.batteryCellSpread) != null ? ` · Δ${n(ha.num(E.batteryCellSpread), 1)}°C cells` : ""}</div></div>
   </div>
@@ -117,7 +117,7 @@
   @media (max-width: 760px) { .kpis { grid-template-columns: 1fr 1fr; } }
   .k { padding: 16px; }
   .big { font-size: 26px; font-weight: 800; margin-top: 5px; }
-  .u { font-size: 12px; color: var(--dim); }
+  .u { font-size: 12px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
