@@ -91,7 +91,7 @@
         <div class="pgrid">
           {#each PUMPS as p}
             {@const st = pumpState(p)}
-            <button class="ptile" class:on={ha.isOn(p.sw)} class:pumping={st.pumping} onclick={() => ha.toggle(p.sw)}>
+            <button class="ptile" class:on={ha.isOn(p.sw)} class:pumping={st.pumping} onclick={() => ha.toggle(p.sw, p.label)}>
               <span class="pi"><Icon name={p.ic} size={18} /></span><span class="pn">{p.label}</span>
               <span class="pw">{st.w != null ? `${power(st.w).val} ${power(st.w).unit}` : "—"}</span>
               <StatusChip state={st.pumping ? "ok" : st.label === "Idling" ? "idle" : "off"} label={st.label} />

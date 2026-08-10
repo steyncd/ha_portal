@@ -574,10 +574,42 @@ class HAStore {
     }
     this.entities = next;
   }
-  toggle(entity_id: string) {
+  /**
+   * Toggle with an undo offer.
+   *
+   * The brief's rule is that one tap plus a 5s undo REPLACES confirmation
+   * dialogs everywhere except arming — a confirm taxes every correct action to
+   * guard the rare wrong one, undo taxes only the mistake.
+   *
+   * The undo restores the state that was ACTUALLY read before the call, not a
+   * hardcoded inverse. Those differ more often than you would think: a group
+   * that was partly on, a light that was already off when the tile looked on
+   * because the tile was reading a stale frame. Inverting "what the tile
+   * showed" would then move the house somewhere it had never been.
+   *
+   * `label` is what the toast says; pass the friendly name, not the entity id.
+   */
+  toggle(entity_id: string, label?: string) {
     if (!this.exists(entity_id)) return;
-    if (this.#mock) return this.#setMock(entity_id, this.isOn(entity_id) ? "off" : "on");
-    return this.#svc("homeassistant", "toggle", { entity_id });
+    const prior = this.state(entity_id);
+    const undoable = prior === "on" || prior === "off";
+    const name = label || this.name(entity_id) || entity_id;
+
+    const done = this.#mock
+      ? this.#setMock(entity_id, this.isOn(entity_id) ? "off" : "on")
+      : this.#svc("homeassistant", "toggle", { entity_id });
+
+    // No undo offered when the prior state was unknown or unavailable: there is
+    // nothing truthful to put back, and an Undo button that cannot restore is
+    // worse than no button. The Undo control only renders when toast.action is
+    // set, so this is also what keeps it from appearing on nothing.
+    if (undoable && !timeMachine.active) {
+      toast.showUndo(`${name} ${prior === "on" ? "off" : "on"}`, () => {
+        if (this.#mock) { this.#setMock(entity_id, prior); return; }
+        this.#svc("homeassistant", prior === "on" ? "turn_on" : "turn_off", { entity_id });
+      });
+    }
+    return done;
   }
   turnOn(entity_id: string | string[]) {
     if (this.#mock) return this.#setMock(entity_id, "on");

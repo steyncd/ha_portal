@@ -50,7 +50,7 @@
           {@const p = ha.num(a.power)}
           {@const st = appState(a)}
           {@const avail = ha.available(a.sw)}
-          <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw)} disabled={!avail}>
+          <button class="app" class:on={st === "on"} class:idle={st === "idle"} onclick={() => ha.toggle(a.sw, a.label)} disabled={!avail}>
             <span class="aicn"><Icon name={a.ic} size={18} /></span>
             <span class="al">
               <span class="anm">{a.label}</span>

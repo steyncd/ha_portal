@@ -80,8 +80,8 @@
               class="ltap"
               role="button"
               tabindex="0"
-              onclick={() => avail && ha.toggle(l.id)}
-              onkeydown={(e) => { if (avail && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ha.toggle(l.id); } }}
+              onclick={() => avail && ha.toggle(l.id, l.label)}
+              onkeydown={(e) => { if (avail && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); ha.toggle(l.id, l.label); } }}
             >
               <span class="mi">{l.icon}</span>
               <span class="mn">{l.label}</span>

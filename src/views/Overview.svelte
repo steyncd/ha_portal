@@ -237,7 +237,7 @@
     <div class="lb" style="margin-bottom:12px">Pumps & heater</div>
     <div class="grid2">
       {#each quick as q (q.id)}
-        <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id)}>
+        <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id, q.name)}>
           <span class="mi"><Icon name={q.ic} size={16} /></span><span class="mn">{q.name}</span><StatusChip state={ha.isOn(q.id) ? "ok" : "off"} label={ha.isOn(q.id) ? "On" : "Off"} />
         </button>
       {/each}
@@ -251,7 +251,7 @@
       <div class="grid2" style="margin-top:12px">
         {#each indoorTop as l (l.id)}
           <div class="ltile" class:on={ha.isOn(l.id)}>
-            <div class="ltap" onclick={() => ha.toggle(l.id)} role="button" tabindex="0" onkeydown={() => {}}>
+            <div class="ltap" onclick={() => ha.toggle(l.id, l.label)} role="button" tabindex="0" onkeydown={() => {}}>
               <span class="mi">{l.icon}</span><span class="mn">{l.label}</span><span class="qs">{ha.isOn(l.id) ? "On" : "Off"}</span>
             </div>
             <button class="tune" onclick={() => lightSheet.open(l.id, l.label)} aria-label="brightness">⋯</button>

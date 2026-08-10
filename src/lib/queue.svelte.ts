@@ -27,8 +27,20 @@ export type Queued = {
   run: () => unknown;
 };
 
-/** Domains whose commands must fail loudly rather than queue. */
-const NEVER_QUEUE = ["alarm_control_panel", "lock", "cover"];
+// Domains whose commands must fail loudly rather than queue.
+//
+// The brief names the alarm and the gate. `cover` covers the gate class in
+// principle, but as it happens this house has NO cover or lock entities at all
+// — every gate and door in entities.ts ACCESS is a read-only Olarm zone sensor,
+// so there is no gate command to queue in the first place. The domains stay
+// listed anyway: the day a cover entity does appear, it must not silently
+// become queueable because nobody remembered this rule.
+//
+// `button` and `input_button` are here for the same reason a script is: a
+// button press is a momentary event with no state to reconcile. Replaying one
+// three minutes late doesn't "catch up" — it fires a fresh action at a moment
+// nobody chose.
+const NEVER_QUEUE = ["alarm_control_panel", "lock", "cover", "button", "input_button"];
 
 /** Also refuse anything that isn't idempotent — scripts and scenes. */
 const NEVER_QUEUE_SERVICE = ["script", "scene", "automation"];

@@ -37,9 +37,9 @@
     { icon: "🌑", label: "All lights off", hint: "Action", run: () => { actionLog.record("lightsoff"); ha.turnOff(ALL_LIGHTS); toast.show("Lights off"); } },
     { icon: "🛡️", label: "Arm away", hint: "Security", run: () => { actionLog.record("armaway"); ha.armAway(armTarget); toast.show("Arming away"); } },
     { icon: "🔓", label: "Disarm", hint: "Security", run: () => { actionLog.record("disarm"); ha.disarm(armTarget); toast.show("Disarmed"); } },
-    { icon: "💧", label: "Toggle water pump", hint: "Pump", run: () => { actionLog.record("waterpump"); ha.toggle(E.waterPump); } },
-    { icon: "🏊", label: "Toggle pool pump", hint: "Pump", run: () => { actionLog.record("poolpump"); ha.toggle(E.poolPump); } },
-    { icon: "🕳️", label: "Toggle borehole", hint: "Pump", run: () => { actionLog.record("borehole"); ha.toggle(E.boreholePump); } },
+    { icon: "💧", label: "Toggle water pump", hint: "Pump", run: () => { actionLog.record("waterpump"); ha.toggle(E.waterPump, "Water pump"); } },
+    { icon: "🏊", label: "Toggle pool pump", hint: "Pump", run: () => { actionLog.record("poolpump"); ha.toggle(E.poolPump, "Pool pump"); } },
+    { icon: "🕳️", label: "Toggle borehole", hint: "Pump", run: () => { actionLog.record("borehole"); ha.toggle(E.boreholePump, "Borehole"); } },
   ]);
 
   const filtered = $derived(

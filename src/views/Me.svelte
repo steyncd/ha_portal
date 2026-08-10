@@ -346,7 +346,7 @@
         <div class="lb" style="margin-bottom:13px">My favourites</div>
         <div class="favs">
           {#each favs as f}
-            <button class="fav" class:on={!f.scene && ha.isOn(f.id)} onclick={() => f.scene ? (ha.script(f.id), toast.show(f.name)) : ha.toggle(f.id)}>
+            <button class="fav" class:on={!f.scene && ha.isOn(f.id)} onclick={() => f.scene ? (ha.script(f.id), toast.show(f.name)) : ha.toggle(f.id, f.name)}>
               <span class="fi">{f.icon}</span><span class="fn">{f.name}</span>
             </button>
           {/each}

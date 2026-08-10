@@ -318,7 +318,7 @@
       {#each APPLIANCES as a}
         {@const p = ha.num(a.power)}
         {@const on = appOn(a)}
-        <button class="app" class:on onclick={() => ha.toggle(a.sw)} disabled={!ha.exists(a.sw)}>
+        <button class="app" class:on onclick={() => ha.toggle(a.sw, a.label)} disabled={!ha.exists(a.sw)}>
           <span class="al"><span class="an">{a.label}</span><span class="aw">{p != null ? `${power(p).val} ${power(p).unit}` : "—"}</span></span>
           <span class="apill" class:apon={on}>{on ? "ON" : "OFF"}</span>
         </button>

@@ -257,7 +257,7 @@
     <div class="ctrls">
       {#each QUICK_LIGHTS as l (l.id)}
         <div class="ltile" class:on={ha.isOn(l.id)}>
-          <button class="ltap" onclick={() => ha.toggle(l.id)}>
+          <button class="ltap" onclick={() => ha.toggle(l.id, l.label)}>
             <span class="cic">{l.icon}</span>
             <span class="cname">{l.label}</span>
             <span class="cstate">{ha.isOn(l.id) ? "On" : "Off"}</span>

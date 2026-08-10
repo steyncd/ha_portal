@@ -188,7 +188,7 @@
   {@const on = ha.isOn(d.id)}
   {@const w = d.power ? ha.num(d.power) : null}
   <div class="ltile" class:on>
-    <div class="ltap" role="button" tabindex="0" onclick={() => ha.toggle(d.id)} onkeydown={(e) => { if (e.key === "Enter") ha.toggle(d.id); }}>
+    <div class="ltap" role="button" tabindex="0" onclick={() => ha.toggle(d.id, d.label)} onkeydown={(e) => { if (e.key === "Enter") ha.toggle(d.id, d.label); }}>
       <span class="li">{d.icon}</span>
       <span class="ll">
         <span class="ln">{d.label}</span>

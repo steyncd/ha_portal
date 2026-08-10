@@ -23,7 +23,7 @@
   function run(t: FavTile) {
     actionLog.record(t.id); // feed the "Suggested for now" frecency engine
     if (t.kind === "script") { ha.script(t.target); toast.show(`${t.label}`); }
-    else if (t.kind === "toggle") { ha.toggle(t.target); }
+    else if (t.kind === "toggle") { ha.toggle(t.target, t.label); }
     else if (t.kind === "arm") {
       const armed = (ha.state(E.alarmMain) ?? "").startsWith("armed");
       if (armed) { ha.disarm(t.target); toast.show("Disarming"); }

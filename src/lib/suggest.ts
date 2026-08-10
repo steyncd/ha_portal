@@ -57,10 +57,10 @@ export const ACTIONS: Action[] = [
   { id: "outdoor", label: "Outside Lights", icon: "🏮", kind: "toggle", target: "light.street_lights", seed: ["evening", "late"], do: () => { const on = OUTDOOR.some((id) => ha.isOn(id)); if (on) ha.turnOff(OUTDOOR); else ha.turnOn(OUTDOOR); }, active: () => OUTDOOR.some((id) => ha.isOn(id)) },
 
   // ── Pumps & heater ─────────────────────────────────────────────────────────
-  { id: "poolpump", label: "Pool Pump", icon: "🏊", kind: "toggle", target: E.poolPump, do: () => ha.toggle(E.poolPump), active: () => ha.isOn(E.poolPump) },
-  { id: "borehole", label: "Borehole", icon: "🕳️", kind: "toggle", target: E.boreholePump, do: () => ha.toggle(E.boreholePump), active: () => ha.isOn(E.boreholePump) },
-  { id: "waterpump", label: "Water Pump", icon: "💧", kind: "toggle", target: E.waterPump, do: () => ha.toggle(E.waterPump), active: () => ha.isOn(E.waterPump) },
-  { id: "heater", label: "Study Heater", icon: "🔥", kind: "toggle", target: E.heater, seed: ["morning", "night", "late"], do: () => ha.toggle(E.heater), active: () => ha.isOn(E.heater) },
+  { id: "poolpump", label: "Pool Pump", icon: "🏊", kind: "toggle", target: E.poolPump, do: () => ha.toggle(E.poolPump, "Pool pump"), active: () => ha.isOn(E.poolPump) },
+  { id: "borehole", label: "Borehole", icon: "🕳️", kind: "toggle", target: E.boreholePump, do: () => ha.toggle(E.boreholePump, "Borehole"), active: () => ha.isOn(E.boreholePump) },
+  { id: "waterpump", label: "Water Pump", icon: "💧", kind: "toggle", target: E.waterPump, do: () => ha.toggle(E.waterPump, "Water pump"), active: () => ha.isOn(E.waterPump) },
+  { id: "heater", label: "Study Heater", icon: "🔥", kind: "toggle", target: E.heater, seed: ["morning", "night", "late"], do: () => ha.toggle(E.heater, "Study heater"), active: () => ha.isOn(E.heater) },
 
   // ── Irrigation ─────────────────────────────────────────────────────────────
   { id: "irrigate", label: "Irrigate", icon: "🌿", kind: "scene", target: E.irrStartAll, seed: ["morning"], do: () => ha.script(E.irrStartAll) },
@@ -79,11 +79,13 @@ export function fireAction(id: string, opts: { record?: boolean; announce?: bool
   if (!a) return;
   a.do();
   if (opts.record !== false) actionLog.record(id);
-  // Arm/disarm and toggles read better with a state-aware toast.
+  // Toggles are deliberately silent here: ha.toggle has already raised an UNDO
+  // toast carrying the real prior state. Firing a plain toast after it would
+  // overwrite that undo with a message that looks identical but does nothing —
+  // an Undo button that vanishes a frame after it appears.
   if (a.kind === "arm") toast.show("Arming away");
   else if (a.id === "disarm") toast.show("Disarmed");
-  else if (a.kind === "toggle") toast.show(`${a.label} ${a.active?.() ? "off" : "on"}`);
-  else toast.show(a.label);
+  else if (a.kind !== "toggle") toast.show(a.label);
   if (opts.announce && a.say) ha.announce(a.say);
 }
 
