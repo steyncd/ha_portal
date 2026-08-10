@@ -1594,3 +1594,200 @@ If nothing notable happened, say so plainly in one sentence.`;
     throw new HttpsError("unavailable", "Couldn't explain this chart right now.");
   },
 );
+
+// ---- Ask the warehouse -------------------------------------------------
+// Assist talks to HA's conversation agent, which only knows the present:
+// "is the alarm armed", "what's the battery level". Nothing in the house could
+// answer "what did we spend on electricity in July" — and the warehouse, the
+// one store that could, had never been read by any code at all.
+//
+// A one-row-per-day, single-table, ~30-column schema is close to the ideal
+// text-to-SQL target: no joins, no ambiguity, whole schema fits in the prompt.
+// So the model writes SQL and code decides whether to run it — model proposes,
+// code decides, same rule as the rest of the LLM surface here.
+//
+// Three independent guards, because "the model wrote it" is not a safety story:
+//   1. Shape: one statement, must start with SELECT/WITH, must reference only
+//      the one table, and a keyword denylist for anything that writes.
+//   2. Dry run: BigQuery itself validates and reports bytes. Catches invented
+//      column names for free, which is the most common failure by far.
+//   3. maximumBytesBilled: a hard ceiling the query cannot exceed even if the
+//      first two guards were somehow wrong. The table is kilobytes; 64MB is
+//      already absurdly generous, so tripping it means something is off.
+const SQL_FORBIDDEN =
+  /\b(insert|update|delete|merge|drop|create|alter|truncate|grant|revoke|call|export|load|begin|commit|rollback|session|assert|script)\b/i;
+
+function validateWarehouseSql(sql) {
+  const s = String(sql || "").trim().replace(/;\s*$/, "");
+  if (!s) return { ok: false, why: "empty query" };
+  if (s.includes(";")) return { ok: false, why: "only one statement allowed" };
+  if (!/^(select|with)\b/i.test(s)) return { ok: false, why: "must be a SELECT" };
+  if (SQL_FORBIDDEN.test(s)) return { ok: false, why: "query tries to modify data" };
+  // Every table reference must be the daily table. Catches attempts to read
+  // INFORMATION_SCHEMA or another dataset in the same project.
+  const refs = [...s.matchAll(/\bfrom\s+([`\w.\-]+)|\bjoin\s+([`\w.\-]+)/gi)].map((m) =>
+    (m[1] || m[2]).replace(/`/g, "").toLowerCase(),
+  );
+  const allowed = new Set([`${BQ_DATASET}.${BQ_TABLE}`, BQ_TABLE, `home.${BQ_TABLE}`]);
+  // CTE names are legitimate FROM targets. Month-over-month and "days above
+  // average" questions genuinely want a WITH clause, so refusing them would
+  // push the model into worse SQL rather than making anything safer — the CTE
+  // can only ever be built from an already-allowed table.
+  for (const m of s.matchAll(/(?:\bwith\s+|,\s*)([a-z_]\w*)\s+as\s*\(/gi)) allowed.add(m[1].toLowerCase());
+  const bad = refs.filter((r) => !allowed.has(r) && !allowed.has(r.split(".").slice(-2).join(".")));
+  if (bad.length) return { ok: false, why: `can only read ${BQ_DATASET}.${BQ_TABLE}` };
+  const limited = /\blimit\s+\d+/i.test(s) ? s : `${s}\nLIMIT 500`;
+  return { ok: true, sql: limited };
+}
+
+async function geminiJson(prompt, maxTokens = 700) {
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0, maxOutputTokens: maxTokens, responseMimeType: "application/json" },
+  });
+  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
+  let lastErr = "no model";
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY.value()}`, {
+        method: "POST", headers: { "Content-Type": "application/json" }, body,
+      });
+      const j = await r.json();
+      if (r.ok) {
+        const text = (j?.candidates?.[0]?.content?.parts?.[0]?.text || "").trim();
+        if (text) {
+          try { return { data: JSON.parse(text), model }; }
+          catch { lastErr = "model returned non-JSON"; continue; }
+        }
+      }
+      lastErr = j?.error?.message || `gemini ${r.status}`;
+    } catch (e) { lastErr = String((e && e.message) || e); }
+  }
+  throw new HttpsError("unavailable", lastErr);
+}
+
+// Column meanings the model cannot infer from a name. Only the ones where a
+// wrong reading would produce a confidently wrong answer.
+const COLUMN_NOTES = {
+  battery_soc: "battery level at end of day (23:55), NOT the day's low",
+  battery_soc_min: "lowest battery level reached that day — use this for 'how low did it get'",
+  tank_pct: "tank level at end of day, NOT the day's low",
+  indoor_temp: "indoor temperature at 23:55, NOT a daily average — use indoor_temp_min/max for extremes",
+  outdoor_temp: "outdoor temperature at 23:55, NOT a daily average",
+  energy_cost: "grid electricity cost for that day, in South African rand",
+  grid_independence_pct: "percent of the day's energy that did not come from the grid",
+  base_load_w: "always-on floor: the lowest the house load got, in watts",
+  peak_load_w: "highest the house load reached, in watts",
+  off_grid_hours: "hours the house ran without the grid",
+  loadshed_urgency: "load shedding urgency score, higher is worse",
+  water_pump_min: "pressure pump runtime in minutes",
+  alarm_armed_hours: "hours the house alarm was armed",
+  vehicles: "vehicles counted passing the property",
+  pedestrians: "pedestrians counted passing the property",
+  oura_readiness: "Christo's Oura readiness score",
+  oura_sleep: "Christo's Oura sleep score",
+};
+
+exports.askWarehouse = onCall(
+  { secrets: [GEMINI_API_KEY], region: "us-central1", maxInstances: 5, timeoutSeconds: 60 },
+  async (request) => {
+    const email = ((request.auth && request.auth.token && request.auth.token.email) || "").toLowerCase();
+    if (!email) throw new HttpsError("unauthenticated", "Sign in required.");
+
+    const question = String((request.data && request.data.question) || "").trim().slice(0, 400);
+    if (question.length < 3) throw new HttpsError("invalid-argument", "Ask a question.");
+
+    const bq = new BigQuery();
+    const table = bq.dataset(BQ_DATASET).table(BQ_TABLE);
+    const [tExists] = await table.exists();
+    if (!tExists) throw new HttpsError("failed-precondition", "No history stored yet.");
+
+    // Schema is read live, so the answer surface grows with the table on its own
+    // — adding a column to WAREHOUSE_METRICS makes it askable the same night.
+    const [md] = await table.getMetadata();
+    const fields = (md.schema.fields || []).map((f) => f.name);
+    const schemaText = fields
+      .map((f) => (COLUMN_NOTES[f] ? `  ${f} — ${COLUMN_NOTES[f]}` : `  ${f}`))
+      .join("\n");
+
+    const today = new Date().toLocaleDateString("en-CA", { timeZone: "Africa/Johannesburg" });
+    const plan = await geminiJson(`You write BigQuery Standard SQL for one table of daily home metrics.
+
+Table: \`${BQ_DATASET}.${BQ_TABLE}\` — exactly one row per calendar day.
+Today is ${today} (Africa/Johannesburg). Columns:
+${schemaText}
+
+Question: ${question}
+
+Return JSON only:
+{"sql": "...", "title": "short chart title", "unit": "unit or empty string",
+ "x": "column for the x axis or empty", "y": ["value columns"], "chart": "line|bar|none"}
+
+Rules:
+- One SELECT statement. Never modify data. Only this table.
+- Any column may be NULL for days it wasn't measured — ignore NULLs rather than treating them as zero.
+- Prefer explicit date filters over relying on row order, and ORDER BY date for time series.
+- If the question needs a column that does not exist, return {"sql":"","title":"","unit":"","x":"","y":[],"chart":"none"}.`);
+
+    const raw = (plan.data && plan.data.sql) || "";
+    if (!raw) throw new HttpsError("not-found", "The house doesn't record that yet.");
+
+    const v = validateWarehouseSql(raw);
+    if (!v.ok) {
+      logger.warn("askWarehouse rejected sql", { why: v.why, question, sql: raw.slice(0, 300) });
+      throw new HttpsError("invalid-argument", `Couldn't run that safely: ${v.why}.`);
+    }
+
+    // Dry run first: BigQuery validates the SQL and prices it before anything
+    // executes, so an invented column name costs nothing and returns a real
+    // error message rather than a plausible wrong answer.
+    try {
+      await bq.createQueryJob({ query: v.sql, dryRun: true, useLegacySql: false });
+    } catch (e) {
+      const why = String((e && e.message) || e).split("\n")[0].slice(0, 200);
+      logger.warn("askWarehouse dry run failed", { why, sql: v.sql.slice(0, 300) });
+      throw new HttpsError("invalid-argument", "I couldn't turn that into a valid query. Try asking it a different way.");
+    }
+
+    const [rows] = await bq.query({ query: v.sql, useLegacySql: false, maximumBytesBilled: "67108864" });
+
+    // Dates come back as BigQuery date objects; flatten to plain values so the
+    // portal and the summariser see the same thing.
+    const flat = rows.slice(0, 500).map((r) =>
+      Object.fromEntries(Object.entries(r).map(([k, val]) => [k, val && typeof val === "object" && "value" in val ? val.value : val])),
+    );
+
+    // Summarise the ACTUAL rows, not the question. The model never gets to
+    // invent the number — it only puts words around what the query returned.
+    let answer = "";
+    if (flat.length) {
+      try {
+        const sum = await geminiJson(`A South African family asked about their home's history: "${question}"
+
+The query returned these rows (JSON): ${JSON.stringify(flat.slice(0, 60))}
+Unit: ${plan.data.unit || "unknown"}
+
+Return JSON: {"answer": "..."}
+At most two short sentences answering the question directly from these rows.
+Use the numbers as given, rounded sensibly, with the unit. Rand amounts as R123.
+Plain language, no preamble, no markdown. If the rows don't answer it, say so.`, 200);
+        answer = String((sum.data && sum.data.answer) || "").trim();
+      } catch (e) {
+        logger.warn("askWarehouse summary failed", { error: String((e && e.message) || e) });
+      }
+    } else {
+      answer = "No days match that.";
+    }
+
+    return {
+      answer,
+      rows: flat,
+      sql: v.sql,
+      title: String(plan.data.title || "").slice(0, 80),
+      unit: String(plan.data.unit || "").slice(0, 16),
+      x: String(plan.data.x || ""),
+      y: Array.isArray(plan.data.y) ? plan.data.y.slice(0, 4).map(String) : [],
+      chart: ["line", "bar"].includes(plan.data.chart) ? plan.data.chart : "none",
+    };
+  },
+);
