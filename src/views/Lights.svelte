@@ -40,7 +40,7 @@
     <span class="glow" style="--gc:var(--solar)"></span>
     <div>
       <div class="lb">Lights</div>
-      <div class="big">{onCount}<span class="u"> / {total} on</span></div>
+      <div class="big">{onCount}<span class="u">/ {total} on</span></div>
     </div>
     <button class="alloff" onclick={() => { ha.turnOff(ALL_LIGHTS); toast.show("All lights off"); }}>
       🌑 All off
@@ -110,7 +110,7 @@
 
   .top { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 20px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 4px; }
-  .u { font-size: 15px; color: var(--dim); font-weight: 700; }
+  .u { font-size: 15px; color: var(--dim); font-weight: 700; letter-spacing: 0; margin-left: .14em; }
   .alloff { flex-shrink: 0; padding: 11px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: var(--text-2); font-size: 12.5px; font-weight: 600; }
   .alloff:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); }
   .scenes { padding: 16px 18px; }

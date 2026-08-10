@@ -151,16 +151,16 @@
 <!-- Glance ribbon -->
 <div class="ribbon">
   <button class="rib" onclick={() => onnav("energy")}>
-    <span class="ri">🔋</span><span class="rv">{n(soc)}%</span><span class="rl">battery</span>
+    <span class="ri">🔋</span><span class="rv">{n(soc)}%</span><span class="rl">Battery</span>
   </button>
   <button class="rib" onclick={() => onnav("energy")}>
-    <span class="ri">☀️</span><span class="rv">{power(pv).val}<small>{power(pv).unit}</small></span><span class="rl">solar now</span>
+    <span class="ri">☀️</span><span class="rv">{power(pv).val}<small>{power(pv).unit}</small></span><span class="rl">Solar now</span>
   </button>
   <button class="rib" onclick={() => onnav("water")}>
-    <span class="ri">💧</span><span class="rv">{n(ha.num(E.tankLevel))}%</span><span class="rl">tank</span>
+    <span class="ri">💧</span><span class="rv">{n(ha.num(E.tankLevel))}%</span><span class="rl">Tank</span>
   </button>
   <button class="rib" onclick={() => onnav("lights")}>
-    <span class="ri">💡</span><span class="rv">{litCount}</span><span class="rl">lights on</span>
+    <span class="ri">💡</span><span class="rv">{litCount}</span><span class="rl">Lights on</span>
   </button>
 </div>
 
@@ -320,8 +320,11 @@
   .rib:hover { background: rgba(255,255,255,0.075); }
   .ri { font-size: 18px; }
   .rv { font-size: 17px; font-weight: 800; letter-spacing: -0.4px; }
-  .rv small { font-size: 10px; color: var(--dim); font-weight: 600; margin-left: 1px; }
-  .rl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  /* letter-spacing:0 — .rv's -0.4px was being inherited and jamming the unit
+     against the last digit ("1.85kW"). margin is .14em, not 1px, so the gap
+     scales with the unit rather than vanishing at larger sizes. */
+  .rv small { font-size: 10px; color: var(--dim); font-weight: 700; letter-spacing: 0; margin-left: .14em; }
+  .rl { font-size: 10px; color: var(--muted); font-weight: 700; }
 
   .sec { margin-bottom: 18px; }
   .sec.card { padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); }

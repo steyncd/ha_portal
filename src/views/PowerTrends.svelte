@@ -238,10 +238,10 @@
 
   <!-- headline KPIs -->
   <div class="kpis">
-    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u"> kWh</span></div><div class="sub">over {spanTxt}</div></div>
+    <div class="card k"><div class="lb">Energy used</div><div class="big">{n(totalKwh, totalKwh < 10 ? 2 : 1)}<span class="u">kWh</span></div><div class="sub">over {spanTxt}</div></div>
     <div class="card k"><div class="lb">Est. cost</div><div class="big">{rand(cost)}</div><div class="sub">@ {rand(tariff)}/kWh</div></div>
-    <div class="card k"><div class="lb">Average draw</div><div class="big">{power(avgW).val}<span class="u"> {power(avgW).unit}</span></div><div class="sub">live {liveW != null ? `${power(liveW).val} ${power(liveW).unit}` : "—"}</div></div>
-    <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u"> {power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
+    <div class="card k"><div class="lb">Average draw</div><div class="big">{power(avgW).val}<span class="u">{power(avgW).unit}</span></div><div class="sub">live {liveW != null ? `${power(liveW).val} ${power(liveW).unit}` : "—"}</div></div>
+    <div class="card k"><div class="lb">Peak draw</div><div class="big" style="color:var(--warning)">{power(peak.w < 0 ? 0 : peak.w).val}<span class="u">{power(peak.w < 0 ? 0 : peak.w).unit}</span></div><div class="sub">{peak.t ? dfmt(peak.t) : "—"}</div></div>
   </div>
 
   <!-- power over time (hourly W line) — the fine-grained trace -->
@@ -321,7 +321,7 @@
   .k { padding: 16px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .big { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 14px; color: var(--dim); }
+  .u { font-size: 14px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
   .pad { padding: 18px 20px; }

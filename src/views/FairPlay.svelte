@@ -121,7 +121,7 @@
   .addbtn { padding: 9px 15px; border-radius: 11px; background: rgba(255,255,255,0.06); color: var(--text-2); font-size: 13px; font-weight: 600; flex: none; }
   .addbtn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
   .card { background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; padding: 18px; }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
 
   .track { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); gap: 2px; }
   .seg { min-width: 6px; transition: flex 0.4s ease; }

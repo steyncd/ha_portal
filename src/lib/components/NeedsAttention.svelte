@@ -64,6 +64,6 @@
   .go:hover { background: rgba(255,255,255,0.12); color: var(--text); }
   .go.primary { background: var(--grad, var(--acc)); color: #05070c; font-weight: 700; }
   .go.primary:hover { filter: brightness(1.06); }
-  .calm { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 13px 16px; border-radius: 15px; background: color-mix(in srgb, var(--ok, #34d399) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok, #34d399) 22%, transparent); }
+  .calm { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 13px 16px; border-radius: 15px; background: color-mix(in srgb, var(--ok) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 22%, transparent); }
   .calm-txt { font-size: 12.5px; color: var(--text-2); }
 </style>

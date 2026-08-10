@@ -122,8 +122,8 @@
 
 <div class="col">
   <div class="kpis">
-    <div class="card k"><div class="lb">🚗 Passing vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month · on the road</div></div>
-    <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u"> today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
+    <div class="card k"><div class="lb">🚗 Passing vehicles</div><div class="big">{thousands(ha.num(E.vehiclesToday))}<span class="u">today</span></div><div class="sub">{thousands(ha.num(E.vehiclesWeek))} week · {thousands(ha.num(E.vehiclesMonth))} month · on the road</div></div>
+    <div class="card k"><div class="lb">🚶 Pedestrians</div><div class="big">{thousands(ha.num(E.pedestriansToday))}<span class="u">today</span></div><div class="sub">{thousands(ha.num(E.pedestriansWeek))} week · {thousands(ha.num(E.pedestriansMonth))} month</div></div>
   </div>
 
   <div class="card pad">
@@ -218,7 +218,7 @@
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
   .k { padding: 18px; }
   .big { font-size: 30px; font-weight: 800; margin-top: 6px; }
-  .u { font-size: 14px; color: var(--dim); }
+  .u { font-size: 14px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
   .pad { padding: 20px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }

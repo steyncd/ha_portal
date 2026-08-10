@@ -100,9 +100,9 @@
         </div>
       </div>
       <div class="stats">
-        <div class="card s"><div class="lb">Used today</div><div class="sv">{n(ha.num(E.waterUsedToday))}<span class="u"> L</span></div><div class="sub">yest. {n(ha.num(E.waterUsedYesterday))} L</div></div>
-        <div class="card s"><div class="lb">7-day avg</div><div class="sv">{n(ha.num(E.waterAvg7d))}<span class="u"> L</span></div><div class="sub">per day</div></div>
-        <div class="card s"><div class="lb">Borehole</div><div class="sv">{n(ha.num(E.boreholeToday))}<span class="u"> L</span></div><div class="sub">{n(ha.num(E.boreholeMonth))} L month</div></div>
+        <div class="card s"><div class="lb">Used today</div><div class="sv">{n(ha.num(E.waterUsedToday))}<span class="u">L</span></div><div class="sub">yest. {n(ha.num(E.waterUsedYesterday))} L</div></div>
+        <div class="card s"><div class="lb">7-day avg</div><div class="sv">{n(ha.num(E.waterAvg7d))}<span class="u">L</span></div><div class="sub">per day</div></div>
+        <div class="card s"><div class="lb">Borehole</div><div class="sv">{n(ha.num(E.boreholeToday))}<span class="u">L</span></div><div class="sub">{n(ha.num(E.boreholeMonth))} L month</div></div>
       </div>
     </div>
   </div>
@@ -211,7 +211,7 @@
   .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
   .s { padding: 16px; }
   .sv { font-size: 24px; font-weight: 800; margin-top: 5px; }
-  .u { font-size: 13px; color: var(--dim); }
+  .u { font-size: 13px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
 </style>

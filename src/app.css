@@ -34,6 +34,7 @@
 
   /* ---- Brand accent — FIXED copper. Icon + primary buttons only. */
   --acc: #d69a63;
+  --acc-ink: #151312; /* text ON copper — the only ink allowed on a copper fill */
   --acc2: #c08650; /* deeper copper, for the one gradient on primary buttons */
   --brand: var(--acc);
   --brand-2: var(--acc2);
@@ -73,6 +74,18 @@
   --health: #efa0be;
   --grid-alert: var(--warn); /* amber, never red */
 
+  /* ---- Room heat ramp — five bands at 14 / 17 / 21.5 / 25 °C.
+     Replaces the shipped #3b82f6 -> #38bdf8 -> #34d399 -> #fbbf24 -> #fb7185.
+     Green through amber to rose is the one ramp Christo cannot read: bands 3,
+     4 and 5 collapse into each other under deuteranopia, so a cold room and a
+     hot one looked the same. This runs blue -> amber and drops monotonically in
+     luminance, so the ordering survives with no colour vision at all. */
+  --heat-1: #2e6fbf; /* < 14  */
+  --heat-2: #6fb2e8; /* 14–17 */
+  --heat-3: #9db3c4; /* 17–21 */
+  --heat-4: #e8b33c; /* 22–25 */
+  --heat-5: #d2662b; /* > 25  */
+
   /* ---- Surfaces. Neutral only: no tinted card backgrounds. */
   --card-hover: color-mix(in srgb, var(--tx) 7%, transparent);
   --border: var(--line);
@@ -83,13 +96,18 @@
   --glass-blur: blur(20px) saturate(140%); /* modals ONLY — never on chrome */
   --shadow: 0 16px 40px -24px rgba(0, 0, 0, 0.8);
 
-  /* ---- Radii: two, plus pill. 22/18/12 retired. */
-  --r-card: 16px; /* surfaces */
-  --r-ctl: 10px;  /* controls */
+  /* ---- Radii: two, plus pill. 22/18/12 retired.
+     --r-surface / --r-control are the handover's names and the ones to use in
+     new code; --r-card / --r-ctl are kept as aliases because ~37 views already
+     reference them. */
+  --r-surface: 16px;
+  --r-control: 10px;
   --r-pill: 999px;
-  --r-hero: var(--r-card); /* legacy */
-  --r: var(--r-card);      /* legacy */
-  --r-tile: var(--r-ctl);  /* legacy */
+  --r-card: var(--r-surface); /* alias */
+  --r-ctl: var(--r-control);  /* alias */
+  --r-hero: var(--r-surface); /* legacy */
+  --r: var(--r-surface);      /* legacy */
+  --r-tile: var(--r-control); /* legacy */
 
   --dur: 180ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -326,13 +344,15 @@ input[type="range"]::-moz-range-thumb {
   font-variant-numeric: tabular-nums;
 }
 .big .unit {
-  font-size: 0.44em;
-  font-weight: 400;
+  /* Exactly the handover's rule: 0.5em / 700 / --tx2. Was .44em / 400 / --mut,
+     which read as a caption rather than part of the value. */
+  font-size: 0.5em;
+  font-weight: 700;
   /* MUST reset: .big sets -1.5px tracking, which the unit was inheriting and
      which jammed it against the last digit on every hero metric. */
   letter-spacing: 0;
   margin-left: 0.14em;
-  color: var(--mut);
+  color: var(--tx2);
 }
 .sub {
   font-size: 11.5px;

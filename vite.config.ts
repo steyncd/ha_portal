@@ -12,13 +12,15 @@ export default defineConfig({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: "auto",
-      includeAssets: ["favicon.svg", "favicon-mono.svg", "icon-180.png"],
+      includeAssets: ["favicon.svg", "favicon-mono.svg", "favicon-16.png", "favicon-32.png", "icon-180.png"],
       manifest: {
         name: "Steyn Home",
         short_name: "Steyn",
         description: "Steyn home — Home Assistant portal",
-        theme_color: "#08070f",
-        background_color: "#08070f",
+        // Stone's --bg. Was #08070f, left over from the v1 palette, so the
+        // install splash and the iOS status bar painted a colour no theme uses.
+        theme_color: "#22252A",
+        background_color: "#22252A",
         display: "standalone",
         start_url: "/",
         icons: [

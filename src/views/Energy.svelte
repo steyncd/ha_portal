@@ -166,15 +166,15 @@
 
   <div class="kpis">
     <div class="card k"><div class="lb">Battery</div><div class="big">{n(ha.num(E.batterySoc))}<span class="u">%</span></div><div class="sub" style="color:var(--water)">{n(ha.num(E.batteryPower))} W → home</div></div>
-    <div class="card k"><div class="lb">Solar today</div><div class="big">{n(ha.num(E.solarYieldToday), 1)}<span class="u"> kWh</span></div><div class="sub" style="color:var(--solar)">live {power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
-    <div class="card k"><div class="lb">Grid import</div><div class="big">{n(ha.num(E.gridImportToday), 1)}<span class="u"> kWh</span></div><div class="sub">{rand(ha.num(E.energyCostToday))} today</div></div>
+    <div class="card k"><div class="lb">Solar today</div><div class="big">{n(ha.num(E.solarYieldToday), 1)}<span class="u">kWh</span></div><div class="sub" style="color:var(--solar)">live {power(ha.num(E.pvPower)).val} {power(ha.num(E.pvPower)).unit}</div></div>
+    <div class="card k"><div class="lb">Grid import</div><div class="big">{n(ha.num(E.gridImportToday), 1)}<span class="u">kWh</span></div><div class="sub">{rand(ha.num(E.energyCostToday))} today</div></div>
     <div class="card k"><div class="lb">Grade</div><div class="big" style="color:var(--success)">{ha.state(E.energyGrade) ?? "—"}</div><div class="sub">{n(indep)}% independent</div></div>
   </div>
 
   <div class="kpis">
     <div class="card k"><div class="lb">Self-sufficient</div><div class="big">{n(ha.num(E.selfSufficiency))}<span class="u">%</span></div><div class="sub">today</div></div>
     <div class="card k"><div class="lb">Solar saved</div><div class="big" style="color:var(--solar)">{rand(ha.num(E.solarSaved))}</div><div class="sub">today vs grid</div></div>
-    <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u"> kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
+    <div class="card k"><div class="lb">Vs expected</div><div class="big" style="color:{(vsExpected ?? 0) <= 0 ? 'var(--success)' : 'var(--warning)'}">{vsExpected != null ? `${vsExpected > 0 ? '+' : ''}${n(vsExpected, 1)}` : '—'}<span class="u">kWh</span></div><div class="sub">{n(ha.num(E.consumptionExpected), 1)} kWh expected</div></div>
     <div class="card k"><div class="lb">Solar strings</div><div class="big" style="color:{mppt === 'ok' ? 'var(--success)' : 'var(--warning)'};font-size:22px;text-transform:capitalize">{mppt ?? '—'}</div><div class="sub">battery {rand(ha.num(E.batteryValueNow))}/h · {ha.state(E.batteryTou) ?? '—'}</div></div>
   </div>
 
@@ -367,7 +367,7 @@
   .gv { font-size: 19px; font-weight: 800; margin-top: 4px; }
   .gs { font-size: 12px; color: var(--muted); margin-top: 3px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }

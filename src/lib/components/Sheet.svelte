@@ -44,6 +44,18 @@
     onclose();
   }
 
+  // Elements that can hold focus, in DOM order. Recomputed on every Tab rather
+  // than cached: sheet bodies load their content asynchronously, so a list
+  // captured at open time would be stale by the time anyone pressed Tab.
+  const FOCUSABLE =
+    'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+  function focusables(): HTMLElement[] {
+    if (!sheetEl) return [];
+    return [...sheetEl.querySelectorAll<HTMLElement>(FOCUSABLE)].filter(
+      (el) => el.offsetParent !== null || el === document.activeElement,
+    );
+  }
+
   // Escape + focus handling. Attached while open only.
   $effect(() => {
     if (!open) return;
@@ -55,6 +67,37 @@
       if (e.key === "Escape") {
         e.stopPropagation();
         close();
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      // Focus trap. aria-modal tells a screen reader the rest of the page is
+      // inert, but it does nothing for a sighted keyboard user — without this,
+      // Tab walks straight out of the sheet and into the page behind the scrim,
+      // where the focus ring is invisible and every target is unreachable by
+      // mouse. The trap is what makes aria-modal true.
+      const items = focusables();
+      if (!items.length) {
+        // Nothing tabbable inside: keep focus on the sheet itself rather than
+        // letting it escape to the frozen page.
+        e.preventDefault();
+        sheetEl?.focus();
+        return;
+      }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      const inside = !!active && !!sheetEl?.contains(active);
+
+      if (!inside) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus();
+      } else if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
     window.addEventListener("keydown", onkey, true);

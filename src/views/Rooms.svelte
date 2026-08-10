@@ -108,15 +108,37 @@
     },
   ];
 
-  // 5-band temperature heat scale (house runs cold; bands per prototype 14/17/21.5/25)
+  // 5-band temperature heat scale. Same bands as before (14 / 17 / 21.5 / 25),
+  // re-spaced onto blue -> amber.
+  //
+  // The old ramp was #3b82f6 -> #38bdf8 -> #34d399 -> #fbbf24 -> #fb7185. Green
+  // through amber to rose is the single ramp Christo cannot read: under
+  // deuteranopia bands 3, 4 and 5 converge, so "comfortable" and "hot" were the
+  // same swatch. This one also drops monotonically in luminance, so the ordering
+  // survives with no colour discrimination at all.
+  const HEAT = ["--heat-1", "--heat-2", "--heat-3", "--heat-4", "--heat-5"] as const;
+  function heatVar(t: number): (typeof HEAT)[number] {
+    return t < 14 ? HEAT[0] : t < 17 ? HEAT[1] : t < 21.5 ? HEAT[2] : t < 25 ? HEAT[3] : HEAT[4];
+  }
   function heat(t: number | null): string {
     if (t == null) return "rgba(255,255,255,.03)";
-    const c = t < 14 ? "#3b82f6" : t < 17 ? "#38bdf8" : t < 21.5 ? "#34d399" : t < 25 ? "#fbbf24" : "#fb7185";
-    return `color-mix(in srgb, ${c} 26%, transparent)`;
+    return `color-mix(in srgb, var(${heatVar(t)}) 26%, transparent)`;
   }
   const HEAT_LEGEND = [
-    { c: "#3b82f6", l: "<14°" }, { c: "#38bdf8", l: "14–17°" }, { c: "#34d399", l: "17–21°" }, { c: "#fbbf24", l: "22–25°" }, { c: "#fb7185", l: ">25°" },
+    { c: "var(--heat-1)", l: "<14°" },
+    { c: "var(--heat-2)", l: "14–17°" },
+    { c: "var(--heat-3)", l: "17–21°" },
+    { c: "var(--heat-4)", l: "22–25°" },
+    { c: "var(--heat-5)", l: ">25°" },
   ];
+
+  // Comfort labels ride the same ramp, so the pill and the room fill can never
+  // disagree. Label carries the meaning; colour only reinforces it.
+  function comfortOf(t: number | null) {
+    if (t == null) return { label: "No sensor", color: "var(--mut)" };
+    const label = t < 14 ? "Cold" : t < 17 ? "Cool" : t < 21.5 ? "Comfortable" : t < 25 ? "Warm" : "Hot";
+    return { label, color: `var(${heatVar(t)})` };
+  }
 
   let activeId = $state("study");
   const active = $derived(PLAN.find((r) => r.id === activeId)!);
@@ -135,14 +157,7 @@
     if (t) ha.history(t, 24).then((h) => (hist = h));
   });
 
-  const comfort = $derived.by(() => {
-    if (temp == null) return { label: "No sensor", color: "var(--muted)" };
-    if (temp < 14) return { label: "Cold", color: "#3b82f6" };
-    if (temp < 17) return { label: "Cool", color: "var(--water)" };
-    if (temp < 21.5) return { label: "Comfortable", color: "var(--success)" };
-    if (temp < 25) return { label: "Warm", color: "var(--warning)" };
-    return { label: "Hot", color: "var(--error)" };
-  });
+  const comfort = $derived(comfortOf(temp));
 
   const pw = (id?: string) => (id ? `${power(ha.num(id)).val} ${power(ha.num(id)).unit}` : "");
 
@@ -164,15 +179,9 @@
   const fhum = $derived(ha.num("sensor.floating_temp_sensor_humidity"));
   const flux = $derived(ha.num("sensor.floating_temp_sensor_illuminance"));
   const fbatt = $derived(ha.num("sensor.floating_temp_sensor_battery"));
-  const fcomfort = $derived.by(() => {
-    const t = ftemp;
-    if (t == null) return { label: "No reading", color: "var(--muted)" };
-    if (t < 14) return { label: "Cold", color: "#3b82f6" };
-    if (t < 17) return { label: "Cool", color: "var(--water)" };
-    if (t < 21.5) return { label: "Comfortable", color: "var(--success)" };
-    if (t < 25) return { label: "Warm", color: "var(--warning)" };
-    return { label: "Hot", color: "var(--error)" };
-  });
+  const fcomfort = $derived(
+    ftemp == null ? { label: "No reading", color: "var(--mut)" } : comfortOf(ftemp),
+  );
 </script>
 
 {#snippet devtile(d: Dev)}

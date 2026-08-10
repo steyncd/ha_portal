@@ -71,7 +71,7 @@
 <style>
   .fav { margin-bottom: 16px; }
   .fh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .edit { font-size: 11.5px; font-weight: 600; color: var(--acc2, var(--acc)); background: rgba(255,255,255,0.05); border-radius: 9px; padding: 5px 11px; }
   .edit:hover { background: rgba(255,255,255,0.1); }
   .edit.on { background: var(--soft); color: var(--acc); }

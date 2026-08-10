@@ -25,7 +25,7 @@
   <div class="kpis">
     <div class="card k">
       <div class="lb">Total draw</div>
-      <div class="big">{power(totalDraw).val}<span class="u"> {power(totalDraw).unit}</span></div>
+      <div class="big">{power(totalDraw).val}<span class="u">{power(totalDraw).unit}</span></div>
       <div class="sub" style="color:var(--warning)">{onCount} appliance{onCount === 1 ? "" : "s"} on</div>
     </div>
     <div class="card k">
@@ -73,7 +73,7 @@
   .kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .k { padding: 16px; }
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
   .pad { padding: 20px 22px; }

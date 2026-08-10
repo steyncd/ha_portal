@@ -225,7 +225,7 @@
       <span class="micro" style="color:var(--solar)">Solar</span>
       <StatusChip state={(ha.num(E.pvPower) ?? 0) > 40 ? "ok" : "idle"} label={(ha.num(E.pvPower) ?? 0) > 40 ? "Generating" : "Asleep"} />
     </div>
-    <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u"> {power(ha.num(E.pvPower)).unit}</span></div>
+    <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u">{power(ha.num(E.pvPower)).unit}</span></div>
     <div class="sub2">{n(ha.num(E.pvYieldToday), 1)} kWh today</div>
     <div style="margin-top:12px"><Spark data={solarHist} color="var(--solar)" height={54} /></div>
     <ExplainChart chartId="solar_power_24h" title="Solar production" unit="W" period="last 24 hours" points={solarHist.map((d) => ({ t: d.t, v: d.v }))} />
@@ -391,7 +391,7 @@
   .tank .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--water); opacity: 0.85; }
   .big2 { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-top: 2px; }
   .big3 { font-size: 30px; font-weight: 800; letter-spacing: -1.2px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .mini-btn, .qtile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
   .mini-btn { flex-direction: row; align-items: center; gap: 9px; }

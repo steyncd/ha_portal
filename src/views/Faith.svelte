@@ -245,7 +245,7 @@
   .two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
   .card { position: relative; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; padding: 18px; overflow: hidden; }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .sub { font-size: 12px; color: var(--dim); }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
 

@@ -479,7 +479,7 @@
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
   .note { font-size: 12.5px; color: var(--muted-2); }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
 
   .hl { display: flex; flex-direction: column; gap: 10px; background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 10%, transparent), rgba(255, 255, 255, 0.028)); }
   .hlrow { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--text); }
