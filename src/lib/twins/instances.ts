@@ -110,8 +110,8 @@ export const INSTANCES: Instance[] = [
     template: "pump", id: "borehole", name: "Borehole",
     slots: {
       switch: "switch.borehole_pump",
-      power: "sensor.borehole_pump_power",
-      runtime: "sensor.borehole_pump_runtime_today",
+      power: "sensor.borehole_pump_power_now",
+      runtime: "sensor.borehole_pump_run_time_today",
     },
   },
   {
@@ -126,7 +126,7 @@ export const INSTANCES: Instance[] = [
     template: "pump", id: "pool", name: "Pool pump",
     slots: {
       switch: "switch.pool_pump",
-      power: "sensor.pool_pump_power",
+      power: "sensor.pool_pump_power_now",
       runtime: null,
     },
   },

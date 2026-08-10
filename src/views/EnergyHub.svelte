@@ -104,7 +104,7 @@
     { key: "tank", label: "Tank", id: E.tankLevel, tint: "var(--water)", fmt: (v) => (v == null ? "—" : `${n(v)}%`), note: "Level. A fall with no borehole run is a leak or a still-night draw." },
     { key: "borehole", label: "Borehole", id: "sensor.borehole_pump_water_pumped_today", tint: "var(--water)", fmt: (v) => (v == null ? "—" : `${n(v)} ℓ`), note: "Pumped today. Flat means it has not run." },
     { key: "freeze", label: "Deep freeze", id: "sensor.deep_freeze_current_consumption", tint: "var(--climate)", fmt: (v) => (v == null ? "—" : `${power(v).val} ${power(v).unit}`), note: "Duty cycle. A rising floor is the compressor working harder than it used to." },
-    { key: "pool", label: "Pool pump", id: "sensor.pool_pump_power", tint: "var(--load)", fmt: (v) => (v == null ? "—" : `${power(v).val} ${power(v).unit}`), note: "On/off blocks. These should sit inside the solar arc." },
+    { key: "pool", label: "Pool pump", id: "sensor.pool_pump_power_now", tint: "var(--load)", fmt: (v) => (v == null ? "—" : `${power(v).val} ${power(v).unit}`), note: "On/off blocks. These should sit inside the solar arc." },
   ];
 
   onMount(async () => {
@@ -132,11 +132,11 @@
 
   // ── Where the money went ───────────────────────────────────────────────────
   const APP = [
-    { key: "Pool pump", id: "sensor.pool_pump_power", tint: "var(--load)" },
+    { key: "Pool pump", id: "sensor.pool_pump_power_now", tint: "var(--load)" },
     { key: "Deep freeze", id: "sensor.deep_freeze_current_consumption", tint: "var(--climate)" },
-    { key: "Tumble dryer", id: "sensor.tumble_dryer_current_consumption", tint: "var(--load)" },
+    { key: "Tumble dryer", id: "sensor.tumble_dryer_energy_power", tint: "var(--load)" },
     { key: "Dishwasher", id: "sensor.dishwasher_current_consumption", tint: "var(--load)" },
-    { key: "Borehole", id: "sensor.borehole_pump_power", tint: "var(--water)" },
+    { key: "Borehole", id: "sensor.borehole_pump_power_now", tint: "var(--water)" },
   ];
   const rows = $derived<Row[]>(
     APP.filter((a) => ha.exists(a.id)).map((a) => {

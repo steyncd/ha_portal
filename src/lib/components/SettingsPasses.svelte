@@ -28,7 +28,10 @@
     (chosen = chosen.includes(s) ? chosen.filter((x) => x !== s) : [...chosen, s]);
 
   const facts = () => ({
-    binDay: ha.state("sensor.bin_collection_day") ?? null,
+    // input_select, not sensor — same object_id, wrong domain. There is also
+    // sensor.next_bin_day ("Today"), which answers a different question: this
+    // one is which day bins go out, not when the next one is.
+    binDay: ha.state("input_select.bin_collection_day") ?? null,
     poolSchedule: "07:00–11:00 op son",
     contact: "Christo · 082 …",
   });

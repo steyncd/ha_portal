@@ -58,7 +58,7 @@ const ROWS: Row[] = [
   ["input_boolean.appliance_finish_alerts_enabled", "on"],
   ["input_boolean.window_advisor_enabled", "on"],
   ["input_boolean.fridge_open_alert_enabled", "on"],
-  ["input_boolean.desk_comfort_enabled", "off"],
+  ["input_boolean.study_heater_comfort_enabled", "off"],
   ["input_boolean.evening_lights_enabled", "on"],
   ["input_boolean.night_kitchen_light_enabled", "on"],
   ["input_boolean.holiday_mode", "off"],

@@ -58,7 +58,14 @@
     },
     {
       key: "Focus",
-      value: ha.state("sensor.focus_state") ?? "—",
+      // binary_sensor.hello_focus, not sensor.focus_state (which never existed).
+      // A binary sensor's raw state is "on"/"off", which reads as nonsense in a
+      // value slot, so it is turned into a word here.
+      value: !ha.exists("binary_sensor.hello_focus")
+        ? "—"
+        : ha.state("binary_sensor.hello_focus") === "on"
+          ? "Focus on"
+          : "Off",
       units: "the desk, and what is on it",
       open: () => onnav("focus"),
     },

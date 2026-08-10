@@ -239,7 +239,7 @@
     { id: "input_boolean.appliance_finish_alerts_enabled", icon: "🔔", name: "Appliance-done alerts" },
     { id: "input_boolean.window_advisor_enabled", icon: "🪟", name: "Window advisor" },
     { id: "input_boolean.fridge_open_alert_enabled", icon: "🧊", name: "Fridge-open alert" },
-    { id: "input_boolean.desk_comfort_enabled", icon: "🪑", name: "Desk comfort" },
+    { id: "input_boolean.study_heater_comfort_enabled", icon: "🪑", name: "Desk comfort" },
     { id: "input_boolean.evening_lights_enabled", icon: "🌆", name: "Evening lights" },
     { id: "input_boolean.night_kitchen_light_enabled", icon: "🌙", name: "Night kitchen light" },
     { id: "input_boolean.holiday_mode", icon: "🏖️", name: "Holiday mode" },

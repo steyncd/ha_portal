@@ -11,7 +11,8 @@
     "check": "node scripts/check-integrity.mjs",
     "deploy": "npm run build && firebase deploy --only hosting",
     "deps": "node scripts/build-dependency-index.mjs",
-    "render-check": "vite build -c .ssrcheck/vite.config.mjs -l error && esbuild src/lib/buttons.ts --format=esm --outfile=.ssrcheck/buttons.mjs --log-level=error && node .ssrcheck/run.mjs"
+    "render-check": "vite build -c .ssrcheck/vite.config.mjs -l error && esbuild src/lib/buttons.ts --format=esm --outfile=.ssrcheck/buttons.mjs --log-level=error && node .ssrcheck/run.mjs",
+    "entities": "node scripts/check-entities.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",
