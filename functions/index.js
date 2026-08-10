@@ -401,7 +401,7 @@ summary: one plain-language sentence for the parents.`;
     });
     // Retry on transient overload (503/429) with backoff, and fall back through
     // alternate flash models if one is overloaded or unavailable.
-    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
     const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
     let data = null, lastErr = "";
     for (const model of models) {
@@ -537,7 +537,7 @@ exports.discussTitle = onCall(
     const prompt = `A Reformed Christian family (biblical-creationist worldview; parents + boys aged 8 and 11) is about to watch the ${kind} "${title}"${year ? " (" + year + ")" : ""}. Help them watch with discernment. Return STRICT JSON only:
 {"worldview":"<one sentence: the worldview/values the story is told through>","questions":["<3-4 age-appropriate discussion questions to ask the boys afterward>"],"verse":"<one fitting Bible reference + very short phrase, e.g. 'Philippians 4:8 — dwell on what is true and lovely'>","aligns":"<one sentence: where it aligns with a biblical worldview>","conflicts":"<one sentence: where it conflicts or needs care, or 'Little to flag.'>"}`;
     const schema = { type: "object", properties: { worldview: { type: "string" }, questions: { type: "array", items: { type: "string" } }, verse: { type: "string" }, aligns: { type: "string" }, conflicts: { type: "string" } }, required: ["worldview", "questions", "verse", "aligns", "conflicts"] };
-    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
     const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
     const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.4 } });
     let data = null, lastErr = "";
@@ -651,7 +651,7 @@ exports.analyzeMusic = onCall(
 {"rating":"green|amber|red","category":"Worship|CCM/Pop|Hip-Hop|Hymn|Kids|Gospel|Crossover","suits":"all|boys|alone","languageFlag":"clean|filter","summary":"<one sentence>","analysis":{"tone":"<mood in a few words>","spiritual":"<gospel-centred? worship? evangelistic? everyday?>","theology":"<for a Reformed family: doctrinally rich / thin / concerning, or 'n/a'>","occult":"<any occult/dark-spiritual lyrical content, or 'None.'>","sex":"<sexual content in lyrics, or 'None.'>","language":"<profanity/blasphemy, or 'None.'>","themes":"<main lyrical themes>"}}
 Rules: green=clearly Christian & clean; amber=believer/crossover artist but some tracks need discernment, or theologically thin/prosperity-leaning worship; red=explicit content, occult/dark themes, or not actually Christian. languageFlag "filter" if ANY profanity/blasphemy.`;
     const schema = { type: "object", properties: { rating: { type: "string", enum: ["green", "amber", "red"] }, category: { type: "string" }, suits: { type: "string", enum: ["all", "boys", "alone"] }, languageFlag: { type: "string", enum: ["clean", "filter"] }, summary: { type: "string" }, analysis: { type: "object", properties: { tone: { type: "string" }, spiritual: { type: "string" }, theology: { type: "string" }, occult: { type: "string" }, sex: { type: "string" }, language: { type: "string" }, themes: { type: "string" } }, required: ["tone", "spiritual", "theology", "occult", "sex", "language", "themes"] } }, required: ["rating", "category", "suits", "languageFlag", "summary", "analysis"] };
-    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+    const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
     const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
     const body = JSON.stringify({ contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json", response_schema: schema, temperature: 0.3 } });
     let data = null, lastErr = "";
@@ -1130,7 +1130,7 @@ Rules:
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     generationConfig: { temperature: 0.2, responseMimeType: "application/json", responseSchema: NUDGE_SCHEMA },
   });
-  const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-flash-latest"];
+  const models = ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-flash-latest"];
   let lastErr = "no model";
   for (const model of models) {
     try {
