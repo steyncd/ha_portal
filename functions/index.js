@@ -1362,6 +1362,14 @@ exports.getBriefing = onRequest(
 // one is current.
 const INTERRUPT_TAG = "interrupt";
 
+// Phase 5.3: generated text follows the READER's language, not the device's.
+// One line, appended to the prompt, rather than translating model output
+// afterwards — a second translation pass introduces errors the model would not
+// have made. Mirrors src/lib/lang.ts promptLanguage().
+const AF_PROMPT =
+  "Write your entire reply in Afrikaans, in the natural register a South African family uses at home — not formal or literary Afrikaans. Use af-ZA number formatting: a comma for the decimal (R48,50) and a space for thousands (4 623). Keep entity ids, Home Assistant terms and units in English.";
+const langLine = (lang) => (lang === "af" ? `\n\n${AF_PROMPT}` : "");
+
 async function sendInterrupt(title, body, key) {
   // Deduped for an hour on `key`. An interrupt that repeats every five minutes
   // trains you to swipe it away without reading, which defeats the class.
@@ -1792,7 +1800,10 @@ function chartCacheKey(payload) {
     const v = typeof p.v === "number" ? Math.round(p.v * 100) / 100 : p.v;
     return `${p.t}:${v}`;
   }).join(",");
-  const raw = `${PROMPT_V}|${payload.chartId}|${payload.unit || ""}|${rounded}`;
+  // lang is part of the key. Without it the first reader's language wins and
+  // everyone else gets their caption in it — the cache would serve Mandri the
+  // English text Christo generated a minute earlier.
+  const raw = `${PROMPT_V}|${payload.chartId}|${payload.unit || ""}|${payload.lang || "en"}|${rounded}`;
   return require("crypto").createHash("sha1").update(raw).digest("hex");
 }
 
@@ -1830,7 +1841,7 @@ Series (time,value): ${points.map((x) => `${x.t},${x.v}`).join(" ")}
 Write AT MOST TWO SHORT SENTENCES for a caption under the chart.
 Say what actually happened and, if there is one, the single most likely reason.
 Use the unit. Plain language, no preamble, no bullet points, no markdown.
-If nothing notable happened, say so plainly in one sentence.`;
+If nothing notable happened, say so plainly in one sentence.${langLine(p.lang)}`;
 
     const body = JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],

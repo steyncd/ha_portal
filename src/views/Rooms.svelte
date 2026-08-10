@@ -5,6 +5,7 @@
   import AreaChart from "../lib/components/AreaChart.svelte";
   import Overlay from "../lib/components/Overlay.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
+  import BatterySignal from "../lib/components/BatterySignal.svelte";
 
   type Dev = { id: string; label: string; icon: string; power?: string };
   type TempSrc = { id: string; label: string };
@@ -259,10 +260,33 @@
       <div class="lgrid">{#each active.appliances as d}{@render devtile(d)}{/each}</div>
     {/if}
 
+    <!-- Sensors last, completing the fixed order the brief specifies:
+         Temperature / Lights / Appliances / Sensors. Fixed because a panel whose
+         sections move around depending on what a room happens to have forces you
+         to re-read it every time you change rooms. -->
+    {#if active.occ || active.hum || temps.length > 1}
+      <div class="hr"></div>
+      <div class="lb" style="margin-bottom:11px">Sensors</div>
+      <div class="chips">
+        {#if active.occ}
+          <span class="chip"><span class="ck">Occupancy</span><span class="cv" style="color:{occupied ? 'var(--ok)' : 'var(--mut)'}">{occupied == null ? "—" : occupied ? "Occupied" : "Clear"}</span></span>
+        {/if}
+        {#if hum != null}
+          <span class="chip"><span class="ck">Humidity</span><span class="cv">{n(hum)}%</span></span>
+        {/if}
+        {#each temps.slice(1) as ts}
+          {@const tv = ha.num(ts.id)}
+          <span class="chip"><span class="ck">{ts.label}</span><span class="cv" style="color:{tempColor(tv)}">{tv != null ? n(tv, 1) + "°" : "—"}</span></span>
+        {/each}
+      </div>
+    {/if}
+
     {#if !temps.length && !active.lights?.length && !active.appliances?.length}
       <div class="none">No sensors or controls in this room.</div>
     {/if}
   </div>
+
+  <BatterySignal />
 
   {#if ha.available(FLOAT_T)}
     <div class="card pad">
