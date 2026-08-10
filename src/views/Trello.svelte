@@ -6,6 +6,7 @@
   import { trello, type TrelloBoard, type TrelloList, type TrelloCard } from "../lib/trello";
   import Icon from "../lib/components/Icon.svelte";
 
+  import Skeleton from "../lib/components/Skeleton.svelte";
   let boards = $state<TrelloBoard[]>([]);
   let lists = $state<TrelloList[]>([]);
   let boardId = $state<string>(prefs.trelloBoard || "");
@@ -118,7 +119,7 @@
 
 <div class="wrap">
   {#if loading}
-    <div class="vload"><div class="spinner"></div></div>
+    <div class="vload"><Skeleton variant="lines" lines={5} /></div>
   {:else if error}
     <div class="card pad setup">
       <strong>Trello isn't connected yet</strong>

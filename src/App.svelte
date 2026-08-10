@@ -55,6 +55,7 @@
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
   import TimeMachine from "./lib/components/TimeMachine.svelte";
+  import Sheet from "./lib/components/Sheet.svelte";
   import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
 
   const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
@@ -347,15 +348,13 @@
 
   {#if isMobile}
     {#if moreOpen}
-      <div class="msheet-scrim" onclick={() => (moreOpen = false)} role="presentation"></div>
-      <div class="msheet">
-        <div class="grab"></div>
+      <Sheet open={moreOpen} title="Everything else" onclose={() => (moreOpen = false)}>
         <div class="mgrid">
-          {#each shown.filter((s) => !mobileTabs.includes(s.id)) as it}
+          {#each shown.filter((s) => !mobileTabs.includes(s.id)) as it (it.id)}
             <button class="mitem" onclick={() => go(it.id)}><span>{it.icon}</span>{it.name}</button>
           {/each}
         </div>
-      </div>
+      </Sheet>
     {/if}
     <nav class="mnav">
       {#each mobileTabs as id}
@@ -471,9 +470,6 @@
   .mnav button.on { color: var(--acc); }
   .mi { font-size: 20px; }
   .ml { font-size: 10px; font-weight: 600; }
-  .msheet-scrim { position: fixed; inset: 0; z-index: 19; background: rgba(0, 0, 0, 0.5); }
-  .msheet { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 20; padding: 16px 16px 20px; background: rgba(10, 15, 22, 0.97); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12); border-radius: 22px 22px 0 0; animation: ppop 0.18s ease; max-height: calc(100dvh - 76px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
-  .grab { width: 38px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); margin: 0 auto 14px; }
   .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .mitem { display: flex; align-items: center; gap: 10px; padding: 13px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); font-size: 12.5px; font-weight: 600; text-align: left; }
   @media (max-width: 820px) {
