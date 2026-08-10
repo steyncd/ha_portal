@@ -410,7 +410,7 @@
   }
 
   .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
-  aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.02); backdrop-filter: var(--glass-blur); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
+  aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: var(--s1); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
   aside.collapsed { width: 66px; }
   .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 3px; }
   .logo { width: 32px; height: 32px; flex-shrink: 0; display: block; }
@@ -432,7 +432,7 @@
   .ur { font-size: 10.5px; color: var(--muted); }
 
   main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: rgba(7, 11, 17, 0.72); backdrop-filter: var(--glass-blur); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: var(--bg); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   /* Centre content at a comfortable max-width on wide monitors so cards/rows
      don't stretch edge-to-edge. Wall/TV density opts back into full width. */
   /* 1440px was chosen so cards don't stretch edge-to-edge on a wide monitor.
@@ -466,7 +466,7 @@
   .guestbar .gdot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); flex-shrink: 0; }
   .guestbar button { margin-left: auto; padding: 5px 12px; border-radius: 8px; background: var(--grad); color: #05070c; font-size: 11px; font-weight: 800; }
 
-  .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: rgba(7, 11, 17, 0.92); backdrop-filter: blur(18px); border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: var(--s1); border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; min-height: 46px; color: var(--muted-2); }
   .mnav button.on { color: var(--acc); }
   .mi { font-size: 20px; }

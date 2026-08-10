@@ -1514,7 +1514,9 @@ If nothing notable happened, say so plainly in one sentence.`;
     });
     // Flash-Lite: this is a small, frequent, low-stakes call — exactly the tier
     // Google recommends for it, and a fraction of the cost of full Flash.
-    const models = ["gemini-3.5-flash-lite", "gemini-2.5-flash-lite", "gemini-3.5-flash", "gemini-2.5-flash"];
+    // gemini-2.5-* are gone for new keys ("no longer available to new users"),
+    // verified 2026-08-09 — leaving them in just burns a failed round-trip each call.
+    const models = ["gemini-3.5-flash-lite", "gemini-3.5-flash", "gemini-flash-lite-latest"];
     let lastErr = "no model";
     for (const model of models) {
       try {

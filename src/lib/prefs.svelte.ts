@@ -1,15 +1,41 @@
 // Persisted per-user preferences + the selectable theme.
 
-export type Theme = "aurora" | "tide" | "meadow" | "spectrum";
+export type Theme =
+  | "stone" | "basalt" | "fog"        // neutral
+  | "slate" | "harbour" | "ink"       // cool
+  | "clay" | "graphite" | "plum";     // warm
 
-// Selectable themes (Steyn handoff). The gradient is only for the Settings/palette
-// swatch preview; the live retint is driven by [data-theme] blocks in app.css.
-export const THEMES: { key: Theme; name: string; grad: string }[] = [
-  { key: "tide", name: "Tide", grad: "linear-gradient(135deg,#38bdf8,#818cf8)" },
-  { key: "meadow", name: "Meadow", grad: "linear-gradient(135deg,#34d399,#38bdf8)" },
-  { key: "spectrum", name: "Spectrum", grad: "linear-gradient(135deg,#38bdf8,#818cf8,#a855f7)" },
-  { key: "aurora", name: "Classic", grad: "linear-gradient(135deg,#818cf8,#a855f7)" },
+export type ThemeGroup = "Neutral" | "Cool" | "Warm";
+
+// Selectable themes (v2). Each sets ONLY the neutral surface/text ramp — brand
+// copper, status and domain colours are fixed in app.css and never themed, so
+// switching theme can never change what a colour *means*.
+// `grad` is the Settings swatch preview: bg → s1 → s2, i.e. the actual ramp.
+export const THEMES: { key: Theme; name: string; group: ThemeGroup; desc: string; grad: string }[] = [
+  // --- Neutral
+  { key: "stone", name: "Stone", group: "Neutral", desc: "Warm-grey default, easiest on the eye",
+    grad: "linear-gradient(135deg,#22252A,#2B2F35,#353A42)" },
+  { key: "basalt", name: "Basalt", group: "Neutral", desc: "Darkest neutral, best in a dim room",
+    grad: "linear-gradient(135deg,#17191D,#1F2227,#282C32)" },
+  { key: "fog", name: "Fog", group: "Neutral", desc: "Lifted neutral, best in daylight",
+    grad: "linear-gradient(135deg,#2A2E34,#343940,#3E444C)" },
+  // --- Cool
+  { key: "slate", name: "Slate", group: "Cool", desc: "Blue-grey, calm and technical",
+    grad: "linear-gradient(135deg,#1B2027,#232A33,#2C343F)" },
+  { key: "harbour", name: "Harbour", group: "Cool", desc: "Softer blue-grey, less contrast",
+    grad: "linear-gradient(135deg,#1E242B,#262E37,#303A45)" },
+  { key: "ink", name: "Ink", group: "Cool", desc: "Deep navy, strongest cool cast",
+    grad: "linear-gradient(135deg,#141A24,#1C2431,#25303F)" },
+  // --- Warm
+  { key: "clay", name: "Clay", group: "Warm", desc: "Warm brown-grey, pairs with the copper",
+    grad: "linear-gradient(135deg,#232120,#2C2927,#363230)" },
+  { key: "graphite", name: "Graphite", group: "Warm", desc: "Warmest dark, almost sepia",
+    grad: "linear-gradient(135deg,#1E1C1B,#272422,#322E2B)" },
+  { key: "plum", name: "Plum", group: "Warm", desc: "Warm violet cast, softest of the nine",
+    grad: "linear-gradient(135deg,#201C26,#292430,#332D3C)" },
 ];
+
+export const THEME_GROUPS: ThemeGroup[] = ["Neutral", "Cool", "Warm"];
 
 const KEY = "ha_portal_prefs";
 
@@ -33,7 +59,7 @@ type Stored = {
 };
 
 const DEFAULTS: Stored = {
-  theme: "tide",
+  theme: "stone",
   motion: true,
   density: "comfortable",
   collapsed: false,
@@ -55,7 +81,7 @@ const DEFAULTS: Stored = {
   trelloLists: {},
 };
 
-const isTheme = (t: unknown): t is Theme => t === "aurora" || t === "tide" || t === "meadow" || t === "spectrum";
+const isTheme = (t: unknown): t is Theme => THEMES.some((x) => x.key === t);
 
 function load(): Stored {
   try {

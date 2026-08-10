@@ -73,8 +73,8 @@
     bottom: 0;
     z-index: 40;
     padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-    background: rgba(10, 15, 22, 0.97);
-    backdrop-filter: blur(18px);
+    /* No backdrop-filter: this is persistent chrome, not a modal. */
+    background: var(--s1);
     border-top: 1px solid color-mix(in srgb, var(--acc) 40%, transparent);
     box-shadow: 0 -12px 40px -18px rgba(0, 0, 0, 0.8);
     animation: tmup 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);

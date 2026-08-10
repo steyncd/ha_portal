@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ha } from "../lib/store.svelte";
-  import { prefs, THEMES, type Theme } from "../lib/prefs.svelte";
+  import { prefs, THEMES, THEME_GROUPS, type Theme } from "../lib/prefs.svelte";
   import { NAV } from "../lib/nav";
   import { toast } from "../lib/toast.svelte";
   import { HASS_URL } from "../lib/config";
@@ -396,15 +396,31 @@
   <!-- appearance -->
   <h2 class="section">Appearance</h2>
   <div class="card pad">
-    <div class="lb" style="margin-bottom:14px">Theme</div>
-    <div class="palettes">
-      {#each THEMES as t}
-        <button class="pal" class:active={prefs.theme === t.key} onclick={() => setTheme(t.key)} aria-pressed={prefs.theme === t.key}>
-          <span class="palbar" style="background:{t.grad}"></span>
-          <span class="palname">{t.name}</span>
-        </button>
-      {/each}
-    </div>
+    <div class="lb" style="margin-bottom:6px">Theme</div>
+    <p class="themenote">
+      Themes change the surface and text ramp only. Status and domain colours are
+      fixed, so switching never changes what a colour means.
+    </p>
+    {#each THEME_GROUPS as group (group)}
+      <div class="themegroup">
+        <div class="divider">{group}</div>
+        <div class="palettes">
+          {#each THEMES.filter((t) => t.group === group) as t (t.key)}
+            <button
+              class="pal"
+              class:active={prefs.theme === t.key}
+              onclick={() => setTheme(t.key)}
+              aria-pressed={prefs.theme === t.key}
+              title={t.desc}
+            >
+              <span class="palbar" style="background:{t.grad}"></span>
+              <span class="palname">{t.name}</span>
+              <span class="paldesc">{t.desc}</span>
+            </button>
+          {/each}
+        </div>
+      </div>
+    {/each}
   </div>
   <div class="two">
     <div class="card pad">
@@ -732,4 +748,10 @@
   .lgt { font-size: 11px; color: var(--muted-2); white-space: nowrap; }
   .tvlink { padding: 16px 20px; font-size: 12.5px; color: var(--text-2); }
   .tvbtn { color: var(--water); font-weight: 600; }
+
+  .themenote { font-size: 11.5px; color: var(--mut); margin: 0 0 14px; max-width: 60ch; line-height: 1.5; }
+  .themegroup { margin-bottom: 16px; }
+  .themegroup:last-child { margin-bottom: 0; }
+  .themegroup .divider { margin-bottom: 8px; }
+  .paldesc { display: block; font-size: 10.5px; font-weight: 400; color: var(--mut); line-height: 1.35; margin-top: 2px; }
 </style>

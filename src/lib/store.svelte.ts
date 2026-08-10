@@ -9,6 +9,7 @@ import {
 import { HASS_URL } from "./config";
 import { loadHaConnection } from "./haConfig";
 import { timeMachine } from "./timeMachine.svelte";
+import { toReading, toNumReading, type Reading } from "./freshness";
 
 type Status = "connecting" | "connected" | "error";
 
@@ -171,6 +172,47 @@ class HAStore {
   }
   unit(id: string): string {
     return (this.attr(id, "unit_of_measurement") as string) ?? "";
+  }
+
+  // ---- freshness-aware reads (Phase 1.1) ----
+  //
+  // These are the reads new code should use. The plain state()/num() above stay
+  // for existing views — migrating 37 views at once would be reckless — but
+  // anything that renders a number a person might act on should move to these,
+  // because they carry the evidence with the value.
+  //
+  // While the time machine is active the age is measured against the viewed
+  // moment, not now, so a historical snapshot doesn't read as universally stale.
+
+  #now(): number {
+    return timeMachine.active ? timeMachine.at : Date.now();
+  }
+
+  /** Raw-state reading with freshness. */
+  reading(id: string): Reading<string | null> {
+    if (timeMachine.active) {
+      const v = timeMachine.snapshot[id];
+      // History has no per-point timestamp here, so trust the snapshot moment.
+      return v == null
+        ? { value: null, at: null, state: "none", id }
+        : { value: v, at: timeMachine.at, state: "live", id };
+    }
+    const e = this.entities[id];
+    return toReading(id, e?.state, e?.last_updated, this.#now());
+  }
+
+  /** Numeric reading with freshness. Never coerces a missing value to 0. */
+  readingNum(id: string): Reading<number | null> {
+    if (timeMachine.active) {
+      const r = this.reading(id);
+      if (r.value == null) return { ...r, value: null };
+      const n = Number(r.value);
+      return Number.isFinite(n)
+        ? { value: n, at: r.at, state: r.state, id }
+        : { value: null, at: r.at, state: "none", id };
+    }
+    const e = this.entities[id];
+    return toNumReading(id, e?.state, e?.last_updated, this.#now());
   }
 
   // ---- history ----
