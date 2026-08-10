@@ -20,7 +20,9 @@
   import Sheet from "../lib/components/Sheet.svelte";
   import TvAudit from "../lib/components/TvAudit.svelte";
   import ChoreApproval from "../lib/components/ChoreApproval.svelte";
-  import { chores, ledger, tvWeek } from "../lib/household.svelte";
+  import { KIDS, watchKid, choresToday, type KidState } from "../lib/kids";
+  import { trust } from "../lib/trust.svelte";
+  import { onMount } from "svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();
 
@@ -30,23 +32,47 @@
   let sheet = $state<{ kind: string } | null>(null);
   const open = (kind: string) => (sheet = { kind });
 
-  const pending = $derived(chores.pending);
-  const pendingValue = $derived(pending.reduce((s, c) => s + c.value, 0));
+  // Real Firestore state, live. No local ledger.
+  let kidStates = $state<Record<string, KidState>>({});
+  let tick = $state(0);
+  onMount(() => {
+    const stops = KIDS.flatMap((k) => [
+      watchKid(k.slug, (st) => { kidStates = { ...kidStates, [k.slug]: st }; }),
+      trust.watch(k.slug),
+    ]);
+    const t = setInterval(() => tick++, 30_000);
+    return () => { stops.forEach((f) => f()); clearInterval(t); };
+  });
+
+  const waitingCount = $derived.by(() => {
+    void tick;
+    return KIDS.reduce((n, k) => {
+      const t = trust.state(k.slug);
+      return n + (t.awaitingPhoto?.length ?? 0) + Object.keys(t.pending ?? {}).length;
+    }, 0);
+  });
+  const balanceTotal = $derived(KIDS.reduce((s, k) => s + (kidStates[k.slug]?.balance ?? 0), 0));
+  const doneToday = $derived.by(() => {
+    void tick;
+    return KIDS.reduce((n, k) => n + choresToday(kidStates[k.slug] ?? {}).length, 0);
+  });
+
+  // Gebedslys has no HA sensor. Rather than a fabricated count, the stat reads
+  // em-dash and drills through to the real board.
   const prayersNew = $derived(ha.num("sensor.gebedslys_new") ?? null);
-  const prayersAnswered = $derived(ha.num("sensor.gebedslys_answered_month") ?? null);
 
   const stats = $derived<Stat[]>([
     {
       key: t("Chores", L),
-      value: pending.length ? `${pending.length} wag` : "Alles klaar",
-      units: pending.length ? `${money(pendingValue, L)} uitstaande` : undefined,
-      note: pending.length ? "keur die dag in een tik goed" : "niks wag nie",
+      value: waitingCount ? `${waitingCount} wag` : "Alles klaar",
+      units: `${doneToday} vandag klaar`,
+      note: waitingCount ? "keur die dag in een tik goed" : "niks wag nie",
       warn: false,
       open: () => open("chores"),
     },
     {
       key: "Sakgeld",
-      value: money(ledger.total, L),
+      value: money(balanceTotal, L),
       units: "Liam + Eben",
       note: "betaaldag Vrydag",
       open: () => open("ledger"),
@@ -54,14 +80,15 @@
     {
       key: t("Prayer list", L),
       value: prayersNew != null ? `${afNum(prayersNew, L)} nuut` : "—",
-      units: prayersAnswered != null ? `${afNum(prayersAnswered, L)} verhoor dié maand` : undefined,
+      units: prayersNew == null ? "geen sensor — oop die bord" : undefined,
       open: () => onnav("faith"),
     },
     {
-      key: "Die week",
-      value: tvWeek.total != null ? `${tvWeek.total} u TV` : "—",
-      units: tvWeek.delta != null ? `${tvWeek.delta >= 0 ? "+" : ""}${tvWeek.delta} u op verlede week` : undefined,
-      open: () => open("tv"),
+      key: "Vertroue",
+      value: `${trust.streak("liam")} van 5`,
+      units: "Liam · op die timer-vlak",
+      note: "die beloning is dat dit minder vra",
+      open: () => onnav("kids"),
     },
   ]);
 
@@ -93,13 +120,13 @@
   <p class="kicker">Julie · die maand</p>
   <p class="rbody">
     {money(ha.num("sensor.energy_cost_this_month"), L, 0)} krag ·
-    {afNum(ha.num("sensor.water_used_this_month") ?? ha.num("sensor.water_used_today"), L)} ℓ water ·
-    {afNum(ledger.approvedThisMonth, L)} takies
+    {afNum(ha.num("sensor.water_used_today"), L)} ℓ water vandag ·
+    {afNum(doneToday, L)} takies vandag
   </p>
   <p class="rnote">Kom elke maand in die 21:00 opsomming. Dit is nie 'n plek om te gaan kyk nie.</p>
 </section>
 
-<TvAudit week={tvWeek} lang={L} onopen={() => open("tv")} />
+<TvAudit lang={L} onopen={() => open("tv")} />
 
 <Sheet
   open={!!sheet}
@@ -111,24 +138,20 @@
     <ChoreApproval lang={L} />
   {:else if sheet?.kind === "ledger"}
     <div class="rows">
-      {#each ledger.people as p (p.id)}
-        <div class="r"><span>{p.name}</span><span>{money(p.balance, L)}</span></div>
+      {#each KIDS as k (k.slug)}
+        <div class="r"><span>{k.name}</span><span>{money(kidStates[k.slug]?.balance ?? 0, L)}</span></div>
       {/each}
-      <div class="r tot"><span>Altesaam</span><span>{money(ledger.total, L)}</span></div>
+      <div class="r tot"><span>Altesaam</span><span>{money(balanceTotal, L)}</span></div>
     </div>
     <p class="rnote">
       Die balans skuif sodra 'n takie goedgekeur is, nie op Vrydag nie. Geld wat
       eers Vrydag verskyn, is nie 'n gevolg van vandag se werk nie.
     </p>
   {:else if sheet?.kind === "tv"}
-    <div class="rows">
-      {#each tvWeek.people as p (p.name)}
-        <div class="r"><span>{p.name}</span><span>{p.hours} u · {p.titles.join(", ")}</span></div>
-      {/each}
-    </div>
     <p class="rnote">
-      Hierdie week teenoor verlede week. Geen limiete, geen voorstelle — die
-      oomblik dit 'n limiet voorstel, word dit iets om oor te stry.
+      Nog geen bron nie. Plex en AndroidTV se geskiedenis is nie in Home Assistant
+      nie, en media_player hou nie geskiedenis nie — daar is dus niks om te wys
+      sonder om dit uit te dink.
     </p>
   {/if}
 </Sheet>

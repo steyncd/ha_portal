@@ -12,6 +12,7 @@
   // attribute on every one of them, so "not run in 30 days" is a real query
   // rather than a number someone typed.
   import { ha } from "../store.svelte";
+  import { n } from "../format";
   import SettingRow from "./SettingRow.svelte";
 
   const DAY = 86_400_000;
@@ -117,20 +118,46 @@
     and hold until it drops; the cheapest grid hour is a fallback for a load that
     must run, not a target.
   </p>
+  <!-- The 2000/1500 deadband is hardcoded in
+       packages/feature_energy_intelligence.yaml's template (pv_min = 1500 if
+       on_now else 2000) rather than in a helper, so there is nothing to read —
+       stated as the fact it is, with the file named so it can be checked. The
+       adjustable surplus threshold that DOES have a helper is shown live below. -->
   <SettingRow
     label="Surplus start / stop"
-    explain="Pool pump, tumble dryer and dishwasher start above 2 000 W surplus and hold until below 1 500 W. The deadband is what stops them cycling on a passing cloud."
+    explain="Pool pump, tumble dryer and dishwasher start above 2 000 W surplus and hold until below 1 500 W. The deadband is what stops them cycling on a passing cloud. Fixed in feature_energy_intelligence.yaml, not a helper."
     value="2000 / 1500 W"
+    lock
   />
+  {#if ha.exists("input_number.solar_surplus_threshold")}
+    <SettingRow
+      label="Solar surplus threshold"
+      explain="input_number.solar_surplus_threshold — the adjustable one"
+      value={`${n(ha.num("input_number.solar_surplus_threshold"))} W`}
+    />
+  {/if}
+  {#if ha.exists("input_number.min_self_consumption_rate")}
+    <SettingRow
+      label="Minimum self-consumption"
+      explain="input_number.min_self_consumption_rate — below this, the low-self-consumption alert fires"
+      value={`${n(ha.num("input_number.min_self_consumption_rate"))}%`}
+    />
+  {/if}
   <SettingRow
     label="No cycle it cannot finish on sun"
     explain="Nothing heavy starts after 15:00 if it would run past the array"
     value="15:00"
+    lock
   />
+  <!-- Live from the helper, not typed in: this is a number Christo changes, and a
+       stale copy of it on a settings screen is worse than no copy. -->
   <SettingRow
     label="Battery reserve"
-    explain="Surplus loads stop borrowing below this. Checked against tonight's forecast draw and tomorrow's sun; raised automatically when tomorrow looks poor, with a 20:00 warning rather than a silent change."
-    value="30%"
+    explain="input_number.battery_reserve_percent — surplus loads stop borrowing below this. Checked against tonight's forecast draw and tomorrow's sun."
+    value={ha.exists("input_number.battery_reserve_percent")
+      ? `${n(ha.num("input_number.battery_reserve_percent"))}%`
+      : "no helper"}
+    warn={!ha.exists("input_number.battery_reserve_percent")}
   />
   <SettingRow
     label="Exported while a load waited"
@@ -141,14 +168,22 @@
 
 <section class="grp">
   <h3 class="kicker">Irrigation and rain</h3>
-  <SettingRow label="Skip on forecast" explain="Cancel the cycle at 60% or more chance of rain" value="≥60%" />
+  <SettingRow label="Skip on forecast" explain="Cancel the cycle at 60% or more chance of rain" value="≥60%" lock />
   <SettingRow
     label="Skip on measured rain"
     explain="4 mm actually fallen. Measured beats forecast, so this one wins where they disagree."
     value="≥4 mm"
+    lock
   />
-  <SettingRow label="Catch up" explain="After two consecutive skips, run the next cycle regardless" value="2 skips" />
-  <SettingRow label="Veggie patch never skips" explain="Beds dry out faster than lawn and there is no recovering a lost week" value="Always" />
+  {#if ha.exists("input_number.rain_delay_hours")}
+    <SettingRow
+      label="Rain delay"
+      explain="input_number.rain_delay_hours — how long irrigation holds after rain"
+      value={`${n(ha.num("input_number.rain_delay_hours"))} h`}
+    />
+  {/if}
+  <SettingRow label="Catch up" explain="After two consecutive skips, run the next cycle regardless" value="2 skips" lock />
+  <SettingRow label="Veggie patch never skips" explain="Beds dry out faster than lawn and there is no recovering a lost week" value="Always" lock />
 </section>
 
 <style>

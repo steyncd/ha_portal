@@ -16,7 +16,10 @@
   //    "improve" it into a live stream.
   import SettingRow from "./SettingRow.svelte";
 
-  // Observed volume, from the call sites rather than guessed.
+  // ESTIMATES FROM THE CLOUD REVIEW, not measurements. There is no request
+  // counter in this project, so nothing here is read from anywhere — and a table
+  // of numbers on a settings screen reads as telemetry unless it says otherwise.
+  // The real figure lives in the Firebase console's AI monitoring dashboard.
   const CALLS = [
     { k: "Anomaly nudges", n: 6, note: "every 2 hours, deterministically gated" },
     { k: "Chart captions", n: 18, note: "cached on a content hash — a redraw is free" },
@@ -57,12 +60,14 @@
 <section class="grp">
   <h3 class="kicker">Volume</h3>
   <p class="lead">
-    About {total} calls a day against a free allowance near a thousand. Every one
-    is cached or gated — the caching is why the caption count stays flat when you
-    open the same chart twenty times.
+    Roughly {total} calls a day against a free allowance near a thousand. These are
+    <strong>estimates from the cloud review</strong>, not measured — nothing in
+    this project counts requests. The real figures are in the Firebase console's AI
+    monitoring dashboard. Every call is cached or gated, which is why the caption
+    count stays flat when you open the same chart twenty times.
   </p>
   {#each CALLS as c (c.k)}
-    <SettingRow label={c.k} explain={c.note} value={`${c.n}/day`} />
+    <SettingRow label={c.k} explain={c.note} value={`~${c.n}/day`} />
   {/each}
 </section>
 

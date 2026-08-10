@@ -1,30 +1,39 @@
 <script lang="ts">
-  // The TV audit. Phase 5.2 / D.4.
+  // The TV audit. Design answer §D.4.
   //
-  // A CARD, NOT A VIEW — and that is the whole design. It answers one question a
-  // parent actually asks: "how much, and was it what we thought?" The window is
-  // this week against last week, because a week is the unit a household manages
-  // and the comparison is the only number with any meaning.
+  // A CARD, NOT A VIEW: one question a parent actually asks — "how much, and was
+  // it what we thought?" — this week against last, because a week is the unit a
+  // household manages and the comparison is the only number with meaning.
   //
-  // What the reader does with it: nothing, most weeks. That is fine, and it is
-  // exactly why it is not a view. It earns its place on the two occasions a year
-  // when the number is surprising, and its job is to make that surprise arrive
-  // BEFORE somebody has a feeling about it.
+  // THERE IS CURRENTLY NO DATA SOURCE. The design assumed Plex and AndroidTV
+  // history; this house has neither integration, and no watch-time tracking
+  // anywhere in the config — only `media_player.living_room_tv_*`, which reports
+  // what is playing now and keeps no history.
   //
-  // Explicitly NOT: no playback controls, no recommendations, no per-day chart,
-  // no goals or limits. The moment it suggests a limit it becomes a thing to
-  // argue with rather than a thing to read.
-  import type { TvWeek } from "../household.svelte";
+  // An earlier version of this card shipped with invented figures (9.3 hours,
+  // "Bluey, Lego Masters, rugby"). That is the worst possible failure for this
+  // particular card, because its entire job is to make a surprise arrive BEFORE
+  // somebody has a feeling about it — and a fabricated number manufactures the
+  // feeling. So it now says what it needs, and shows nothing until it has it.
+  import Empty from "./Empty.svelte";
   import { num as afNum, type Lang } from "../lang";
 
+  export type TvWeek = {
+    total: number | null;
+    delta: number | null;
+    people: { name: string; hours: number; titles: string[] }[];
+  };
+
   let {
-    week,
+    week = null,
     lang = "af",
     onopen,
-  }: { week: TvWeek; lang?: Lang; onopen?: () => void } = $props();
+  }: { week?: TvWeek | null; lang?: Lang; onopen?: () => void } = $props();
+
+  const hasData = $derived(!!week && week.total != null && week.people.length > 0);
 </script>
 
-{#if week.total != null}
+{#if hasData && week}
   <button class="tv" onclick={() => onopen?.()}>
     <p class="kicker">Op die TV · hierdie week</p>
     <div class="rows">
@@ -38,9 +47,8 @@
       <div class="r tot">
         <span class="who">Almal saam</span>
         <span class="hrs">{afNum(week.total, lang, 1)} u</span>
-        <!-- The delta is the point. A total on its own is a number; a total
-             against last week is information. Neutral, never amber: this is a
-             record, and amber would make it a judgement. -->
+        <!-- Neutral, never amber: this is a record, and amber would make it a
+             judgement. -->
         <span class="titles">
           {#if week.delta != null}
             {week.delta >= 0 ? "+" : "−"}{afNum(Math.abs(week.delta), lang, 1)} u op verlede week
@@ -49,6 +57,14 @@
       </div>
     </div>
   </button>
+{:else}
+  <div class="tv static">
+    <p class="kicker">Op die TV · hierdie week</p>
+    <Empty
+      what="Nog geen kyk-geskiedenis nie"
+      how="Dit sal wys hoeveel elkeen gekyk het, hierdie week teenoor verlede week. Dit het 'n bron nodig — Plex of AndroidTV se geskiedenis is nie in Home Assistant nie, en media_player hou nie geskiedenis nie."
+    />
+  </div>
 {/if}
 
 <style>
@@ -61,7 +77,8 @@
     padding: 15px 16px;
     margin-top: 14px;
   }
-  .tv:hover { background: var(--s2); }
+  .tv:not(.static):hover { background: var(--s2); }
+  .tv.static { cursor: default; }
   .rows { display: grid; gap: 2px; margin-top: 9px; }
   .r {
     display: grid;

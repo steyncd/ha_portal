@@ -130,6 +130,53 @@ for (const [f, src] of read) {
   }
 }
 
+// ── 9 · Button mapping keys must match the HA helpers ─────────────────────
+// Added because this pair CANNOT fail loudly: buttons.ts derives the helper id
+// from a key string, so renaming a key here just points the portal at an
+// input_text that does not exist — the row renders, the write succeeds, HA
+// creates nothing, and the press keeps its old behaviour forever. Silent.
+{
+  const cfg = "/Volumes/config/packages/feature_button_mapping.yaml";
+  const btns = read.get("src/lib/buttons.ts") ?? "";
+  const keys = [...btns.matchAll(/\{\s*key:\s*"([a-z_]+)"/g)].map((m) => m[1]);
+  if (!keys.length) fail("buttons", "src/lib/buttons.ts defines no press keys");
+  let yaml = null;
+  try {
+    yaml = await readFile(cfg, "utf8");
+  } catch {
+    warn("buttons", `${cfg} not readable (config mount offline) — ${keys.length} press keys unverified`);
+  }
+  if (yaml) {
+    const helpers = new Set([...yaml.matchAll(/^  (btn_[a-z_]+):/gm)].map((m) => m[1]));
+    for (const k of keys) {
+      if (!helpers.has(`btn_${k}`)) {
+        fail("buttons", `press key "${k}" has no input_text.btn_${k} in feature_button_mapping.yaml — remapping it would silently do nothing`);
+      }
+    }
+    for (const h of helpers) {
+      if (h === "btn_last_dispatch") continue;
+      if (!keys.includes(h.replace(/^btn_/, ""))) {
+        warn("buttons", `input_text.${h} exists in HA but no press in buttons.ts uses it — orphan helper`);
+      }
+    }
+    // The guard is what stops a press firing twice. Its absence is a real,
+    // visible bug (button does two things), but only when that press is remapped.
+    const guarded = new Set();
+    for (const f of ["feature_kitchen_button.yaml", "feature_new_devices.yaml"]) {
+      let src = "";
+      try { src = await readFile(`/Volumes/config/packages/${f}`, "utf8"); } catch { continue; }
+      for (const m of src.matchAll(/input_text\.btn_([a-z_]+)/g)) guarded.add(m[1]);
+    }
+    if (guarded.size) {
+      for (const k of keys) {
+        if (!guarded.has(k)) {
+          fail("buttons", `press "${k}" has no btn_override_free guard on its built-in automation — remapping it would fire BOTH the script and the built-in`);
+        }
+      }
+    }
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────
 console.log(`routes ${routes.size} · NAV ${navIds.length} · RAIL ${railIds.length} · folded ${collapsed.length}`);
 if (warns.length) {
