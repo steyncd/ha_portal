@@ -1,4 +1,5 @@
 export type ViewId =
+  | "now"
   | "home" | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
   | "security" | "cameras" | "traffic" | "lights" | "reminders" | "trello" | "meals" | "fairplay" | "system" | "control" | "me" | "faith" | "kids" | "vitality" | "timeline" | "insights" | "usage" | "markets" | "solar" | "settings";
 
@@ -6,9 +7,23 @@ export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" |
 
 // `color` is the semantic domain tint for the item's icon (Aurora Command §2.4);
 // `ic` is the line-icon name (see Icon.svelte). `icon` (emoji) kept as fallback.
-export type NavItem = { id: ViewId; name: string; icon: string; ic: string; group: NavGroup; color: string };
+// `color` is the semantic domain tint for the item's icon; `ic` is the line-icon
+// name (see Icon.svelte); `icon` (emoji) is the fallback. `phoneOnly` keeps an
+// item out of the desktop rail: Now and Home are two deliberately different
+// front doors, and showing both on desktop would make them look like a choice
+// when only one of them is the desktop answer.
+export type NavItem = {
+  id: ViewId;
+  name: string;
+  icon: string;
+  ic: string;
+  group: NavGroup;
+  color: string;
+  phoneOnly?: boolean;
+};
 
 export const NAV: NavItem[] = [
+  { id: "now", name: "Now", icon: "◉", ic: "home", group: "", color: "var(--acc)", phoneOnly: true },
   { id: "home", name: "Home", icon: "🏠", ic: "home", group: "", color: "var(--acc)" },
   { id: "overview", name: "Dashboard", icon: "🧭", ic: "layout", group: "", color: "var(--acc)" },
 

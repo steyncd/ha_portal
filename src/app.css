@@ -320,13 +320,27 @@ input[type="range"]::-moz-range-thumb {
   color: var(--mut);
 }
 
-/* Section dividers only — "You usually", "Right now", "Wants you". */
+/* Section labels — "You usually", "Right now", "Wants you".
+   NOT uppercase, despite BUILD-ORDER's "except section dividers": the
+   prototype is the source of truth and renders these three at 11px/700 --mut
+   with no transform and no tracking. Verified against Steyn Portal v3. */
 .divider {
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--mut);
+}
+
+/* The kicker is the treatment that IS uppercase in the prototype: a card's own
+   header, 11px/700 with .1em tracking, usually copper — "VANAAND 21:00",
+   "JULIE · DIE MAAND", "WHO TO CALL". It heads a card; .divider heads a list of
+   them. Keeping them as separate classes is the only way the distinction
+   survives someone editing one of them later. */
+.kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--acc);
 }
 .micro {
   display: inline-flex;

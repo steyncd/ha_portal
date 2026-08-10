@@ -16,6 +16,7 @@
   // low-power devices (TV/phone) where parsing the whole app up front was costly.
   import type { Component } from "svelte";
   const VIEWS: Record<string, () => Promise<{ default: Component<any> }>> = {
+    now: () => import("./views/Now.svelte"),
     home: () => import("./views/Home.svelte"),
     overview: () => import("./views/Overview.svelte"),
     energy: () => import("./views/EnergyHub.svelte"),
@@ -47,7 +48,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights" || id === "usage") return { onnav: go };
+    if (id === "now" || id === "home" || id === "overview" || id === "energy" || id === "powertrends" || id === "insights" || id === "usage") return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -159,9 +160,14 @@
     if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
     // Members/owners: honour the per-device guest toggle + enabled-views prefs.
     return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-      (["home", "overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+      (["now", "home", "overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
   };
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
+  // The desktop rail never shows phoneOnly items. Now and Home are two
+  // different front doors on purpose — Now answers "what now", Home is the
+  // three-monitor board — so offering both in the rail would read as a choice
+  // when only one of them is the desktop answer.
+  const railItems = $derived(shown.filter((nav) => !nav.phoneOnly));
   // Never sit on a now-hidden view (entering guest mode, or a guest landing).
   $effect(() => { if (!visible(view)) view = "home"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
@@ -184,7 +190,9 @@
     return { label: "Disarmed", color: "var(--warning)" };
   });
 
-  const mobileTabs = ["home", "overview", "security", "energy"] as ViewId[];
+  // Phase 3.1: four phone tabs, no sidebar. Household points at Fair Play until
+  // Phase 5.2 splits House (systems) from Household (people) properly.
+  const mobileTabs = ["now", "climate", "fairplay", "kids"] as ViewId[];
   function applyNav(id: string) {
     view = id as ViewId; palette = false; moreOpen = false;
   }
@@ -282,11 +290,11 @@
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
           <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        {#each shown.filter((s) => s.group === "") as it}
+        {#each railItems.filter((s) => s.group === "") as it}
           <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
         {/each}
         {#each groups as g}
-          {@const items = shown.filter((s) => s.group === g.key)}
+          {@const items = railItems.filter((s) => s.group === g.key)}
           {#if items.length}
             {#if !prefs.collapsed}<div class="grp">{g.title}</div>{:else}<div class="grpline"></div>{/if}
             {#each items as it}
@@ -295,7 +303,7 @@
           {/if}
         {/each}
         <div class="navbottom">
-          {#each shown.filter((s) => s.group === "Bottom") as it}
+          {#each railItems.filter((s) => s.group === "Bottom") as it}
             <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
           {/each}
         </div>

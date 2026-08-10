@@ -22,6 +22,10 @@
     trending: '<path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/>',
     gear: '<circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1"/>',
     search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/>',
+    // Paths lifted verbatim from NAVICON in Steyn Portal v3, so the drawings
+    // match the prototype rather than approximating it.
+    "chevron-right": '<path d="M9 5l7 7-7 7"/>',
+    logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
     // domain objects (appliances / pumps)
     fridge: '<rect x="6" y="3" width="12" height="18" rx="2"/><path d="M6 10h12"/><path d="M9 6.3v1.6M9 12.5v3"/>',
     washer: '<rect x="5" y="3" width="14" height="18" rx="2"/><circle cx="12" cy="13" r="4"/><path d="M8 6.2h.01M11 6.2h.01"/>',
