@@ -8,3 +8,7 @@ dist
 .firebase
 firebase-debug.log
 .vite
+
+# render-check build output (npm run render-check regenerates it)
+.ssrcheck/out/
+.ssrcheck/buttons.mjs

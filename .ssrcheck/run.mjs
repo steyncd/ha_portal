@@ -1,0 +1,81 @@
+// npm run render-check
+//
+// The repo has no test runner, and adding one to prove a settings screen works
+// would have been a bigger change than the screen. This is the smaller thing
+// that still gives real evidence: Svelte's own SSR renderer, the actual
+// component, a stubbed HA store, and four entity sets — including the exact 101
+// scripts the live config defines.
+//
+// It answers the one question a type-check cannot: does what appears on screen
+// follow the data? Group A is the state until Christo reloads HA; B a remapped
+// press; C a mapping pointing at a deleted script; D/E the picker's source and
+// the twelve press definitions.
+//
+// Renders SettingsButtons.svelte for real (Svelte SSR) against four stubbed
+// entity sets, to prove what appears on screen is a function of HA's data and
+// not of anything written into the component.
+const { run } = await import("./out/entry.mjs");
+const strip = (h) => h.replace(/<[^>]+>/g, " ").replace(/&#(\d+);/g, (_, d) => String.fromCharCode(+d)).replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ");
+const has = (h, s) => strip(h).includes(s);
+let pass = 0, fail = 0;
+const t = (name, cond, extra = "") => { cond ? pass++ : fail++; console.log(`${cond ? "  ok  " : "  FAIL"} ${name}${cond ? "" : "  <-- " + extra}`); };
+
+const SCRIPTS = { "script.arrived_home": "on", "script.leaving_home": "on", "script.goodnight": "on", "script.alarm_arm_home_safe": "on", "script.movie_mode": "on" };
+const NAMES = { "script.arrived_home": "Arrived Home", "script.leaving_home": "Leaving Home", "script.goodnight": "Goodnight", "script.alarm_arm_home_safe": "Arm Home (safe)", "script.movie_mode": "Movie mode" };
+const KEYS = ["kitchen_single", "kitchen_double", "kitchen_triple", "kitchen_quad", "kitchen_hold", "bedroom_single", "bedroom_double", "bedroom_triple", "bedroom_hold", "patio_single", "patio_double", "patio_hold"];
+const H = Object.fromEntries(KEYS.map((k) => [`input_text.btn_${k}`, ""]));
+
+console.log("A · helpers not loaded (the state until HA is reloaded)");
+let h = run(SCRIPTS, NAMES);
+t("shows the set-up notice", has(h, "helpers are not loaded yet"));
+const presses = (h.match(/Single press|Double press|Triple press|Quadruple press|>Hold<|Long press/g) || []).length;
+t("all 12 presses still render", presses >= 12, `${presses} found`);
+t("every press reads Built-in", (h.match(/Built-in/g) || []).length >= 12, `${(h.match(/Built-in/g) || []).length} found`);
+t("real built-in behaviour printed", has(h, "Arrived Home") && has(h, "Toggle the pool pump"));
+t("counts 0 of 12 remapped", has(h, "0 of 12"));
+t("no Custom or Broken pill", !has(h, "Custom") && !has(h, "Broken"));
+
+console.log("\nB · helpers loaded, patio double remapped to Movie mode");
+h = run({ ...SCRIPTS, ...H, "input_text.btn_patio_double": "script.movie_mode", "input_text.btn_last_dispatch": "patio double -> script.movie_mode @ 19:42" }, NAMES);
+t("set-up notice gone", !has(h, "helpers are not loaded yet"));
+t("remapped press shows Custom", has(h, "Custom"));
+t("names the script it runs now", has(h, "Runs Movie mode"));
+t("still names the built-in replaced", has(h, "Toggle the pool pump"));
+t("counts 1 of 12", has(h, "1 of 12"));
+t("last dispatch read from the helper", has(h, "patio double -> script.movie_mode @ 19:42"));
+
+console.log("\nC · a mapping whose script was deleted in HA");
+h = run({ ...SCRIPTS, ...H, "input_text.btn_bedroom_hold": "script.deleted_thing" }, NAMES);
+t("shows Broken", has(h, "Broken"));
+t("says the press does nothing", has(h, "currently does nothing"));
+t("names the missing script", has(h, "script.deleted_thing"));
+
+console.log("\nD · the picker's source: every script HA has, none dropped");
+// The picker panel is click-gated, so SSR cannot render it. What it renders FROM
+// is testable directly, and that is the part that could silently drop a script.
+const { assignableScripts, BUTTONS, ALL_PRESSES, helperFor } = await import("./buttons.mjs");
+// real-scripts.json is the 101 script ids the live config defined on
+// 2026-08-10 — a fixture, so this runs with the config mount offline. It is
+// what makes "offers all 101" mean something; regenerate it after adding
+// scripts in HA (scripts/capture-scripts.mjs).
+const fixture = new URL("./real-scripts.json", import.meta.url);
+const real = JSON.parse(await (await import("node:fs/promises")).readFile(fixture, "utf8"));
+const mixed = [...real, "light.kitchen", "switch.pool_pump", "input_text.btn_patio_hold", "automation.thing"];
+const offered = assignableScripts(mixed);
+t(`offers all ${real.length} real scripts`, offered.length === real.length, `${offered.length} offered`);
+t("drops every non-script entity", offered.every((id) => id.startsWith("script.")));
+t("nothing silently filtered out", real.every((id) => offered.includes(id)),
+  real.filter((id) => !offered.includes(id)).join(", "));
+t("sorted, so the list is scannable", offered.join() === [...offered].sort().join());
+t("the alarm scripts ARE offered (all guarded, verified)", offered.includes("script.alarm_arm_home_safe") && offered.includes("script.alarm_disarm"));
+
+console.log("\nE · the twelve presses and their helper ids");
+t("12 presses across 3 buttons", ALL_PRESSES.length === 12 && BUTTONS.length === 3, `${ALL_PRESSES.length}/${BUTTONS.length}`);
+t("no duplicate helper ids", new Set(ALL_PRESSES.map((p) => helperFor(p.key))).size === 12);
+t("every helper is input_text.btn_*", ALL_PRESSES.every((p) => /^input_text\.btn_[a-z_]+$/.test(helperFor(p.key))));
+t("every press documents its built-in behaviour", ALL_PRESSES.every((p) => p.current && p.current.length > 10));
+t("the 3 alarm-changing presses are flagged", ALL_PRESSES.filter((p) => p.security).length === 3,
+  ALL_PRESSES.filter((p) => p.security).map((p) => p.key).join(", "));
+
+console.log(`\n${pass} passed, ${fail} failed`);
+process.exit(fail ? 1 : 0);
