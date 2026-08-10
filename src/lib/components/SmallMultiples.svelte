@@ -15,6 +15,8 @@
   // Clicking a panel EXPANDS IT IN PLACE rather than pushing a new screen: the
   // comparison you were making is the context, and navigating away destroys it.
   import { clock } from "../format";
+  import { gapFraction, TOO_SPARSE } from "../fn";
+  import Failed from "./Failed.svelte";
 
   export type Panel = {
     key: string;
@@ -80,6 +82,16 @@
   <div class="grid">
     {#each panels as p (p.key)}
       {@const isOpen = open === p.key}
+      {@const sparse = gapFraction(p.points) > TOO_SPARSE}
+      <!-- Above a third missing, a line misleads BY SHAPE rather than by value —
+           four points strung across a day look like a trend. At that point the
+           honest answer is the Failed state, not a chart with holes in it. -->
+      {#if sparse}
+        <div class="panel sparse">
+          <span class="p-lb">{p.label}</span>
+          <Failed what={p.label} detail="too few readings in this window to draw" />
+        </div>
+      {:else}
       <button
         class="panel"
         class:open={isOpen}
@@ -100,6 +112,7 @@
           </span>
         {/if}
       </button>
+      {/if}
     {/each}
   </div>
 </section>
@@ -129,6 +142,8 @@
   /* Expanding in place: the panel spans the row rather than opening a sheet, so
      the neighbours it is being compared against stay on screen. */
   .panel.open { grid-column: 1 / -1; }
+  /* Not a button: there is nothing to expand into. */
+  .panel.sparse { cursor: default; }
   .p-lb { font-size: 11px; font-weight: 700; color: var(--mut); }
   .p-v { font-size: 16px; font-weight: 800; letter-spacing: -0.02em; color: var(--tx); font-variant-numeric: tabular-nums; }
   .p-svg { width: 100%; height: 34px; display: block; }

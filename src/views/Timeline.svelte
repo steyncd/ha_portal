@@ -21,16 +21,31 @@
   // do sit near each other in hue are far apart in luminance. The last pair are
   // both light on purpose: they differ only on the blue↔yellow axis, which is
   // precisely the axis that survives.
+  // Ordered by PHYSICAL ADJACENCY, not alphabetically — Study, Liam, Eben, Main
+  // along one side; TV, Dining, Kitchen, Passage, Guest, Garage along the other.
+  // A reader who forgets which colour a room is can still find it by position,
+  // which is a second channel that costs nothing.
+  //
+  // And the band is LABELLED DIRECTLY (see the legend below): with eight
+  // categories, colour cannot be the primary identifier even with a good
+  // palette. Colour is the accent; the label is the identifier.
+  //
+  // Palette: four cool + four warm interleaved so legend neighbours never share
+  // a family, spread L≈33–87 so anything close in hue is far apart in luminance.
+  // The old set failed three times over — mint/sky/cyan collapsed, pink/violet
+  // collapsed, amber/orange collapsed.
   const ROOMS = [
-    { label: "Main", id: "binary_sensor.main_room_pir", color: "var(--load)" }, //      L50 blue
-    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "var(--energy)" }, // L76 amber
-    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#1f4f8f" }, //      L33 navy
-    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#c87a2e" }, //            L57 orange
-    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "var(--heat-2)" }, //    L70 mid blue
-    { label: "Garage", id: "binary_sensor.garage_pir", color: "#7a5320" }, //            L38 bronze
-    { label: "Passage", id: "binary_sensor.passage_pir", color: "#b8def7" }, //          L87 ice
-    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#f3d89b" }, //         L87 sand
+    { label: "Study", id: "binary_sensor.study_occupancy", color: "var(--load)" }, //        L50 blue
+    { label: "Main", id: "binary_sensor.main_room_pir", color: "var(--energy)" }, //        L76 amber
+    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#1f4f8f" }, // L33 navy
+    { label: "Passage", id: "binary_sensor.passage_pir", color: "#c87a2e" }, //             L57 orange
+    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "var(--heat-2)" }, // L70 mid blue
+    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#7a5320" }, //               L38 bronze
+    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#b8def7" }, //             L87 ice
+    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#f3d89b" }, //            L87 sand
+    { label: "Garage", id: "binary_sensor.garage_pir", color: "#9db3c4" }, //               L72 slate
   ];
+
   const QUIET = "rgba(255,255,255,.06)";
   const AWAY = "rgba(255,255,255,.13)";
   const DAY = 86_400_000;
@@ -302,13 +317,19 @@
     <!-- movement bar -->
     <div class="card pad">
       <div class="rh"><span class="lb">Movement through the house · {hero.ctx}</span><span class="sub">from room sensors</span></div>
+      <!-- The legend sits IMMEDIATELY ABOVE the band, not below the axis. With
+           eight rooms composited into one band, colour cannot be the primary
+           identifier however good the palette is: the label identifies, the
+           colour is only the accent. Rooms are also ordered by physical
+           adjacency, so a reader who forgets a colour can still find the room by
+           position — a second channel that costs nothing. -->
+      <div class="legend">
+        {#each legend as r}<span class="lg"><span class="lgd" style="background:{r.color}"></span>{r.label}</span>{/each}
+      </div>
       <div class="movebar">
         {#each segs as s}<div class="mseg" style="width:{s.w}%;background:{s.color}" title={s.title}></div>{/each}
       </div>
       <div class="axis"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
-      <div class="legend">
-        {#each legend as r}<span class="lg"><span class="lgd" style="background:{r.color}"></span>{r.label}</span>{/each}
-      </div>
     </div>
 
     <div class="two">
@@ -398,9 +419,10 @@
   .movebar { display: flex; height: 30px; border-radius: 9px; overflow: hidden; gap: 1px; background: rgba(255, 255, 255, 0.03); }
   .mseg { min-width: 1px; }
   .axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-2); margin-top: 6px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; }
-  .lg { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-2); }
-  .lgd { width: 10px; height: 10px; border-radius: 3px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 10px 0 8px; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--mut); }
+  /* Small: the swatch is the accent, the word is the identifier. */
+  .lgd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 
   .rtlist { display: flex; flex-direction: column; gap: 9px; }
   .rtrow { display: flex; align-items: center; gap: 11px; }
