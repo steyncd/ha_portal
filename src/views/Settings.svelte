@@ -13,6 +13,9 @@
   import { watchParcels, addParcel, removeParcel, refreshParcels, type Parcel } from "../lib/parcels";
   import { loadHaConnection, saveHaConnection, clearHaConnection } from "../lib/haConfig";
   import Toggle from "../lib/components/Toggle.svelte";
+  import SettingsAlarm from "../lib/components/SettingsAlarm.svelte";
+  import SettingsCheatsheet from "../lib/components/SettingsCheatsheet.svelte";
+  import SettingsAutomations from "../lib/components/SettingsAutomations.svelte";
   import { onMount } from "svelte";
 
   // ---- Home Assistant connection (direct vs built-in Nabu Casa) ----
@@ -250,26 +253,39 @@
   const configurableViews = NAV.filter((v) => !["overview", "security", "settings"].includes(v.id));
   function timeVal(id: string) { return (ha.state(id) ?? "").slice(0, 5); }
 
-  // ---- section tabs ----
+  // ---- section rail (Phase 4) ----
+  // Ten sections, in the handover's order. Automations, Reminders and Cheatsheet
+  // are new; the rest keep their existing content and gain the shared row
+  // pattern. Each carries its own one-line explanation, because a rail of ten
+  // bare nouns makes you open all ten to find the one you wanted.
   const TABS = [
-    { id: "account", name: "Account" },
-    { id: "appearance", name: "Appearance" },
-    { id: "alarm", name: "Alarm" },
-    { id: "notify", name: "Notify" },
-    { id: "health", name: "Health" },
-    { id: "views", name: "Views" },
-    { id: "system", name: "System" },
+    { id: "account", name: "Account", sub: "You, your devices, and how you sign in" },
+    { id: "appearance", name: "Appearance", sub: "Theme, density, motion and language" },
+    { id: "alarm", name: "Alarm", sub: "Arming behaviour and the rules that guard it" },
+    { id: "autos", name: "Automations", sub: "What ran, what did not, and what it did" },
+    { id: "reminders", name: "Reminders", sub: "Announce on the speakers, send on WhatsApp, or both" },
+    { id: "notify", name: "Notify", sub: "Three classes, two digests, and the badge" },
+    { id: "health", name: "Health", sub: "Oura, and who can see it" },
+    { id: "views", name: "Views", sub: "What appears in nav, and what Home opens on" },
+    { id: "cheat", name: "Cheatsheet", sub: "The things you forget, written down once" },
+    { id: "system", name: "System", sub: "Home Assistant, data, and the things that break" },
   ];
-  let tab = $state(prefs.settingsTab);
+  const activeTab = $derived(TABS.find((t) => t.id === tab) ?? TABS[0]);
+  let tab = $state(TABS.some((t) => t.id === prefs.settingsTab) ? prefs.settingsTab : "account");
   function setTab(id: string) { tab = id; prefs.settingsTab = id; prefs.save(); }
 </script>
 
 <div class="col">
   <div class="tabbar">
     {#each TABS as t}
-      <button class="tb" class:active={tab === t.id} onclick={() => setTab(t.id)}>{t.name}</button>
+      <button class="tb" class:active={tab === t.id} onclick={() => setTab(t.id)} title={t.sub}>{t.name}</button>
     {/each}
   </div>
+  <p class="tabsub">{activeTab.sub}</p>
+
+  {#if tab === "alarm"}<SettingsAlarm />{/if}
+  {#if tab === "cheat"}<SettingsCheatsheet />{/if}
+  {#if tab === "autos"}<SettingsAutomations />{/if}
 
   {#if tab === "account"}
   <!-- profile -->
@@ -469,41 +485,22 @@
   {/if}
 
   {#if tab === "alarm"}
-  <!-- alarm automations + schedule -->
-  <h2 class="section">Security &amp; alarm</h2>
-  <div class="two">
-    <div class="card pad">
-      <div class="lb" style="margin-bottom:6px">Alarm automations</div>
-      {#each autoArm as r}
-        <div class="arow"><div class="al"><div class="an">{r.name}</div><div class="as">{r.sub}</div></div><Toggle on={ha.isOn(r.id)} onchange={() => ha.toggleBoolean(r.id)} /></div>
-      {/each}
-    </div>
-    <div class="card pad">
-      <div class="lb" style="margin-bottom:8px">Schedule</div>
-      {#each schedule as r}
-        <div class="srow"><span class="sn">{r.name}</span><input type="time" value={timeVal(r.id)} onchange={(e) => ha.setDatetime(r.id, (e.target as HTMLInputElement).value + ":00")} /></div>
-      {/each}
-    </div>
-  </div>
-
-  <!-- notifications + zone bypass -->
-  <div class="two">
-    <div class="card pad">
-      <div class="lb" style="margin-bottom:6px">Notifications</div>
-      {#each notifs as r}
-        <div class="arow"><span class="ni">{r.icon}</span><span class="nn">{r.name}</span><Toggle on={ha.isOn(r.id)} onchange={() => ha.toggleBoolean(r.id)} /></div>
-      {/each}
-    </div>
-    <div class="card pad">
-      <div class="lb" style="margin-bottom:12px">Security · zone bypass</div>
-      <select value={bypassVal} onchange={(e) => ha.setSelect("input_select.zone_bypass_selector", (e.target as HTMLSelectElement).value)}>
-        {#each bypassOpts as o}<option value={o}>{o}</option>{/each}
-        {#if bypassOpts.length === 0}<option>None available</option>{/if}
-      </select>
-      <div class="note">Temporarily excludes a zone from arming. Confirm on the Security screen.</div>
+  <!-- The schedule and the auto-arm toggles moved into <SettingsAlarm>, which
+       renders them as two independently scheduled AREAS with steppers and names
+       the backing helper in each row. What is left here is zone bypass, which
+       is not a schedule and has no area. -->
+  <div class="card pad">
+    <div class="lb" style="margin-bottom:12px">Zone bypass</div>
+    <select value={bypassVal} onchange={(e) => ha.setSelect("input_select.zone_bypass_selector", (e.target as HTMLSelectElement).value)}>
+      {#each bypassOpts as o}<option value={o}>{o}</option>{/each}
+      {#if bypassOpts.length === 0}<option>None available</option>{/if}
+    </select>
+    <div class="note">
+      Temporarily excludes a zone from arming. Confirm on the Security screen — and
+      a bypass left on longer than the reminder threshold shows up in the digest,
+      so it cannot be forgotten.
     </div>
   </div>
-
   {/if}
 
   {#if tab === "system"}
@@ -636,6 +633,7 @@
 </div>
 
 <style>
+  .tabsub { font-size: 12px; color: var(--mut); margin: -4px 0 14px 2px; }
   .col { display: flex; flex-direction: column; gap: 14px; }
   .section { font-size: 12px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted-2); margin: 8px 2px -4px; }
   .section:first-child { margin-top: 0; }
