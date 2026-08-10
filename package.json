@@ -8,7 +8,7 @@
     "dev:mock": "vite --mode mock",
     "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "node scripts/check-integrity.mjs",
     "deploy": "npm run build && firebase deploy --only hosting",
     "deps": "node scripts/build-dependency-index.mjs"
   },

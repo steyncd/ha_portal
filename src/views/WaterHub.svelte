@@ -49,6 +49,7 @@
       key: "Tank",
       reading: tank,
       unit: "%",
+      digits: 0,
       units: tankVol != null ? `${n(tankVol)} ℓ` : undefined,
       note: leaking
         ? `fell ${Math.round(silentDrop!)}% with the borehole idle`
@@ -62,6 +63,7 @@
       key: "Used today",
       reading: usedToday,
       unit: "ℓ",
+      digits: 0,
       units: usedAvg != null ? `norm ${n(usedAvg)} ℓ` : undefined,
       note: usedToday.value != null && usedAvg != null && (usedToday.value as number) > usedAvg * 1.4 ? "well above the norm" : "in the usual range",
       warn: usedToday.value != null && usedAvg != null && (usedToday.value as number) > usedAvg * 1.4,

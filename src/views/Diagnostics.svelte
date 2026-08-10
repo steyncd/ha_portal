@@ -19,7 +19,7 @@
   import { dependentCount, groupedDependents, depsEntityCount, depsGeneratedAt } from "../lib/deps";
   import { n } from "../lib/format";
   import Sheet from "../lib/components/Sheet.svelte";
-  import { health } from "../lib/health";
+  import { health } from "../lib/health.svelte";
   import { onMount } from "svelte";
 
   let { onnav }: { onnav: (id: string) => void } = $props();

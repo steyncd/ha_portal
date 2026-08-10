@@ -397,16 +397,16 @@
     <div class="ev">
       {#if sheet.kind === "battery"}
         <div class="ev-row"><span>Now</span><Value reading={soc} unit="%" /></div>
-        <div class="ev-row"><span>Off-grid runtime today</span><span>{ha.num("sensor.battery_runtime_off_grid_today") ?? "—"} h</span></div>
-        <div class="ev-row"><span>Lowest today</span><span>{ha.num("sensor.battery_soc_min_today") ?? "—"}%</span></div>
+        <div class="ev-row"><span>Off-grid runtime today</span><span>{n(ha.num("sensor.battery_runtime_off_grid_today"), 1)} h</span></div>
+        <div class="ev-row"><span>Lowest today</span><span>{n(ha.num("sensor.battery_soc_min_today"))}%</span></div>
       {:else if sheet.kind === "cost"}
         <div class="ev-row"><span>Cost today</span><span>{costToday.value != null ? `R${rand(costToday.value)}` : "—"}</span></div>
         <div class="ev-row"><span>Solar today</span><span>{solarToday != null ? `${n(solarToday, 1)} kWh` : "—"}</span></div>
         <div class="ev-row"><span>Grid today</span><span>{gridToday != null ? `${n(gridToday, 1)} kWh` : "—"}</span></div>
       {:else if sheet.kind === "tank"}
         <div class="ev-row"><span>Level</span><Value reading={tank} unit="%" /></div>
-        <div class="ev-row"><span>Used today</span><span>{ha.num("sensor.water_used_today") ?? "—"} ℓ</span></div>
-        <div class="ev-row"><span>Borehole pumped today</span><span>{ha.num("sensor.borehole_pump_water_pumped_today") ?? "—"} ℓ</span></div>
+        <div class="ev-row"><span>Used today</span><span>{n(ha.num("sensor.water_used_today"))} ℓ</span></div>
+        <div class="ev-row"><span>Borehole pumped today</span><span>{n(ha.num("sensor.borehole_pump_water_pumped_today"))} ℓ</span></div>
       {:else}
         <div class="ev-row"><span>Month to date</span><span>{costMonth.value != null ? `R${rand(costMonth.value, 0)}` : "—"}</span></div>
       {/if}

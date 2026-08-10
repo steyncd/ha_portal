@@ -183,7 +183,7 @@
       {:else if sheet.kind === "battery"}
         <div class="r"><span>Now</span><span>{soc.value != null ? `${n(soc.value as number)}%` : "—"}</span></div>
         <div class="r"><span>Lowest today</span><span>{socMin != null ? `${n(socMin)}%` : "—"}</span></div>
-        <div class="r"><span>Off-grid hours today</span><span>{ha.num("sensor.battery_runtime_off_grid_today") ?? "—"}</span></div>
+        <div class="r"><span>Off-grid hours today</span><span>{n(ha.num("sensor.battery_runtime_off_grid_today"), 1)}</span></div>
       {:else}
         <div class="r"><span>Month to date</span><span>{rand(costMonth, 0)}</span></div>
         <div class="r"><span>Off-grid share</span><span>{independence != null ? `${n(independence)}%` : "—"}</span></div>

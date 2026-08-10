@@ -20,6 +20,8 @@
     value?: string;
     reading?: Reading<number | string | null>;
     unit?: string;
+    /** Explicit precision. Omitted, Value picks by magnitude. */
+    digits?: number;
     /** Second line: the OTHER units. Money and kWh, always both. */
     units?: string;
     /** Third line: the one thing worth saying about it. */
@@ -117,7 +119,7 @@
           <button class="stat" class:warn={s.warn} onclick={() => s.open?.()} disabled={!s.open}>
             <span class="s-k">{s.key}</span>
             <span class="big">
-              {#if s.reading}<Value reading={s.reading} unit={s.unit ?? ""} />{:else}{s.value ?? "—"}{/if}
+              {#if s.reading}<Value reading={s.reading} unit={s.unit ?? ""} digits={s.digits} />{:else}{s.value ?? "—"}{/if}
             </span>
             <!-- Both units, always: rands so Mandri can read it, kWh and the
                  grid/sun split so Christo can. -->

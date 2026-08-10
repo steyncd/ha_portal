@@ -64,7 +64,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (["now","home","overview","energy","water","security","climate","household","me","diagnostics","powertrends","insights","usage"].includes(id)) return { onnav: go };
+    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "now", "overview", "powertrends", "security", "usage", "water"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -125,6 +125,13 @@
       else if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); palette = true; }
     };
     window.addEventListener("keydown", onkey);
+    // Dev/mock-only navigation hook, for the route walk in
+    // scripts/ui-walk.mjs. Guarded so it never exists in a real build: a global
+    // that can change the view is a hole, however small.
+    if (import.meta.env.DEV || mockMode) {
+      (window as unknown as { __nav?: (id: string) => void }).__nav = (id: string) => go(id);
+    }
+
     const tick = setInterval(() => (now = new Date()), 30_000);
     return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); clearInterval(tick); };
   });
@@ -207,20 +214,36 @@
   // Subscribe to the household Sabbath flag once we're in.
   $effect(() => { if (mockMode || authStore.status === "ready") sabbath.start(); });
 
+  // ── Two different questions, and conflating them broke every hub link ─────
+  //
+  // `visible()` answers MAY THIS ROUTE BE OPENED — an access question: guest
+  // role, Sabbath mode, the per-device guest toggle.
+  //
+  // `inNav()` answers SHOULD IT APPEAR IN THE SIDEBAR — a curation question,
+  // which is what prefs.viewsOn has always been for.
+  //
+  // These were one function, and prefs.viewsOn gated both. That is the bug
+  // Christo hit: viewsOn was written for the old 18-item nav, so every spoke id
+  // introduced in Phase 3.2 (medetail, waterdetail, devices, diagnostics…) had
+  // no entry, visible() returned false, and the guard on line ~248 bounced you
+  // straight back to Home. Every "Open" link on every hub board looked like it
+  // did nothing.
+  //
+  // The fix is the distinction, not a longer list: a spoke is deliberately NOT
+  // in the sidebar, so gating its reachability on a sidebar preference was never
+  // meaningful. ⌘K, a deep link and a hub link must all still work.
   const visible = (id: ViewId) => {
-    // Guest ROLE (server-defined): only Overview + the views shared with them;
-    // never Settings. Not toggleable by the guest.
+    // Guest ROLE (server-defined): only Home + Overview + what was shared with
+    // them; never Settings. Not toggleable by the guest.
     if (authStore.isGuest) return id === "home" || id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
     // Sabbath mode quietens work/admin/money views (Faith, Overview & Settings stay).
     if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
-    // Members/owners: honour the per-device guest toggle + enabled-views prefs.
-    // Rail items are never gated by prefs.viewsOn. viewsOn is a per-SPOKE
-    // toggle, and a hub that vanished because a pref for it had never been
-    // written is how Household disappeared the first time this ran.
-    return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-      (RAIL.includes(id) || prefs.viewsOn[id]);
+    // Per-device guest toggle.
+    return !prefs.guest || !GUEST_HIDDEN.includes(id);
   };
-  const shown = $derived(NAV.filter((nav) => visible(nav.id)));
+  /** Sidebar curation. Rail items are always in; spokes are opt-in. */
+  const inNav = (id: ViewId) => visible(id) && (RAIL.includes(id) || !!prefs.viewsOn[id]);
+  const shown = $derived(NAV.filter((nav) => inNav(nav.id)));
   // The desktop rail never shows phoneOnly items. Now and Home are two
   // different front doors on purpose — Now answers "what now", Home is the
   // three-monitor board — so offering both in the rail would read as a choice
@@ -229,9 +252,11 @@
   // from an explicit list rather than filtering NAV means adding a spoke can
   // never accidentally put it back in the sidebar.
   const railItems = $derived(
-    RAIL.map((id) => NAV.find((n) => n.id === id)!).filter((n) => n && !n.phoneOnly && visible(n.id)),
+    RAIL.map((id) => NAV.find((n) => n.id === id)!).filter((n) => n && !n.phoneOnly && inNav(n.id)),
   );
-  // Never sit on a now-hidden view (entering guest mode, or a guest landing).
+  // Never sit on a view this person may not OPEN — entering guest mode, or a
+  // guest landing on a deep link. Deliberately visible(), not inNav(): a spoke is
+  // not in the sidebar by design and must stay reachable.
   $effect(() => { if (!visible(view)) view = "home"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
   let logged = false;

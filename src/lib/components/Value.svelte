@@ -30,10 +30,34 @@
     showAge?: boolean;
   } = $props();
 
+  /**
+   * Precision by magnitude, when the caller has not said.
+   *
+   * `String(v)` was the old fallback and it is how the tank came out as
+   * 99.13725490196078 on a dashboard: HA hands back whatever float the sensor
+   * computed, and a percentage carrying fourteen decimals is not a more precise
+   * reading, it is an unreadable one.
+   *
+   * The rule is the one people use when reading a number aloud: hundreds get no
+   * decimals, ordinary values get one, and only sub-unit values get two — a
+   * 0.42 kWh figure needs them, a 99% figure does not. Trailing zeros are
+   * stripped so 20.0 reads as 20 rather than implying a precision we do not
+   * have.
+   *
+   * An explicit `digits` always wins; this only decides what happens when
+   * nobody chose.
+   */
+  function auto(v: number): string {
+    if (Number.isInteger(v)) return String(v);
+    const a = Math.abs(v);
+    const dp = a >= 100 ? 0 : a >= 1 ? 1 : 2;
+    return v.toFixed(dp).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1");
+  }
+
   const shown = $derived.by(() => {
     const v = reading.value;
     if (v == null) return "—";
-    if (typeof v === "number") return digits != null ? v.toFixed(digits) : String(v);
+    if (typeof v === "number") return digits != null ? v.toFixed(digits) : auto(v);
     return v;
   });
 
