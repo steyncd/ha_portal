@@ -47,6 +47,7 @@
     usage: () => import("./views/Usage.svelte"),
     markets: () => import("./views/Markets.svelte"),
     settings: () => import("./views/Settings.svelte"),
+    diagnostics: () => import("./views/Diagnostics.svelte"),
     household: () => import("./views/Household.svelte"),
     // Spokes: no longer in the rail, still routed, still deep-linkable. Wiring
     // these is what makes "the five originals still exist" true rather than a
@@ -62,7 +63,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (["now","home","overview","energy","water","security","climate","household","me","powertrends","insights","usage"].includes(id)) return { onnav: go };
+    if (["now","home","overview","energy","water","security","climate","household","me","diagnostics","powertrends","insights","usage"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };

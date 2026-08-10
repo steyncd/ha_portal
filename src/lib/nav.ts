@@ -20,7 +20,7 @@ export type ViewId =
   | "usage" | "markets" | "solar" | "settings"
   // Spokes: routed and deep-linkable, never in the rail.
   | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server"
-  | "waterdetail" | "securitydetail";
+  | "waterdetail" | "securitydetail" | "diagnostics";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -90,6 +90,11 @@ export const NAV: NavItem[] = [
     collapsedNote:
       "Sleep, focus, what you actually used and the long-term patterns. Owner-only, and excluded from the family export.",
   },
+  {
+    id: "diagnostics", name: "Diagnostics", icon: "🩺", ic: "waves", group: "", color: "var(--ok)",
+    collapsedNote:
+      "Twelve subsystems, one screen. Every card names what depends on it — which is the sentence that turns a status into a decision.",
+  },
   { id: "settings", name: "Settings", icon: "⚙️", ic: "nav-settings", group: "Bottom", color: "var(--mut)" },
 
   // ── Spokes ────────────────────────────────────────────────────────────────
@@ -130,7 +135,8 @@ export const NAV: NavItem[] = [
 
 /** The nine that appear in the rail, in order. Everything else is a spoke. */
 export const RAIL: ViewId[] = [
-  "now", "home", "overview", "energy", "water", "security", "climate", "household", "me", "settings",
+  "now", "home", "overview", "energy", "water", "security", "climate", "household", "me",
+  "diagnostics", "settings",
 ];
 
 export const isSpoke = (id: ViewId) => !RAIL.includes(id);
