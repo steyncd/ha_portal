@@ -68,3 +68,40 @@ describe("dailyMax", () => {
     expect(out[0].value).toBeNull(); // two days ago: no data
   });
 });
+
+// ---------------------------------------------------------------------------
+// authErrorMessage — added 2026-08-11 after the portal showed a bare "2" on the
+// connection error screen. home-assistant-js-websocket rejects with integer
+// constants, so any unwrapped throw reaches the UI as a number, and "2" reads
+// like a portal bug rather than a sign-in that needs redoing.
+import { authErrorMessage } from "./ha";
+
+describe("authErrorMessage", () => {
+  it("turns ERR_INVALID_AUTH (2) into an actionable sentence", () => {
+    const m = authErrorMessage(2);
+    expect(m).toMatch(/rejected the saved sign-in/i);
+    expect(m).toMatch(/sign in again/i);
+    expect(m).not.toBe("2");
+  });
+
+  it("names the host when it cannot be reached", () => {
+    expect(authErrorMessage(1)).toMatch(/cannot reach home assistant/i);
+  });
+
+  it("covers the other codes rather than leaking a number", () => {
+    for (const code of [3, 4, 5]) {
+      expect(authErrorMessage(code)).not.toMatch(/^\d+$/);
+      expect(authErrorMessage(code).length).toBeGreaterThan(10);
+    }
+  });
+
+  it("passes a real Error's message through", () => {
+    expect(authErrorMessage(new Error("boom"))).toBe("boom");
+  });
+
+  it("never returns an empty string, whatever it is given", () => {
+    for (const v of [undefined, null, {}, "", 99]) {
+      expect(authErrorMessage(v).trim().length).toBeGreaterThan(0);
+    }
+  });
+});

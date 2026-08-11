@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "./lib/store.svelte";
+  import { clearHaTokens } from "./lib/ha";
   import { authStore } from "./lib/auth.svelte";
   import { logAccess } from "./lib/accessLog";
   import { actionLog } from "./lib/actionLog.svelte";
@@ -372,7 +373,27 @@
     </div>
   </div>
 {:else if ha.status === "error"}
-  <div class="center"><div class="panel"><strong>Couldn't connect to Home Assistant</strong><p>{ha.error}</p><button onclick={() => location.reload()}>Retry</button></div></div>
+  <!-- Retry alone could not recover a revoked sign-in: it reloaded, read the same
+       dead tokens from localStorage and failed identically. "Sign in again" is the
+       escape hatch — it clears them so the next load redirects to HA's login. -->
+  <div class="center">
+    <div class="panel">
+      <strong>Couldn't connect to Home Assistant</strong>
+      <p>{ha.error || "Unknown error."}</p>
+      <div class="acts">
+        <button onclick={() => location.reload()}>Retry</button>
+        <button
+          class="ghost"
+          onclick={() => { clearHaTokens(); location.reload(); }}
+        >Sign in again</button>
+      </div>
+      <p class="tiny">
+        Sign in again clears this browser's saved Home Assistant sign-in and sends
+        you to the HA login page. Setting a long-lived token in Settings → System
+        avoids this happening per-device.
+      </p>
+    </div>
+  </div>
 {:else if ha.status === "connecting"}
   <div class="center"><div class="spinner"></div><p class="dim">Connecting to Home Assistant…</p></div>
 {:else}
@@ -530,6 +551,9 @@
   .center { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 24px; }
   .dim { color: var(--muted); }
   .spinner { width: 32px; height: 32px; border: 3px solid rgba(255, 255, 255, 0.12); border-top-color: var(--acc); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  .acts { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+  .panel .ghost { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+  .panel .tiny { font-size: 11.5px; color: var(--text-3); line-height: 1.5; margin-top: 12px; max-width: 42ch; text-wrap: pretty; }
   .panel { background: rgba(20, 26, 36, 0.9); border-radius: 20px; padding: 24px; max-width: 440px; text-align: center; box-shadow: inset 0 0 0 1px var(--error); }
   .panel p { color: var(--text-2); font-size: 14px; }
   .panel button { margin-top: 8px; background: var(--grad); color: #0b1017; border-radius: 12px; padding: 10px 20px; font-weight: 700; }
