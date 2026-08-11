@@ -1,32 +1,38 @@
 <script lang="ts">
   // Automations panel — every automation.* entity with enable/disable, run-now,
   // and last-triggered time. Search filters by friendly name.
+  import { untrack } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { toast } from "../lib/toast.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
 
   let q = $state("");
 
-  type Row = { id: string; name: string; on: boolean; last: string | null };
+  type Row = { id: string; name: string };
 
+  // Stable, sorted catalog — rebuilt only when the entity set changes size, not
+  // every state tick. Enabled/last-triggered are read live per-row below, so the
+  // rendered output is unchanged.
+  const catalogLen = $derived(Object.keys(ha.entities).length);
   const rows = $derived.by<Row[]>(() => {
-    const out: Row[] = [];
-    for (const e of Object.values(ha.entities)) {
-      if (!e.entity_id.startsWith("automation.")) continue;
-      out.push({
-        id: e.entity_id,
-        name: (e.attributes?.friendly_name as string) ?? e.entity_id.replace("automation.", "").replace(/_/g, " "),
-        on: e.state === "on",
-        last: (e.attributes?.last_triggered as string) ?? null,
-      });
-    }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+    catalogLen;
+    return untrack(() => {
+      const out: Row[] = [];
+      for (const e of Object.values(ha.entities)) {
+        if (!e.entity_id.startsWith("automation.")) continue;
+        out.push({ id: e.entity_id, name: (e.attributes?.friendly_name as string) ?? e.entity_id.replace("automation.", "").replace(/_/g, " ") });
+      }
+      return out.sort((a, b) => a.name.localeCompare(b.name));
+    });
   });
+
+  const isOn = (id: string) => ha.state(id) === "on";
+  const lastOf = (id: string): string | null => (ha.entities[id]?.attributes?.last_triggered as string) ?? null;
 
   const filtered = $derived(
     q.trim() ? rows.filter((r) => r.name.toLowerCase().includes(q.trim().toLowerCase())) : rows,
   );
-  const onCount = $derived(rows.filter((r) => r.on).length);
+  const onCount = $derived(rows.filter((r) => isOn(r.id)).length);
 
   function ago(iso: string | null): string {
     if (!iso) return "never run";
@@ -41,7 +47,7 @@
   }
 
   function toggle(r: Row) {
-    ha.setAutomation(r.id, !r.on);
+    ha.setAutomation(r.id, !isOn(r.id));
   }
   function run(r: Row) {
     ha.triggerAutomation(r.id);
@@ -60,14 +66,14 @@
   {:else}
     <div class="list">
       {#each filtered as r (r.id)}
-        <div class="row" class:off={!r.on}>
+        <div class="row" class:off={!isOn(r.id)}>
           <div class="meta">
             <div class="nm">{r.name}</div>
-            <div class="sub">{r.on ? "Enabled" : "Disabled"} · last {ago(r.last)}</div>
+            <div class="sub">{isOn(r.id) ? "Enabled" : "Disabled"} · last {ago(lastOf(r.id))}</div>
           </div>
           <button class="run" onclick={() => run(r)} title="Run now">Run</button>
-          <button class="tg" onclick={() => toggle(r)} aria-label={r.on ? "Disable" : "Enable"}>
-            <Toggle on={r.on} />
+          <button class="tg" onclick={() => toggle(r)} aria-label={isOn(r.id) ? "Disable" : "Enable"}>
+            <Toggle on={isOn(r.id)} />
           </button>
         </div>
       {/each}

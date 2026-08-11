@@ -26,9 +26,17 @@
     { icon: "📱", name: "Trackers", pfx: ["device_tracker."] },
     { icon: "🎵", name: "Media players", pfx: ["media_player."] },
   ];
-  const cats = $derived(
-    DOMAINS.map((d) => ({ ...d, count: Object.keys(ha.entities).filter((id) => d.pfx.some((p) => id.startsWith(p))).length })).filter((d) => d.count > 0),
-  );
+  // One pass over the entity ids (was DOMAINS.length full-map scans per tick).
+  // Identical output + reactivity — purely fewer allocations per store tick.
+  const cats = $derived.by(() => {
+    const counts = new Array(DOMAINS.length).fill(0);
+    for (const id of Object.keys(ha.entities)) {
+      for (let i = 0; i < DOMAINS.length; i++) {
+        if (DOMAINS[i].pfx.some((p) => id.startsWith(p))) { counts[i]++; break; }
+      }
+    }
+    return DOMAINS.map((d, i) => ({ ...d, count: counts[i] })).filter((d) => d.count > 0);
+  });
 
   // problems: offline devices + low-battery
   const PROBLEM_DOMAINS = ["light", "switch", "sensor", "binary_sensor", "camera", "climate", "cover", "lock", "media_player", "device_tracker", "fan"];
