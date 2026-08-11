@@ -244,25 +244,6 @@
     { id: "input_boolean.night_kitchen_light_enabled", icon: "🌙", name: "Night kitchen light" },
     { id: "input_boolean.holiday_mode", icon: "🏖️", name: "Holiday mode" },
   ];
-  // AI & announcement-engine toggles (feature_announcements / feature_ai_assistants / feature_desktop_control).
-  const aiToggles = [
-    { id: "input_boolean.announce_ai_compose_enabled", icon: "🤖", name: "AI-composed wording", sub: "Gemini polishes tagged messages & digests" },
-    { id: "input_boolean.announce_chime_enabled", icon: "🔔", name: "Announcement chime", sub: "chime before high/critical alerts" },
-    { id: "input_boolean.announce_greetings_enabled", icon: "👋", name: "Time-of-day greetings" },
-    { id: "input_boolean.announce_digest_enabled", icon: "📥", name: "Digest batching", sub: "low-priority items spoken as one summary" },
-    { id: "input_boolean.security_digest_enabled", icon: "🛡️", name: "Daily security digest" },
-    { id: "input_boolean.security_digest_wa", icon: "💬", name: "Security digest to WhatsApp" },
-    { id: "input_boolean.energy_coaching_enabled", icon: "💡", name: "Energy coaching nudge" },
-    { id: "input_boolean.pool_pump_ask_enabled", icon: "🏊", name: "Pool-pump long-run ask" },
-    { id: "input_boolean.weekly_recap_enabled", icon: "📓", name: "Weekly \"you\" recap", sub: "Sunday-evening personal check-in" },
-    { id: "input_boolean.weekly_recap_wa", icon: "💬", name: "Weekly recap to WhatsApp" },
-    { id: "input_boolean.desktop_autolock_enabled", icon: "🔒", name: "PC auto-lock on leaving" },
-    { id: "input_boolean.desktop_bedtime_sleep_enabled", icon: "🌙", name: "PC sleep at bedtime" },
-  ];
-  const aiSliders = [
-    { id: "input_number.pool_pump_ask_hours", name: "Pool-pump ask after (hours)", min: 1, max: 12, step: 0.5 },
-    { id: "input_number.announce_digest_max_items", name: "Digest auto-flush at N items", min: 2, max: 20, step: 1 },
-  ];
   const bypassOpts = $derived((ha.attr("input_select.zone_bypass_selector", "options") as string[]) ?? []);
   const bypassVal = $derived(ha.state("input_select.zone_bypass_selector") ?? "");
 
@@ -547,24 +528,6 @@
       {/each}
     </div>
   </div>
-
-  <h2 class="section">AI &amp; announcements</h2>
-  <div class="card pad">
-    <div class="agrid">
-      {#each aiToggles as r}
-        <div class="arow"><span class="ni">{r.icon}</span><div class="al"><div class="an">{r.name}</div>{#if r.sub}<div class="as">{r.sub}</div>{/if}</div><Toggle on={ha.isOn(r.id)} onchange={() => ha.toggleBoolean(r.id)} /></div>
-      {/each}
-    </div>
-    <div style="margin-top:14px;display:flex;flex-direction:column;gap:12px">
-      {#each aiSliders as s}
-        <label class="arow" style="gap:12px">
-          <span class="nn" style="flex:1">{s.name}</span>
-          <input type="range" min={s.min} max={s.max} step={s.step} value={ha.num(s.id) ?? s.min} onchange={(e) => ha.setNumber(s.id, Number((e.target as HTMLInputElement).value))} style="flex:1" />
-          <b style="min-width:34px;text-align:right;font-variant-numeric:tabular-nums">{ha.num(s.id) ?? "—"}</b>
-        </label>
-      {/each}
-    </div>
-  </div>
   {/if}
 
   {#if tab === "system" && authStore.isOwner}
@@ -588,27 +551,6 @@
       {#if haConfigured}<button class="ghost" onclick={clearHa} disabled={haBusy}>Revert to built-in</button>{/if}
     </div>
     <div class="note" style="margin-top:10px">Create a token in Home Assistant → your profile → <em>Security</em> → “Long-lived access tokens”. Your HA must be reachable over HTTPS and allow this portal's origin in <code>cors_allowed_origins</code>.</div>
-  </div>
-
-  <h2 class="section">App</h2>
-  <div class="card pad row">
-    <div><div class="rn">Hard refresh</div><div class="rs">Clear cached files and reload — fixes a stale‑looking PWA after an update.</div></div>
-    <button
-      class="ghost"
-      onclick={async () => {
-        toast.show("Hard refreshing…");
-        try {
-          if ("serviceWorker" in navigator) {
-            const regs = await navigator.serviceWorker.getRegistrations();
-            await Promise.all(regs.map((r) => r.unregister()));
-          }
-          if ("caches" in window) {
-            const keys = await caches.keys();
-            await Promise.all(keys.map((k) => caches.delete(k)));
-          }
-        } catch {}
-        location.reload();
-      }}>↻ Hard refresh</button>
   </div>
   {/if}
 

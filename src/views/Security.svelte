@@ -202,35 +202,27 @@
   }
 
   // ---- 24h event timeline (from real state-change history) ----
-  type EvKind = "arm" | "trig" | "disarm" | "door";
-  type Ev = { t: number; label: string; color: string; icon: string; kind: EvKind };
+  type Ev = { t: number; label: string; color: string; icon: string };
   let events = $state<Ev[]>([]);
-  // Each event type is distinguished by SHAPE + colour (never colour alone).
-  const EV_LEGEND: { kind: EvKind; label: string; color: string }[] = [
-    { kind: "arm", label: "Armed", color: "#0072B2" },
-    { kind: "trig", label: "Triggered", color: "#D55E00" },
-    { kind: "disarm", label: "Disarmed", color: "#E69F00" },
-    { kind: "door", label: "Door", color: "#56B4E9" },
-  ];
   const winStart = Date.now() - 24 * 3600_000;
   onMount(async () => {
-   try {
     const doors = ACCESS.slice(0, 5);
     const [al, ...zs] = await Promise.all([
       ha.historyStates(E.alarmHome, 24),
       ...doors.map((d) => ha.historyStates(d.id, 24)),
     ]);
     const evs: Ev[] = [];
-    for (const e of al) {
-      const kind: EvKind = e.s.startsWith("armed") ? "arm" : e.s === "triggered" ? "trig" : "disarm";
-      const color = kind === "arm" ? "#0072B2" : kind === "trig" ? "#D55E00" : "#E69F00";
-      evs.push({ t: e.t, icon: "🛡️", label: `Alarm ${e.s.replace(/_/g, " ")}`, color, kind });
-    }
+    for (const e of al)
+      evs.push({
+        t: e.t,
+        icon: "🛡️",
+        label: `Alarm ${e.s.replace(/_/g, " ")}`,
+        color: e.s.startsWith("armed") ? "var(--success)" : e.s === "triggered" ? "var(--error)" : "var(--warning)",
+      });
     zs.forEach((hist, i) => {
-      for (const e of hist) if (e.s === "on") evs.push({ t: e.t, icon: doors[i].icon, label: doors[i].label, color: "#56B4E9", kind: "door" });
+      for (const e of hist) if (e.s === "on") evs.push({ t: e.t, icon: doors[i].icon, label: doors[i].label, color: "var(--water)" });
     });
     events = evs.filter((e) => e.t >= winStart).sort((a, b) => b.t - a.t);
-   } catch { /* activity timeline stays empty */ }
   });
   const pos = (t: number) => Math.max(0, Math.min(100, ((t - winStart) / (24 * 3600_000)) * 100));
 </script>
@@ -268,13 +260,8 @@
     <div class="tl">
       <div class="tlaxis"><span>24h ago</span><span>18h</span><span>12h</span><span>6h</span><span>now</span></div>
       <div class="tltrack">
-        {#each events as e (e.t + e.kind)}
-          <span class="tlmark k-{e.kind}" style="left:{pos(e.t)}%;color:{e.color};background:{e.kind === 'door' ? 'transparent' : e.color}" title="{e.label} · {clock(e.t)}"></span>
-        {/each}
-      </div>
-      <div class="tllegend">
-        {#each EV_LEGEND as g}
-          <span class="lgi"><span class="tlmark static k-{g.kind}" style="color:{g.color};background:{g.kind === 'door' ? 'transparent' : g.color}"></span>{g.label}</span>
+        {#each events as e}
+          <span class="tlmark" style="left:{pos(e.t)}%;color:{e.color};background:{e.color}" title="{e.label} · {clock(e.t)}"></span>
         {/each}
       </div>
     </div>
@@ -440,15 +427,6 @@
   .tlaxis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-2); margin-bottom: 5px; }
   .tltrack { position: relative; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06); }
   .tlmark { position: absolute; top: 50%; transform: translate(-50%, -50%); width: 9px; height: 9px; border-radius: 50%; box-shadow: 0 0 6px currentColor; }
-  /* Distinct SHAPE per event kind so type never relies on colour alone. */
-  .tlmark.k-arm { border-radius: 50%; } /* circle */
-  .tlmark.k-trig { border-radius: 1px; } /* square */
-  .tlmark.k-disarm { border-radius: 1px; transform: translate(-50%, -50%) rotate(45deg); } /* diamond */
-  .tlmark.k-door { border-radius: 50%; background: transparent; border: 2px solid currentColor; box-shadow: none; } /* ring */
-  .tlmark.static { position: static; transform: none; display: inline-block; }
-  .tlmark.static.k-disarm { transform: rotate(45deg); }
-  .tllegend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
-  .tllegend .lgi { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
   .tllist { margin-top: 12px; display: flex; flex-direction: column; gap: 2px; }
   .tle { display: flex; align-items: center; gap: 11px; padding: 7px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.05); }
   .tle:last-child { border-bottom: none; }

@@ -25,7 +25,7 @@
   const WEEKDAYS = [ ["MO", "Mon"], ["TU", "Tue"], ["WE", "Wed"], ["TH", "Thu"], ["FR", "Fri"], ["SA", "Sat"], ["SU", "Sun"] ];
 
   // ---- message template library (message_templates.json store) ----
-  let store = $state<Record<string, Record<string, any>>>({});
+  let store = $state<Record<string, Record<string, string>>>({});
   // JSON clone (not structuredClone) — messageTemplates() returns a Svelte $state
   // proxy, which structuredClone cannot copy (it throws).
   function loadStore() { store = JSON.parse(JSON.stringify(ha.messageTemplates() ?? {})); }
@@ -162,7 +162,7 @@
     if (!label) return;
     const key = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
     if (!key || store[key]) { toast.show("Pick a unique name"); return; }
-    store = { ...store, [key]: { label, base: "", announce: "", push_christo: "", wa_christo: "", wa_mandri: "", wa_liam_eben: "", enrich: false } };
+    store = { ...store, [key]: { label, base: "", announce: "", push_christo: "", wa_christo: "", wa_mandri: "", wa_liam_eben: "" } };
     editKey = key;
   }
   async function saveTemplates() { await ha.saveMessageTemplates(store); toast.show("Templates saved"); setTimeout(loadStore, 600); }
@@ -260,7 +260,6 @@
     </div>
     {#if editKey && store[editKey]}
       <label class="fld" style="margin-bottom:12px"><span class="fl">Base wording (used when a destination is left blank)</span><textarea rows="2" bind:value={store[editKey].base}></textarea></label>
-      <label class="dl enrich"><span>✨ AI-enrich this message before sending (Gemini rewords it naturally; facts kept)</span><Toggle on={!!store[editKey].enrich} onchange={() => (store[editKey].enrich = !store[editKey].enrich)} /></label>
       <div class="grid">
         {#each DESTS as d}
           <div class="cell">
@@ -336,6 +335,5 @@
   @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
   .cell { display: flex; flex-direction: column; gap: 7px; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.03); }
   .clabel { font-size: 12px; font-weight: 700; color: var(--text-2); }
-  .enrich { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 2px 0 14px; font-size: 12.5px; color: var(--text-2); }
   .hint { font-size: 11.5px; color: var(--muted-2); }
 </style>

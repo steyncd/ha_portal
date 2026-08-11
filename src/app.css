@@ -60,10 +60,6 @@
   --warning: var(--warn);
   --error: var(--warn);
 
-  /* --danger alias for destructive controls — amber, consistent with v2's
-     "error resolves to amber, never red" status philosophy above. */
-  --danger: var(--warn);
-
   /* ---- Domain colours — NOT themable, re-spaced for separability.
      health and climate are the closest remaining pair: if they ever share a
      legend, add a glyph. */

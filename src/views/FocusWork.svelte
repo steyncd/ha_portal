@@ -79,39 +79,23 @@
   // App usage today, derived from frontmost-app string history.
   let apps = $state<{ app: string; min: number }[]>([]);
   onMount(async () => {
-    try {
-      const hist = await ha.historyStates("sensor.christos_macbook_frontmost_app", 24);
-      const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
-      const since = midnight.getTime();
-      const now = Date.now();
-      const sorted = [...hist].sort((a, b) => a.t - b.t);
-      const acc: Record<string, number> = {};
-      for (let i = 0; i < sorted.length; i++) {
-        const end = i + 1 < sorted.length ? sorted[i + 1].t : now;
-        if (end <= since) continue;
-        const start = Math.max(sorted[i].t, since);
-        const app = sorted[i].s;
-        if (!app || /unknown|unavailable|none/i.test(app)) continue;
-        acc[app] = (acc[app] ?? 0) + Math.max(0, end - start);
-      }
-      apps = Object.entries(acc).map(([app, ms]) => ({ app, min: ms / 60000 })).sort((a, b) => b.min - a.min).slice(0, 6);
-    } catch { /* app-usage strip stays empty */ }
+    const hist = await ha.historyStates("sensor.christos_macbook_frontmost_app", 24);
+    const midnight = new Date(); midnight.setHours(0, 0, 0, 0);
+    const since = midnight.getTime();
+    const now = Date.now();
+    const sorted = [...hist].sort((a, b) => a.t - b.t);
+    const acc: Record<string, number> = {};
+    for (let i = 0; i < sorted.length; i++) {
+      const end = i + 1 < sorted.length ? sorted[i + 1].t : now;
+      if (end <= since) continue;
+      const start = Math.max(sorted[i].t, since);
+      const app = sorted[i].s;
+      if (!app || /unknown|unavailable|none/i.test(app)) continue;
+      acc[app] = (acc[app] ?? 0) + Math.max(0, end - start);
+    }
+    apps = Object.entries(acc).map(([app, ms]) => ({ app, min: ms / 60000 })).sort((a, b) => b.min - a.min).slice(0, 6);
   });
   const appMax = $derived(Math.max(1, ...apps.map((a) => a.min)));
-
-  // Desktop commands (HASS.Agent). Shutdown is two-tap to prevent misfires.
-  let shutArmed = $state(false);
-  let shutTimer: ReturnType<typeof setTimeout> | null = null;
-  function shutdown() {
-    if (!shutArmed) {
-      shutArmed = true;
-      shutTimer = setTimeout(() => (shutArmed = false), 4000);
-      return;
-    }
-    if (shutTimer) clearTimeout(shutTimer);
-    shutArmed = false;
-    ha.pressButton("button.desktop_shutdown");
-  }
 </script>
 
 <div class="col">
@@ -201,14 +185,6 @@
         <div class="ds2"><div class="dv">{fmtH(deskUptime)}</div><div class="dk">Uptime</div></div>
         <div class="ds2"><div class="dv">{deskDisplays != null ? n(deskDisplays) : "—"}</div><div class="dk">Displays</div></div>
       </div>
-      <div class="dcmds">
-        <button class="dcmd" onclick={() => ha.pressButton("button.desktop_lock")}>🔒 Lock</button>
-        <button class="dcmd" onclick={() => ha.pressButton("button.desktop_sleep")}>🌙 Sleep</button>
-        <button class="dcmd danger" class:armed={shutArmed} onclick={shutdown}>
-          {shutArmed ? "Tap again to confirm" : "⏻ Shut down"}
-        </button>
-        <button class="dcmd ghost" title="Re-publish HASS.Agent sensors" onclick={() => ha.pressButton("button.desktop_publishallsensors")}>↻</button>
-      </div>
     </div>
   {/if}
 
@@ -244,12 +220,6 @@
   .curapp { font-size: 13px; font-weight: 600; color: var(--text-2, var(--muted)); }
   .dstatus { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .dcmds { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .dcmd { flex: 1; min-width: 92px; padding: 11px 12px; border-radius: 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--text); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.1)); transition: background 0.15s, border-color 0.15s; }
-  .dcmd:hover { background: rgba(255, 255, 255, 0.09); }
-  .dcmd.danger { color: var(--error); border-color: color-mix(in srgb, var(--error) 35%, transparent); }
-  .dcmd.danger.armed { background: var(--error); color: #fff; border-color: var(--error); flex-basis: 100%; }
-  .dcmd.ghost { flex: none; min-width: 0; width: 42px; color: var(--muted); font-size: 15px; }
   .ds2 { text-align: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
   .dv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .dk { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-weight: 700;}

@@ -33,18 +33,10 @@
   let tankHist = $state<{ t: number; v: number }[]>([]);
   let useBars = $state<{ label: string; value: number | null }[]>([]);
   let effHist = $state<{ t: number; v: number }[]>([]);
-  let loadError = $state(false);
   onMount(async () => {
-    try {
-      const [tank, used, eff] = await Promise.all([
-        ha.history(E.tankLevel, 24 * 30),
-        ha.history(E.waterUsedToday, 24 * 7),
-        ha.history(E.boreholeEfficiency, 24 * 30),
-      ]);
-      tankHist = tank;
-      useBars = dailyMax(used, 7);
-      effHist = eff;
-    } catch { loadError = true; }
+    tankHist = await ha.history(E.tankLevel, 24 * 30);
+    useBars = dailyMax(await ha.history(E.waterUsedToday, 24 * 7), 7);
+    effHist = await ha.history(E.boreholeEfficiency, 24 * 30);
   });
 
   // wear read: last 7 days' efficiency vs the prior ~3 weeks as a baseline
@@ -73,7 +65,6 @@
 </script>
 
 <div class="col">
-  {#if loadError}<div style="padding:10px 14px;border-radius:12px;background:rgba(230,159,0,.12);border:1px solid rgba(230,159,0,.35);font-size:12.5px;color:var(--text)">⚠ Couldn't load history — check the Home Assistant connection.</div>{/if}
   <!-- days-remaining hero -->
   <div class="card card--hero hero" class:low>
     <span class="glow" style="--gc:var(--water)"></span>

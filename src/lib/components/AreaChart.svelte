@@ -32,17 +32,12 @@
 
   const view = $derived.by(() => {
     if (data.length < 2) return null;
-    // Single pass for extents — spreading a large series into Math.min/max args
-    // is slower and risks a call-stack overflow at high point counts.
-    let tMin = Infinity, tMax = -Infinity, dvMin = Infinity, dvMax = -Infinity;
-    for (const d of data) {
-      if (d.t < tMin) tMin = d.t;
-      if (d.t > tMax) tMax = d.t;
-      if (d.v < dvMin) dvMin = d.v;
-      if (d.v > dvMax) dvMax = d.v;
-    }
-    let vMin = fixedMin ?? dvMin;
-    let vMax = fixedMax ?? dvMax;
+    const ts = data.map((d) => d.t);
+    const vs = data.map((d) => d.v);
+    const tMin = Math.min(...ts);
+    const tMax = Math.max(...ts);
+    let vMin = fixedMin ?? Math.min(...vs);
+    let vMax = fixedMax ?? Math.max(...vs);
     if (vMin === vMax) {
       vMin -= 1;
       vMax += 1;

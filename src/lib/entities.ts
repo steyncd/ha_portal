@@ -227,13 +227,12 @@ export const PUMPS: Pump[] = [
 ];
 
 export const SCENES: SceneDef[] = [
-  { id: "script.scene_bed_time", label: "Bed Time", icon: "🌙" },
-  { id: "script.scene_patio_outdoors", label: "Patio", icon: "🎇" },
-  { id: "script.scene_away_mode", label: "Away", icon: "🚪" },
   { id: "script.scene_evening_in_home", label: "Evening In", icon: "🌆" },
-  { id: "script.scene_morning_wakeup", label: "Morning", icon: "☀️" },
+  { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
   { id: "script.movie_mode", label: "Movie", icon: "🎬" },
   { id: "script.braai_mode", label: "Braai", icon: "🔥" },
+  { id: "script.quick_away_mode", label: "Away", icon: "🚪" },
+  { id: "script.quick_good_morning_scene", label: "Morning", icon: "☀️" },
 ];
 
 // Camera feeds (live streams need HLS/WebRTC wiring; shown as labelled tiles for now).

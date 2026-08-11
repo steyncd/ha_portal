@@ -145,18 +145,11 @@
 
   let sleepTrend = $state<{ t: number; v: number }[]>([]);
   let stepsTrend = $state<{ t: number; v: number }[]>([]);
-  let loadError = $state(false);
   onMount(async () => {
-    try {
-      const [sl, st, rd, ac] = await Promise.all([
-        ha.history(E.ouraSleepScore, 24 * 7),
-        ha.history(E.ouraSteps, 24 * 7),
-        ha.history(E.ouraReadiness, 24 * 7),
-        ha.history(E.ouraActivityScore, 24 * 7),
-      ]);
-      sleepTrend = sl; stepsTrend = st;
-      hist = { [E.ouraSleepScore]: sl, [E.ouraReadiness]: rd, [E.ouraActivityScore]: ac };
-    } catch { loadError = true; }
+    sleepTrend = await ha.history(E.ouraSleepScore, 24 * 7);
+    stepsTrend = await ha.history(E.ouraSteps, 24 * 7);
+    const [rd, ac] = await Promise.all([ha.history(E.ouraReadiness, 24 * 7), ha.history(E.ouraActivityScore, 24 * 7)]);
+    hist = { [E.ouraSleepScore]: sleepTrend, [E.ouraReadiness]: rd, [E.ouraActivityScore]: ac };
   });
 
   const favs = [
@@ -192,7 +185,6 @@
 </script>
 
 <div class="col">
-  {#if loadError}<div style="padding:10px 14px;border-radius:12px;background:rgba(230,159,0,.12);border:1px solid rgba(230,159,0,.35);font-size:12.5px;color:var(--text)">⚠ Couldn't load trends — check the Home Assistant connection.</div>{/if}
   <div class="card card--hero profile">
     <span class="glow" style="--gc:var(--health)"></span>
     <span class="av">C</span>

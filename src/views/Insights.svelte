@@ -125,26 +125,6 @@
 
   // Cache the computed analysis so repeat visits paint instantly, then refresh in the background.
   const CACHE_KEY = "ha_portal_insights_v1";
-
-  // Gemini "what changed this week" paragraph — cached 7 days in localStorage.
-  let aiNarr = $state("");
-  let narrLoading = $state(false);
-  const NARR_KEY = "ha_portal_insights_narr_v1";
-  async function loadNarr(force = false) {
-    if (!force) {
-      try {
-        const c = JSON.parse(localStorage.getItem(NARR_KEY) || "null");
-        if (c?.text && Date.now() - c.t < 7 * 864e5) { aiNarr = c.text; return; }
-      } catch {}
-    }
-    narrLoading = true;
-    const t = await ha.insightsNarrative();
-    narrLoading = false;
-    if (t) {
-      aiNarr = t;
-      try { localStorage.setItem(NARR_KEY, JSON.stringify({ t: Date.now(), text: t })); } catch {}
-    }
-  }
   function saveCache() {
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), d: { heat, heatMax, heatDays, busiest, appUsage, standby, armByHour, armMax, typicalArm, forgot, unarmedNow, vsTypical, headlines, trends, armVsTypical, loiter } }));
@@ -173,7 +153,6 @@
 
   onMount(async () => {
     if (restoreCache()) { ready = true; refreshing = true; } // instant paint from last visit
-    loadNarr(); // AI weekly narrative (cached; non-blocking)
     try {
     const trendsP = buildTrends().catch(() => [] as Trend[]);
     // Skip the 8 room-history fetches when the server-side 90-day heatmap is
@@ -355,13 +334,6 @@
     {#if onnav}<button class="hx" onclick={() => onnav?.("powertrends")}>📊 Per-device →</button>{/if}
   </div>
 
-  {#if aiNarr || narrLoading}
-    <div class="card pad narr">
-      <div class="rh"><span class="lb">✨ This week, in words</span><button class="nrefresh" onclick={() => loadNarr(true)} disabled={narrLoading} title="Regenerate">{narrLoading ? "…" : "↻"}</button></div>
-      {#if aiNarr}<p class="ntext">{aiNarr}</p>{:else}<p class="ntext dim">Summarising your week…</p>{/if}
-    </div>
-  {/if}
-
   {#if integrityCount != null}
     <div class="card pad integ" class:ok={integrityCount === 0}>
       <div class="rh"><span class="lb">System integrity · sanity checks</span><span class="sub" style="color:{integrityCount === 0 ? 'var(--success)' : 'var(--warning)'}">{integrityCount === 0 ? "✓ all clear" : `${integrityCount} issue${integrityCount > 1 ? "s" : ""}`}</span></div>
@@ -492,12 +464,6 @@
   .hlbl { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--acc); }
   .htitle { font-size: 20px; font-weight: 800; letter-spacing: -0.4px; margin-top: 4px; }
   .hsub { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
-  .narr { border: 1px solid color-mix(in srgb, var(--acc) 30%, var(--line, rgba(255,255,255,.08))); }
-  .narr .ntext { font-size: 14px; line-height: 1.55; margin: 8px 0 0; color: var(--text); }
-  .narr .ntext.dim { color: var(--muted); font-style: italic; }
-  .nrefresh { background: rgba(255,255,255,.06); border: 1px solid var(--line, rgba(255,255,255,.1)); color: var(--muted); border-radius: 9px; width: 30px; height: 26px; cursor: pointer; font-size: 13px; }
-  .nrefresh:hover { background: rgba(255,255,255,.12); }
-  .nrefresh:disabled { opacity: .5; cursor: default; }
   .hx { position: relative; flex-shrink: 0; display: inline-flex; align-items: center; gap: 8px; padding: 9px 14px; border-radius: 11px; background: rgba(255, 255, 255, 0.06); color: var(--text-2); font-size: 12px; font-weight: 700; cursor: pointer; }
   .hx:hover { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); color: var(--text); }
   .refreshing { color: var(--acc); font-weight: 600; }
