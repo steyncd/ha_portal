@@ -28,8 +28,9 @@
     climate: () => import("./views/RoomsHub.svelte"),
     roomsdetail: () => import("./views/Rooms.svelte"),
     appliances: () => import("./views/Appliances.svelte"),
-    security: () => import("./views/SecurityHub.svelte"),
-    securitydetail: () => import("./views/Security.svelte"),
+    // Was SecurityHub — a read-only board. The Security page must be the one with
+    // arm/disarm and the 32 zones with bypass, not a summary that links to it.
+    security: () => import("./views/Security.svelte"),
     cameras: () => import("./views/Cameras.svelte"),
     traffic: () => import("./views/Traffic.svelte"),
     lights: () => import("./views/Lights.svelte"),
@@ -64,7 +65,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "now", "overview", "powertrends", "security", "usage", "water"].includes(id)) return { onnav: go };
+    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "now", "overview", "powertrends", "security", "securitydetail", "usage", "water"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
@@ -79,7 +80,14 @@
   import { initRemoteConfig, config } from "./lib/remoteConfig";
   import { initPerf, startTrace } from "./lib/perf";
 
-  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
+  // Retired view ids, mapped to where they went. Declared BEFORE the lookup
+  // below: a saved "securitydetail" has to be translated before NAV.some() runs,
+  // or it fails the lookup and silently falls back to home, losing the landing
+  // page someone chose. (Same map as RETIRED in go()/applyNav further down —
+  // this one runs at init, that one on navigation.)
+  const RETIRED_INIT: Record<string, string> = { securitydetail: "security" };
+  const savedView = RETIRED_INIT[prefs.defaultView] ?? prefs.defaultView;
+  const initialView = (NAV.some((n) => n.id === savedView) ? savedView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
   let palette = $state(false);
   // ?tv=1 (or #tv) boots straight into the always-on TV Overview — for wall displays.
@@ -283,8 +291,15 @@
   // that renames itself when a feature lands teaches the family that the
   // navigation moves, which is the one thing the whole IA argument is against.
   const mobileTabs = ["now", "climate", "household", "kids"] as ViewId[];
+
+  // Retired view ids, mapped to where they went. "securitydetail" was the full
+  // Security screen while the nav landed on a read-only hub; the hub is gone and
+  // Security IS that screen now, so the old id would otherwise be a dead route in
+  // anyone's saved default view or bookmark.
+  const RETIRED: Record<string, ViewId> = { securitydetail: "security" };
+
   function applyNav(id: string) {
-    view = id as ViewId; palette = false; moreOpen = false;
+    view = (RETIRED[id] ?? id) as ViewId; palette = false; moreOpen = false;
   }
 
   function go(id: string) {

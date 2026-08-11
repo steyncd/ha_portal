@@ -147,5 +147,38 @@ t("disarmed: says an hour-old bypass is auto-restored", has(clear, "restored aut
 t("disarmed: does not claim the session rule", !has(clear, "stays for this whole armed session"));
 t("all zones read Clear", (clear.match(/Clear/g) || []).length >= 32, `${(clear.match(/Clear/g) || []).length}`);
 
+// ---------------------------------------------------------------------------
+console.log("\nG · Security is now the FULL page, not a read-only hub");
+// The nav used to land on SecurityHub, which had no arm/disarm and no zone
+// controls. These assert the things that must be on the page you actually land on.
+const full = sec.run({
+  ...base,
+  "alarm_control_panel.helloliam_alarm_area_01_huis": "armed_home",
+  "alarm_control_panel.helloliam_alarm_area_02_beams": "armed_away",
+  "binary_sensor.helloliam_alarm_zone_022_bypass_beam_back_garden": "on",
+  "input_text.alarm_last_event": JSON.stringify({
+    f: "disarmed", t: "armed_home", at: new Date(Date.now() - 90 * 60_000).toISOString(),
+    a: "Christo", s: "ui", ar: "house",
+  }),
+});
+t("area controls are on the page", has(full, "Zones · 32 of 32"));
+t("provenance line names who armed it", has(full, "by Christo"));
+t("provenance carries since-when, not a bare state", has(full, "Continuously armed for"));
+t("the audit-log section is present", has(full, "Every arm and disarm"));
+t("spokes to cameras / traffic / timeline", has(full, "Cameras") && has(full, "Timeline"));
+t("bypass control still there", has(full, "Restore") && has(full, "Bypass"));
+
+// The unexplained case is the one this screen exists for.
+const flap = sec.run({
+  ...base,
+  "alarm_control_panel.helloliam_alarm_area_01_huis": "disarmed",
+  "input_text.alarm_last_event": JSON.stringify({
+    f: "armed_home", t: "disarmed", at: new Date(Date.now() - 60_000).toISOString(),
+    a: "", s: "flap", ar: "house",
+  }),
+});
+t("an actor-less disarm is called out", has(flap, "State changed with no actor"));
+t("and it is not dressed up as normal", !has(flap, "Disarmed for"));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

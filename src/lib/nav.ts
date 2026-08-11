@@ -20,7 +20,7 @@ export type ViewId =
   | "usage" | "markets" | "solar" | "settings"
   // Spokes: routed and deep-linkable, never in the rail.
   | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server"
-  | "waterdetail" | "securitydetail" | "diagnostics" | "roomsdetail";
+  | "waterdetail" | "diagnostics" | "roomsdetail";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -64,7 +64,10 @@ export const NAV: NavItem[] = [
   },
   {
     id: "security", name: "Security", icon: "🛡️", ic: "nav-security", group: "", color: "var(--security)",
-    collapsed: ["securitydetail", "cameras", "traffic", "timeline"],
+    // "securitydetail" removed 2026-08-10: Security now IS the full page — arm,
+    // disarm, all 32 zones with bypass, the audit log — so listing it as a spoke
+    // was a link to the page you are already on. The route survives as an alias.
+    collapsed: ["cameras", "traffic", "timeline"],
     collapsedNote:
       "Zones, cameras, the road outside and the timeline are one question asked four ways: what happened, and was anyone here for it.",
   },
@@ -108,7 +111,6 @@ export const NAV: NavItem[] = [
   { id: "appliances", name: "Appliances", icon: "🔌", ic: "plug", group: "Bottom", color: "var(--load)" },
   { id: "irrigation", name: "Irrigation", icon: "🌿", ic: "leaf", group: "Bottom", color: "var(--water)" },
   { id: "waterdetail", name: "Water detail", icon: "💧", ic: "droplet", group: "Bottom", color: "var(--water)" },
-  { id: "securitydetail", name: "Security detail", icon: "🛡️", ic: "shield", group: "Bottom", color: "var(--security)" },
   { id: "cameras", name: "Cameras", icon: "📷", ic: "camera", group: "Bottom", color: "var(--security)" },
   { id: "traffic", name: "Traffic", icon: "🚗", ic: "car", group: "Bottom", color: "var(--security)" },
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "Bottom", color: "var(--acc)" },

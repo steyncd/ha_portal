@@ -6,6 +6,32 @@
   import { toast } from "../lib/toast.svelte";
   import { clock } from "../lib/format";
   import StatusChip from "../lib/components/StatusChip.svelte";
+  import { alarmHero, alarmLog, PROV_ENTITIES, type LogEntry } from "../lib/provenance.svelte";
+
+  // This IS the Security screen now — the nav used to land on SecurityHub, which
+  // was a read-only board with no arm/disarm and no zone controls, and the page
+  // that could actually do those things sat behind a second click. onnav is here
+  // so the spokes the hub used to own are still reachable from one place.
+  let { onnav }: { onnav?: (id: string) => void } = $props();
+
+  // Shared with SecurityHub via src/lib/provenance.svelte.ts. A bare "Armed" is
+  // the state that hid the 2026-08-09 incident: it was true, and it was true
+  // because a config reload had done it. So the line always carries since-when
+  // and who.
+  const hero = $derived(alarmHero());
+
+  // The audit trail, a week deep. This is the "who disarmed at 04:00" answer, and
+  // it is on THIS page rather than a separate board because the page you use to
+  // change the alarm is the page you check when you doubt it.
+  let provLog = $state<{ t: number; s: string }[]>([]);
+  let machineLog = $state<{ t: number; s: string }[]>([]);
+  onMount(async () => {
+    // historyStates, not history: both are TEXT entities — a JSON blob and an ISO
+    // timestamp — and history coerces to numbers.
+    if (ha.exists(PROV_ENTITIES.prov)) provLog = await ha.historyStates(PROV_ENTITIES.prov, 168);
+    if (ha.exists(PROV_ENTITIES.machine)) machineLog = await ha.historyStates(PROV_ENTITIES.machine, 168);
+  });
+  const auditLog = $derived<LogEntry[]>(alarmLog(provLog, machineLog));
 
   // ---- areas ----
   const homeState = $derived(ha.state(E.alarmHome));
@@ -244,6 +270,13 @@
     </div>
   </div>
 
+  <!-- who changed it, and when. Amber ONLY for the unexplained case. -->
+  <div class="card prov" class:warn={hero.warn}>
+    <span class="pl">{hero.line}</span>
+    <span class="ps">{hero.sub}</span>
+    {#if hero.limit}<span class="plim">{hero.limit}</span>{/if}
+  </div>
+
   <!-- active-zones indicator -->
   <div class="card ind" class:alert={activeZones.length > 0}>
     <span class="idot" class:live={activeZones.length > 0}></span>
@@ -392,6 +425,45 @@
     </div>
   </div>
 
+  <!-- the audit trail -->
+  <div class="card pad">
+    <div class="rh">
+      <span class="lb">Every arm and disarm · last 7 days</span>
+      <span class="sub">{auditLog.length} event{auditLog.length === 1 ? "" : "s"}</span>
+    </div>
+    {#if auditLog.length}
+      <div class="alog">
+        {#each auditLog as e (e.t + e.text)}
+          <div class="arow" class:warn={e.warn} class:machine={e.kind === "machine"}>
+            <span class="awhen">{clock(e.t)}</span>
+            <span class="awhat">{e.text}</span>
+          </div>
+        {/each}
+      </div>
+      <div class="note">
+        Reloads and restarts sit in the same list deliberately — a reload one second
+        before a disarm with no actor is the diagnosis, and it should be one glance.
+      </div>
+    {:else}
+      <div class="note">
+        Nothing recorded yet. feature_alarm_provenance.yaml writes its first entry
+        on the next arm or disarm.
+      </div>
+    {/if}
+  </div>
+
+  <!-- the spokes the hub used to own -->
+  {#if onnav}
+    <div class="card pad">
+      <div class="lb" style="margin-bottom:11px">Elsewhere</div>
+      <div class="spokes">
+        <button onclick={() => onnav?.("cameras")}>📷 Cameras<span>six cameras, events and snapshots</span></button>
+        <button onclick={() => onnav?.("traffic")}>🚗 The road outside<span>vehicles and people counted at the sidewalk</span></button>
+        <button onclick={() => onnav?.("timeline")}>🕒 Timeline<span>who was where, and when</span></button>
+      </div>
+    </div>
+  {/if}
+
   <!-- access & openings -->
   <div class="card pad">
     <div class="lb" style="margin-bottom:13px">Access &amp; openings <span class="ro">read-only</span></div>
@@ -458,6 +530,27 @@
   .zseg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
   .zseg button { padding: 6px 11px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
   .zseg button.on { background: var(--grad); color: #07131c; }
+  .alog { display: grid; gap: 1px; margin-top: 9px; max-height: 340px; overflow-y: auto; }
+  .arow { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line, rgba(255,255,255,0.06)); font-size: 12.5px; }
+  .arow:last-child { border-bottom: 0; }
+  .awhen { flex: none; width: 52px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+  .awhat { color: var(--text); }
+  .arow.machine .awhat { color: var(--text-3); }
+  .arow.warn .awhat { color: var(--warning); font-weight: 700; }
+  .prov { padding: 13px 16px; display: grid; gap: 3px; }
+  .prov.warn { background: color-mix(in srgb, var(--warning) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 34%, transparent); }
+  .pl { font-size: 14px; font-weight: 700; color: var(--text); }
+  .prov.warn .pl { color: var(--warning); }
+  .ps { font-size: 12px; color: var(--text-2); }
+  .plim { font-size: 11px; color: var(--text-3); }
+  .spokes { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+  .spokes button {
+    text-align: left; padding: 11px 13px; border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05); font-size: 13px; font-weight: 700;
+    color: var(--text); min-height: 44px; display: grid; gap: 2px;
+  }
+  .spokes button:hover { background: rgba(255, 255, 255, 0.1); }
+  .spokes button span { font-size: 11.5px; font-weight: 500; color: var(--text-3); }
   .zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 8px; }
   .zq {
     width: 100%; padding: 9px 11px; border-radius: 9px;
