@@ -146,8 +146,8 @@
       </div>
       <div class="ostats">
         <div class="ost"><div class="osv">{n(ouraSteps)}</div><div class="osk">Oura steps</div></div>
-        <div class="ost"><div class="osv">{n(ouraActiveCal)}</div><div class="osk">active kcal</div></div>
-        <div class="ost"><div class="osv">{ouraRestingHR != null ? `${n(ouraRestingHR)}` : "—"}</div><div class="osk">resting HR</div></div>
+        <div class="ost"><div class="osv">{n(ouraActiveCal)}</div><div class="osk">Active kcal</div></div>
+        <div class="ost"><div class="osv">{ouraRestingHR != null ? `${n(ouraRestingHR)}` : "—"}</div><div class="osk">Resting HR</div></div>
       </div>
     </div>
   </div>
@@ -160,10 +160,10 @@
         <div class="h"><div class="hv">{hVo2 != null ? n(hVo2, 1) : "—"}</div><div class="hk">VO₂ max</div></div>
         <div class="h"><div class="hv">{hHrv != null ? n(hHrv) : "—"}<span class="hu">ms</span></div><div class="hk">HRV</div></div>
         <div class="h"><div class="hv">{hSpo2 != null ? n(hSpo2) : "—"}<span class="hu">%</span></div><div class="hk">Blood O₂</div></div>
-        <div class="h"><div class="hv">{hResp != null ? n(hResp) : "—"}</div><div class="hk">resp/min</div></div>
-        <div class="h"><div class="hv">{hRestHR != null ? n(hRestHR) : "—"}<span class="hu">bpm</span></div><div class="hk">resting HR</div></div>
-        <div class="h"><div class="hv">{hDaylight != null ? n(hDaylight) : "—"}<span class="hu">m</span></div><div class="hk">daylight</div></div>
-        <div class="h"><div class="hv">{hAudio != null ? n(hAudio) : "—"}<span class="hu">dB</span></div><div class="hk">audio exp.</div></div>
+        <div class="h"><div class="hv">{hResp != null ? n(hResp) : "—"}</div><div class="hk">Resp/min</div></div>
+        <div class="h"><div class="hv">{hRestHR != null ? n(hRestHR) : "—"}<span class="hu">bpm</span></div><div class="hk">Resting HR</div></div>
+        <div class="h"><div class="hv">{hDaylight != null ? n(hDaylight) : "—"}<span class="hu">m</span></div><div class="hk">Daylight</div></div>
+        <div class="h"><div class="hv">{hAudio != null ? n(hAudio) : "—"}<span class="hu">dB</span></div><div class="hk">Audio exp.</div></div>
       </div>
     </div>
   {/if}
@@ -197,9 +197,9 @@
         {#if deskApp && !/unknown|unavailable/i.test(deskApp)}<span class="curapp">▸ {deskApp}</span>{/if}
       </div>
       <div class="dstats">
-        <div class="ds2"><div class="dv">{deskMem != null ? `${n(deskMem)}%` : "—"}</div><div class="dk">memory</div></div>
-        <div class="ds2"><div class="dv">{fmtH(deskUptime)}</div><div class="dk">uptime</div></div>
-        <div class="ds2"><div class="dv">{deskDisplays != null ? n(deskDisplays) : "—"}</div><div class="dk">displays</div></div>
+        <div class="ds2"><div class="dv">{deskMem != null ? `${n(deskMem)}%` : "—"}</div><div class="dk">Memory</div></div>
+        <div class="ds2"><div class="dv">{fmtH(deskUptime)}</div><div class="dk">Uptime</div></div>
+        <div class="ds2"><div class="dv">{deskDisplays != null ? n(deskDisplays) : "—"}</div><div class="dk">Displays</div></div>
       </div>
       <div class="dcmds">
         <button class="dcmd" onclick={() => ha.pressButton("button.desktop_lock")}>🔒 Lock</button>
@@ -217,8 +217,8 @@
     <div class="card pad">
       <div class="rh"><span class="lb">Phone motion</span><span class="sub">{actIcon(activity)} {activity ?? "—"}</span></div>
       <div class="mv">
-        <div class="m"><div class="mv2">{n(floors)}</div><div class="mk">floors ↑</div></div>
-        <div class="m"><div class="mv2">{distance != null ? `${n(distance, 1)}` : "—"}</div><div class="mk">km</div></div>
+        <div class="m"><div class="mv2">{n(floors)}</div><div class="mk">Floors ↑</div></div>
+        <div class="m"><div class="mv2">{distance != null ? `${n(distance, 1)}` : "—"}</div><div class="mk">Km</div></div>
       </div>
     </div>
 
@@ -252,7 +252,7 @@
   .dcmd.ghost { flex: none; min-width: 0; width: 42px; color: var(--muted); font-size: 15px; }
   .ds2 { text-align: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
   .dv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .dk { font-size: 10.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .dk { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-weight: 700;}
   .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   @media (max-width: 620px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
   .t { padding: 16px 18px; border-radius: 16px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
@@ -276,7 +276,7 @@
   .h { text-align: center; padding: 12px 6px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
   .hv { font-size: 18px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .hu { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 1px; }
-  .hk { font-size: 9.5px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .hk { font-size: 9.5px; color: var(--muted); margin-top: 4px; font-weight: 700;}
   .oura { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
   .oscores { display: flex; gap: 16px; }
   .osc { text-align: center; }
@@ -286,12 +286,12 @@
   .ostats { display: flex; gap: 20px; flex: 1; justify-content: flex-end; }
   .ost { text-align: center; }
   .osv { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .osk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-top: 3px; }
+  .osk { font-size: 10px; color: var(--muted); margin-top: 3px; font-weight: 700;}
   @media (max-width: 620px) { .oura { justify-content: center; } .ostats { justify-content: center; } }
   .mv { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .m { text-align: center; padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.035); }
   .mv2 { font-size: 20px; font-weight: 800; }
-  .mk { font-size: 10.5px; color: var(--muted); margin-top: 3px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .mk { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-weight: 700;}
   .pl { display: flex; flex-direction: column; gap: 10px; }
   .pr { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
   .pk { font-size: 12.5px; color: var(--muted); flex: none; }

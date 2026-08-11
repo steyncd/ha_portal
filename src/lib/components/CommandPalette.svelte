@@ -5,12 +5,13 @@
   import { prefs, THEMES } from "../prefs.svelte";
   import { authStore } from "../auth.svelte";
   import { toast } from "../toast.svelte";
+  import { actionLog } from "../actionLog.svelte";
 
   let {
     open,
     onnav,
     onclose,
-  }: { open: boolean; onnav: (id: ViewId) => void; onclose: () => void } = $props();
+  }: { open: boolean; onnav: (id: ViewId | "__palette" | "__timemachine" | "__live") => void; onclose: () => void } = $props();
 
   let q = $state("");
   let input = $state<HTMLInputElement>();
@@ -27,16 +28,18 @@
     ...NAV.filter((n) => !prefs.guest || !GUEST_HIDDEN.includes(n.id)).map((n) => ({ icon: n.icon, label: n.name, hint: "View", run: () => onnav(n.id) })),
     { icon: prefs.guest ? "🔓" : "👋", label: prefs.guest ? "Exit guest view" : "Enter guest view", hint: "Mode", run: () => { prefs.guest = !prefs.guest; prefs.save(); toast.show(prefs.guest ? "Guest view on" : "Guest view off"); } },
     ...THEMES.map((t) => ({ icon: "🎨", label: "Theme: " + t.name, hint: "Theme", run: () => { prefs.setTheme(t.key); toast.show(t.name + " theme"); } })),
-    { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
-    { icon: "🎬", label: "Movie mode", hint: "Scene", run: () => { ha.script(E.scMovie); toast.show("Movie mode"); } },
-    { icon: "🚪", label: "Away mode", hint: "Scene", run: () => { ha.script(E.scAway); toast.show("Away mode"); } },
-    { icon: "☀️", label: "Good morning", hint: "Scene", run: () => { ha.script(E.scMorning); toast.show("Good morning"); } },
-    { icon: "🌑", label: "All lights off", hint: "Action", run: () => { ha.turnOff(ALL_LIGHTS); toast.show("Lights off"); } },
-    { icon: "🛡️", label: "Arm away", hint: "Security", run: () => { ha.armAway(armTarget); toast.show("Arming away"); } },
-    { icon: "🔓", label: "Disarm", hint: "Security", run: () => { ha.disarm(armTarget); toast.show("Disarmed"); } },
-    { icon: "💧", label: "Toggle water pump", hint: "Pump", run: () => ha.toggle(E.waterPump) },
-    { icon: "🏊", label: "Toggle pool pump", hint: "Pump", run: () => ha.toggle(E.poolPump) },
-    { icon: "🕳️", label: "Toggle borehole", hint: "Pump", run: () => ha.toggle(E.boreholePump) },
+    { icon: "🕰️", label: "Time machine — rewind the dashboard", hint: "View", run: () => onnav("__timemachine") },
+    { icon: "🌆", label: "Evening In (arm, keep lights on)", hint: "Scene", run: () => { actionLog.record("eveningin"); ha.script(E.scEveningIn); toast.show("Evening In — armed, lights on"); } },
+    { icon: "🌙", label: "Goodnight scene", hint: "Scene", run: () => { actionLog.record("goodnight"); ha.script(E.scGoodnight); toast.show("Goodnight scene"); } },
+    { icon: "🎬", label: "Movie mode", hint: "Scene", run: () => { actionLog.record("movie"); ha.script(E.scMovie); toast.show("Movie mode"); } },
+    { icon: "🚪", label: "Away mode", hint: "Scene", run: () => { actionLog.record("away"); ha.script(E.scAway); toast.show("Away mode"); } },
+    { icon: "☀️", label: "Good morning", hint: "Scene", run: () => { actionLog.record("morning"); ha.script(E.scMorning); toast.show("Good morning"); } },
+    { icon: "🌑", label: "All lights off", hint: "Action", run: () => { actionLog.record("lightsoff"); ha.turnOff(ALL_LIGHTS); toast.show("Lights off"); } },
+    { icon: "🛡️", label: "Arm away", hint: "Security", run: () => { actionLog.record("armaway"); ha.armAway(armTarget); toast.show("Arming away"); } },
+    { icon: "🔓", label: "Disarm", hint: "Security", run: () => { actionLog.record("disarm"); ha.disarm(armTarget); toast.show("Disarmed"); } },
+    { icon: "💧", label: "Toggle water pump", hint: "Pump", run: () => { actionLog.record("waterpump"); ha.toggle(E.waterPump, "Water pump"); } },
+    { icon: "🏊", label: "Toggle pool pump", hint: "Pump", run: () => { actionLog.record("poolpump"); ha.toggle(E.poolPump, "Pool pump"); } },
+    { icon: "🕳️", label: "Toggle borehole", hint: "Pump", run: () => { actionLog.record("borehole"); ha.toggle(E.boreholePump, "Borehole"); } },
   ]);
 
   const filtered = $derived(
@@ -168,10 +171,7 @@
   }
   .hint {
     font-size: 10px;
-    color: var(--muted-2);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-  }
+    color: var(--muted-2); font-weight: 700;}
   .empty {
     padding: 20px;
     text-align: center;

@@ -169,7 +169,10 @@
   // Personal device batteries (detail lives in the Batteries tab).
   const DEVICE_BATTS = [
     { icon: "📱", name: "iPhone", level: "sensor.hello_battery_level", state: "sensor.hello_battery_state" },
+    { icon: "📲", name: "iPad", level: "sensor.ipad_battery_level", state: "sensor.ipad_battery_state" },
     { icon: "⌚", name: "Watch", level: "sensor.hello_watch_battery_level", state: "sensor.hello_watch_battery_state" },
+    // AirPods: no HA sensor — lowest of the case/L/R input_number helpers (Shortcut-synced).
+    { icon: "🎧", name: "AirPods", subs: ["input_number.airpods_case_battery", "input_number.airpods_left_battery", "input_number.airpods_right_battery"] },
     { icon: "💻", name: "MacBook", level: "sensor.christos_macbook_internal_battery_level", state: "sensor.christos_macbook_internal_battery_state" },
   ];
   const battC = (v: number | null) => (v == null ? "var(--muted)" : v <= 15 ? "var(--error)" : v <= 35 ? "var(--warning)" : "var(--success)");
@@ -202,14 +205,15 @@
     <div class="rh"><span class="lb">🔋 My devices</span><span class="sub">detail in Batteries tab</span></div>
     <div class="dbgrid">
       {#each DEVICE_BATTS as b}
-        {@const lvl = ha.num(b.level)}
-        {@const avail = ha.available(b.level)}
-        {@const st = ha.state(b.state)}
+        {@const subLvls = b.subs ? b.subs.map((s) => ha.num(s)).filter((v) => v != null) : null}
+        {@const lvl = subLvls ? (subLvls.length ? Math.min(...subLvls) : null) : ha.num(b.level ?? "")}
+        {@const avail = subLvls ? subLvls.length > 0 : ha.available(b.level ?? "")}
+        {@const st = b.state ? ha.state(b.state) : undefined}
         <div class="db">
           <span class="dbi">{b.icon}</span>
           <div class="dbm">
             <div class="dbn">{b.name}</div>
-            <div class="dbs">{avail ? (isCharging(st) ? "⚡ charging" : (st ?? "")) : "asleep"}</div>
+            <div class="dbs">{avail ? (b.subs ? "lowest of 3" : isCharging(st) ? "⚡ charging" : (st ?? "")) : b.subs ? "not synced" : "asleep"}</div>
           </div>
           <div class="dbp" style="color:{battC(lvl)}">{avail ? `${n(lvl)}%` : "—"}</div>
         </div>
@@ -350,7 +354,7 @@
         <div class="lb" style="margin-bottom:13px">My favourites</div>
         <div class="favs">
           {#each favs as f}
-            <button class="fav" class:on={!f.scene && ha.isOn(f.id)} onclick={() => f.scene ? (ha.script(f.id), toast.show(f.name)) : ha.toggle(f.id)}>
+            <button class="fav" class:on={!f.scene && ha.isOn(f.id)} onclick={() => f.scene ? (ha.script(f.id), toast.show(f.name)) : ha.toggle(f.id, f.name)}>
               <span class="fi">{f.icon}</span><span class="fn">{f.name}</span>
             </button>
           {/each}
@@ -397,7 +401,7 @@
   .ah { text-align: center; padding: 13px 6px; border-radius: 13px; background: rgba(255, 255, 255, 0.04); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06); }
   .ahv { font-size: 19px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .ahu { font-size: 11px; font-weight: 600; color: var(--muted); margin-left: 1px; }
-  .ahk { font-size: 10px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .ahk { font-size: 10px; color: var(--muted); margin-top: 4px; font-weight: 700;}
   .insight { display: flex; align-items: center; gap: 13px; padding: 15px 20px; }
   .ii { font-size: 22px; }
   .it { font-size: 13.5px; color: var(--text); font-weight: 500; }
@@ -466,7 +470,7 @@
   @media (max-width: 430px) { .wkgrid { grid-template-columns: 1fr; } }
   .wkgrid > div { padding: 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .wkv { font-size: 15px; font-weight: 800; }
-  .wkk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .wkk { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 700;}
   .favs { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .fav { display: flex; align-items: center; gap: 9px; padding: 13px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
   .fav.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }

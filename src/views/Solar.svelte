@@ -48,7 +48,7 @@
     <div class="todayrow">
       <div class="actual">
         <div class="av">{fmt(actualToday)}<span class="au"> kWh</span></div>
-        <div class="ak">actual so far</div>
+        <div class="ak">Actual so far</div>
       </div>
       <div class="fcs">
         {#each today as t}
@@ -97,7 +97,7 @@
   .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
   .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .sub { font-size: 12px; color: var(--dim); }
   .cons { font-size: 12.5px; color: var(--dim); } .cons b { color: var(--solar); font-size: 14px; }
   .note { font-size: 11.5px; color: var(--muted-2); margin-top: 12px; }
@@ -106,7 +106,7 @@
   .actual { flex-shrink: 0; }
   .av { font-size: 40px; font-weight: 800; letter-spacing: -1.5px; color: var(--solar); }
   .au { font-size: 18px; color: var(--dim); }
-  .ak { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .ak { font-size: 11px; color: var(--muted); font-weight: 700;}
   .fcs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; flex: 1; min-width: 240px; }
   .fc { display: flex; flex-direction: column; gap: 2px; }
   .fcv { font-size: 19px; font-weight: 800; }

@@ -291,7 +291,7 @@
   .brow { display: flex; align-items: center; justify-content: space-between; }
   .x { width: 30px; height: 30px; border-radius: 9px; background: rgba(255, 255, 255, 0.07); color: var(--muted); font-size: 14px; }
   .fld { display: flex; flex-direction: column; gap: 7px; }
-  .fl { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .fl { font-size: 11px; font-weight: 700; color: var(--muted); }
   .frow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
   @media (max-width: 560px) { .frow { grid-template-columns: 1fr; } }
   input, select, textarea { background: rgba(255, 255, 255, 0.06); border: none; border-radius: 11px; color: var(--text); font-size: 13.5px; padding: 11px 13px; outline: none; font-family: inherit; color-scheme: dark; width: 100%; }

@@ -13,6 +13,15 @@
   import StatusChip from "../lib/components/StatusChip.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import HomeStatusStrip from "../lib/components/HomeStatusStrip.svelte";
+  import NeedsAttention from "../lib/components/NeedsAttention.svelte";
+  import Favourites from "../lib/components/Favourites.svelte";
+  import RightNow from "../lib/components/RightNow.svelte";
+  import GridStatusCard from "../lib/components/GridStatusCard.svelte";
+  import Briefing from "../lib/components/Briefing.svelte";
+  import PresenceStrip from "../lib/components/PresenceStrip.svelte";
+  import { computeAttention } from "../lib/attention";
+  import { stable, sig } from "../lib/stable";
+  import ExplainChart from "../lib/components/ExplainChart.svelte";
 
   // Customize state lives in the shared ui store so the global top-bar action can toggle it too.
   let { onnav }: { onnav: (id: string) => void } = $props();
@@ -21,11 +30,9 @@
   let solarHist = $state<{ t: number; v: number }[]>([]);
   let fcRaw = $state<{ datetime: string; temperature: number; condition: string }[]>([]);
   onMount(async () => {
-    // Guard each independently so one failing fetch doesn't blank the others
-    // (and never leave an unhandled rejection).
-    try { battHist = await ha.history(E.batterySoc, 24); } catch { /* chart shows empty */ }
-    try { solarHist = await ha.history(E.pvPower, 24); } catch { /* chart shows empty */ }
-    try { fcRaw = (await ha.getForecast(E.weather, "hourly")).slice(0, 6); } catch { /* forecast hidden */ }
+    battHist = await ha.history(E.batterySoc, 24);
+    solarHist = await ha.history(E.pvPower, 24);
+    fcRaw = (await ha.getForecast(E.weather, "hourly")).slice(0, 6);
   });
   const WX_ICON: Record<string, string> = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", snowy: "❄️", "snowy-rainy": "🌨️", fog: "🌫️", windy: "💨", hail: "🌨️", exceptional: "🌡️" };
   const fc = $derived(fcRaw.map((f, i) => ({ h: i === 0 ? "Now" : (() => { try { return new Date(f.datetime).getHours() + "h"; } catch { return ""; } })(), ic: WX_ICON[f.condition] ?? "🌡️", t: Math.round(f.temperature) })));
@@ -50,32 +57,10 @@
     return parts.join(" · ");
   });
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
-
-  // --- Quick-action scenes: prominent top bar + live "it worked" feedback ---
-  const HUIS = "alarm_control_panel.helloliam_alarm_area_01_huis";
-  const alarmState = $derived(ha.state(HUIS) ?? "");
-  let justRan = $state<string | null>(null);
-  let ranTimer: ReturnType<typeof setTimeout> | null = null;
-  function runScene(s: { id: string; label: string }) {
-    ha.script(s.id);
-    toast.show(`${s.label} activated`);
-    justRan = s.id;
-    if (ranTimer) clearTimeout(ranTimer);
-    ranTimer = setTimeout(() => (justRan = null), 3000);
-  }
-  // Which scene the house currently reflects (best-effort) so the mode is visible.
-  const activeScene = $derived.by(() => {
-    if (alarmState === "armed_away") return "script.scene_away_mode";
-    if (alarmState === "armed_home" || alarmState === "armed_night") return "script.scene_evening_in_home";
-    if (ha.isOn("switch.patio_lamp") && alarmState === "disarmed") return "script.scene_patio_outdoors";
-    return null;
-  });
-  // Live one-liner so the effect of a tap is visible immediately.
-  const sceneStatus = $derived.by(() => {
-    const armed = alarmState === "disarmed" || alarmState === "" ? "Disarmed" : alarmState.replace(/_/g, " ");
-    const doors = ha.isOn("binary_sensor.house_doors_closed") ? "doors closed" : "door open";
-    return `🛡️ ${armed} · 💡 ${litCount} on · 🚪 ${doors}`;
-  });
+  // Hoisted out of the template: `.slice()` in markup allocates a new array on
+  // every render, which defeats the keyed {#each} it feeds.
+  const indoorTop = INDOOR_LIGHTS.slice(0, 6);
+  const roomsTop = ROOMS.slice(0, 5);
 
   const quick = [
     { id: E.poolPump, ic: "waves", name: "Pool Pump" },
@@ -121,29 +106,26 @@
     { id: E.occupancy, icon: "🏠", color: "var(--acc)", title: (s) => `Home ${s.toLowerCase()}`, sub: "presence" },
     { id: "switch.kitchen_lights", icon: "🍳", color: "var(--warning)", title: (s) => `Kitchen lights ${s}`, sub: "lighting" },
   ];
-  const activity = $derived(
-    LOG_SRC
+  // Memoised — rebuilt on every 300ms entity tick, but the visible five rows
+  // only change when something actually happens.
+  const activityMemo = stable<{ icon: string; color: string; title: string; sub: string; t: string }[]>();
+  const activity = $derived.by(() => {
+    const rows = LOG_SRC
       .filter((e) => ha.exists(e.id) && lc(e.id))
       .map((e) => ({ icon: e.icon, color: e.color, title: e.title(ha.state(e.id) ?? "—"), sub: e.sub, t: lc(e.id)! }))
       .sort((a, b) => Date.parse(b.t) - Date.parse(a.t))
-      .slice(0, 5),
-  );
+      .slice(0, 5);
+    return activityMemo(rows, sig(rows, "title", "t"));
+  });
 
   const armed = $derived((ha.state(E.alarmMain) ?? "").startsWith("armed"));
 
-  // attention items — only shown when something needs attention; some carry a
-  // one-tap contextual fix (Aurora recc 5d/5e).
-  type Attn = { text: string; action?: { label: string; run: () => void } };
+  // "What needs me now" — the prioritised attention list (rules in lib/attention.ts).
+  // Memoised so the NeedsAttention card doesn't re-render on every entity tick.
+  const attnMemo = stable<ReturnType<typeof computeAttention>>();
   const attention = $derived.by(() => {
-    const items: Attn[] = [];
-    if (ha.state(E.alarmMain) === "triggered") items.push({ text: "Alarm triggered" });
-    if (ha.state(E.tankLowAlert) === "on")
-      items.push({ text: "Water tank low", action: { label: "Start borehole", run: () => { ha.turnOn(E.boreholePump); toast.show("Starting borehole"); } } });
-    const lb = ha.num(E.lowBatteryDevices) ?? 0;
-    if (lb > 0) items.push({ text: `${lb} device${lb === 1 ? "" : "s"} low on battery` });
-    if ((ha.num(E.pvPower) ?? 999) < 40) items.push({ text: "PV asleep — hold heavy appliances" });
-    if (ha.state(E.alarmAcPower) === "off") items.push({ text: "Alarm on backup power" });
-    return items;
+    const items = computeAttention();
+    return attnMemo(items, sig(items, "key", "sev", "title"));
   });
 
 </script>
@@ -170,43 +152,21 @@
   </div>
 </div>
 
-{#if attention.length}
-  <div class="attnstrip">
-    {#each attention as a}
-      <div class="attn attn--warn">
-        <span class="attn__badge">!</span>
-        <div class="attn__text">{a.text}</div>
-        {#if a.action}<button class="btn-primary" onclick={a.action.run}>{a.action.label}</button>{/if}
-      </div>
-    {/each}
-  </div>
-{:else}
-  <div class="attn calm">
-    <StatusChip state="ok" label="All clear" />
-    <div class="attn__text">Everything's running smoothly · {ha.state(E.gridFreeStreak) ?? "—"}-night grid-free streak</div>
-  </div>
-{/if}
+<NeedsAttention items={attention} {onnav} />
+
+<Favourites />
+
+<RightNow />
 
 <HomeStatusStrip />
 
-<!-- Quick actions (prominent, top): the scenes you reach for first, with a live
-     status line + a per-button "Done" tick so you can see it was actioned. -->
-{#if prefs.widgets.scenes}
-  <div class="qactions">
-    <div class="qa-head"><span class="lb">Quick actions</span><span class="qa-status">{sceneStatus}</span></div>
-    <div class="qa-grid">
-      {#each SCENES as s}
-        <button class="qa-btn" class:active={activeScene === s.id} class:done={justRan === s.id} onclick={() => runScene(s)}>
-          <span class="qa-ic">{justRan === s.id ? "✓" : s.icon}</span>
-          <span class="qa-nm">{s.label}</span>
-          {#if justRan === s.id}<span class="qa-tag done">Done</span>{:else if activeScene === s.id}<span class="qa-tag cur">Active</span>{/if}
-        </button>
-      {/each}
-    </div>
-  </div>
-{/if}
-
 <div class="masonry">
+  <!-- daily briefing -->
+  <Briefing />
+
+  <!-- who's home -->
+  <PresenceStrip />
+
   <!-- power flow -->
   <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
     <div class="wh"><span class="lb">Power flow</span><span class="ok">{n(ha.num(E.gridIndepToday))}% independent →</span></div>
@@ -222,13 +182,17 @@
       <div><div class="lb">Battery</div><div class="sub2">{n(ha.num(E.batteryPower))} W · {ha.state(E.batteryState) ?? ""}<br>{n(ha.num(E.batteryVoltage), 1)} V · {n(ha.num(E.batteryTemp))}°C</div></div>
     </div>
     <div style="margin-top:14px"><Spark data={battHist} color="var(--acc)" forceMax={100} height={54} /></div>
+    <ExplainChart chartId="battery_soc_24h" title="Battery state of charge" unit="%" period="last 24 hours" points={battHist.map((d) => ({ t: d.t, v: d.v }))} />
   </div>
+
+  <!-- power & grid (loadshedding + TOU tariff) -->
+  <GridStatusCard />
 
   <!-- comfort -->
   <div class="w card">
     <div class="lb" style="margin-bottom:12px">Comfort · {n(ha.num(E.indoorAvg), 1)}° avg</div>
     <div class="clist">
-      {#each ROOMS.slice(0, 5) as r}
+      {#each roomsTop as r (r.id)}
         <div class="crow2"><span>{r.label}</span><span style="color:{tempColor(ha.num(r.id))};font-weight:700">{n(ha.num(r.id), 1)}°</span></div>
       {/each}
     </div>
@@ -240,6 +204,20 @@
     <div><div class="lb">Water tank</div><div class="big2">{n(ha.num(E.tankLevel))}%</div><div class="sub2">{n(ha.num(E.tankDays))} days · {n(ha.num(E.tankVolume))} L</div></div>
   </div>
 
+  <!-- scenes -->
+  {#if prefs.widgets.scenes}
+    <div class="w card">
+      <div class="lb" style="margin-bottom:12px">Scenes</div>
+      <div class="grid2">
+        {#each SCENES as s}
+          <button class="mini-btn" onclick={() => { ha.script(s.id); toast.show(`${s.label} scene`); }}>
+            <span class="mi">{s.icon}</span><span class="mn">{s.label}</span>
+          </button>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
   <!-- solar -->
   <div class="w card card--hero tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
     <span class="glow" style="--gc:var(--solar)"></span>
@@ -247,9 +225,10 @@
       <span class="micro" style="color:var(--solar)">Solar</span>
       <StatusChip state={(ha.num(E.pvPower) ?? 0) > 40 ? "ok" : "idle"} label={(ha.num(E.pvPower) ?? 0) > 40 ? "Generating" : "Asleep"} />
     </div>
-    <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u"> {power(ha.num(E.pvPower)).unit}</span></div>
+    <div class="big3">{power(ha.num(E.pvPower)).val}<span class="u">{power(ha.num(E.pvPower)).unit}</span></div>
     <div class="sub2">{n(ha.num(E.pvYieldToday), 1)} kWh today</div>
     <div style="margin-top:12px"><Spark data={solarHist} color="var(--solar)" height={54} /></div>
+    <ExplainChart chartId="solar_power_24h" title="Solar production" unit="W" period="last 24 hours" points={solarHist.map((d) => ({ t: d.t, v: d.v }))} />
     <span class="drill">Open Energy →</span>
   </div>
 
@@ -257,8 +236,8 @@
   <div class="w card">
     <div class="lb" style="margin-bottom:12px">Pumps & heater</div>
     <div class="grid2">
-      {#each quick as q}
-        <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id)}>
+      {#each quick as q (q.id)}
+        <button class="qtile" class:on={ha.isOn(q.id)} onclick={() => ha.toggle(q.id, q.name)}>
           <span class="mi"><Icon name={q.ic} size={16} /></span><span class="mn">{q.name}</span><StatusChip state={ha.isOn(q.id) ? "ok" : "off"} label={ha.isOn(q.id) ? "On" : "Off"} />
         </button>
       {/each}
@@ -270,11 +249,11 @@
     <div class="w card">
       <div class="wh"><span class="lb">Lights</span><button class="seeall" onclick={() => onnav("lights")}>{litCount} on · all →</button></div>
       <div class="grid2" style="margin-top:12px">
-        {#each INDOOR_LIGHTS.slice(0, 6) as l}
+        {#each indoorTop as l (l.id)}
           <div class="ltile" class:on={ha.isOn(l.id)}>
-            <button type="button" class="ltap" onclick={() => ha.toggle(l.id)} aria-pressed={ha.isOn(l.id)} aria-label="{l.label} — {ha.isOn(l.id) ? 'on, tap to turn off' : 'off, tap to turn on'}">
+            <div class="ltap" onclick={() => ha.toggle(l.id, l.label)} role="button" tabindex="0" onkeydown={() => {}}>
               <span class="mi">{l.icon}</span><span class="mn">{l.label}</span><span class="qs">{ha.isOn(l.id) ? "On" : "Off"}</span>
-            </button>
+            </div>
             <button class="tune" onclick={() => lightSheet.open(l.id, l.label)} aria-label="brightness">⋯</button>
           </div>
         {/each}
@@ -312,7 +291,7 @@
   {#if prefs.widgets.activity}
     <div class="w card">
       <div class="lb" style="margin-bottom:6px">Recent activity</div>
-      {#each activity as e}
+      {#each activity as e (e.title + e.t)}
         <div class="log">
           <span class="lic" style="background:color-mix(in srgb,{e.color} 17%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{e.color} 36%,transparent)">{e.icon}</span>
           <div class="lt"><div class="ltt">{e.title}</div><div class="lts">{e.sub}</div></div>
@@ -329,7 +308,7 @@
       <div class="wh"><span class="lb">Next hours</span><span class="sub2">{wxIcon} {wxCond || "—"}{outdoor != null ? ` · ${n(outdoor)}°` : ""}</span></div>
       {#if fc.length}
         <div class="fc">
-          {#each fc as f, i}
+          {#each fc as f, i (f.h + i)}
             <div class="fcc" style="background:{i === 0 ? 'var(--soft)' : 'rgba(255,255,255,.03)'}">
               <span class="fch">{f.h}</span><span class="fci">{f.ic}</span><span class="fct">{f.t}°</span>
             </div>
@@ -358,41 +337,41 @@
   .crow:hover { background: rgba(255, 255, 255, 0.05); }
   .ci { font-size: 15px; width: 20px; text-align: center; }
   .cn { flex: 1; font-size: 12.5px; }
-  .attnstrip { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
-  .attn.calm { margin-bottom: 16px; background: color-mix(in srgb, var(--ok) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ok) 22%, transparent); }
   .ok { color: var(--ok); font-weight: 600; font-size: 12px; }
   .spx { color: var(--muted); font-size: 12px; }
   .spd { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
-  /* Mobile: stack the heading above the action buttons so Search never overlaps the title. */
-  @media (max-width: 560px) {
-    .head { flex-direction: column; align-items: stretch; gap: 10px; }
-    h1 { font-size: 23px; }
-    .actions { justify-content: flex-start; flex-wrap: wrap; }
-    .custom { right: auto; left: 0; width: min(258px, calc(100vw - 40px)); }
-  }
 
-  .qactions { margin-bottom: 16px; padding: 14px 16px; border-radius: 18px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
-  .qa-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
-  .qa-status { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .qa-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
-  @media (max-width: 720px) { .qa-grid { grid-template-columns: repeat(3, 1fr); } }
-  @media (max-width: 420px) { .qa-grid { grid-template-columns: repeat(2, 1fr); } }
-  .qa-btn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 10px; border-radius: 14px; cursor: pointer; color: var(--text); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.1)); transition: transform 0.1s, background 0.15s, border-color 0.15s; }
-  .qa-btn:hover { background: rgba(255, 255, 255, 0.09); }
-  .qa-btn:active { transform: scale(0.96); }
-  .qa-btn.active { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); }
-  .qa-btn.done { border-color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); }
-  .qa-ic { font-size: 22px; line-height: 1; }
-  .qa-btn.done .qa-ic { color: var(--success); }
-  .qa-nm { font-size: 12.5px; font-weight: 700; }
-  .qa-tag { position: absolute; top: 6px; right: 7px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 5px; border-radius: 6px; }
-  .qa-tag.cur { color: var(--acc); background: color-mix(in srgb, var(--acc) 20%, transparent); }
-  .qa-tag.done { color: var(--success); background: color-mix(in srgb, var(--success) 20%, transparent); }
+  /* column-count flows top-to-bottom PER COLUMN, so visual order never matches
+     DOM order — which also means keyboard tab order and screen readers walk the
+     cards in the wrong sequence. It's the fallback, not the target. */
   .masonry { column-count: 3; column-gap: 14px; }
   @media (max-width: 1000px) { .masonry { column-count: 2; } }
   @media (max-width: 640px) { .masonry { column-count: 1; } }
+  @media (min-width: 1800px) { .masonry { column-count: 4; } }
+  @media (min-width: 2400px) { .masonry { column-count: 5; } }
+
+  /* Grid Lanes (Safari 26.4+) fixes the reading order AND packs tighter. The
+     whole household is on Apple, so this is the path that actually renders;
+     column-count above stays for the Windows desktop until Chromium finishes
+     renaming its equivalent. auto-fill means wide monitors gain columns on
+     their own rather than needing another breakpoint. */
+  @supports (display: grid-lanes) {
+    .masonry {
+      display: grid-lanes;
+      column-count: unset;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px;
+      align-items: start;
+    }
+    .masonry > .w { margin: 0; }
+  }
+
   .w { break-inside: avoid; margin: 0 0 14px; padding: 18px; }
+  /* Skip layout/paint for cards below the fold. contain-intrinsic-size is
+     mandatory here — without it the browser collapses them to zero height and
+     the scrollbar jumps as you scroll. */
+  .masonry > .w { content-visibility: auto; contain-intrinsic-size: auto 320px; }
   .tap { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
   .tap:hover { box-shadow: inset 0 0 0 1px var(--line); transform: translateY(-1px); }
   .tap:focus-visible { box-shadow: 0 0 0 2px var(--acc); outline: none; }
@@ -412,21 +391,20 @@
   .tank .fill { position: absolute; left: 0; right: 0; bottom: 0; background: var(--water); opacity: 0.85; }
   .big2 { font-size: 26px; font-weight: 800; letter-spacing: -1px; margin-top: 2px; }
   .big3 { font-size: 30px; font-weight: 800; letter-spacing: -1.2px; margin-top: 6px; }
-  .u { font-size: 15px; color: var(--dim); }
+  .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-  .qtile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
-  .qtile:hover { background: rgba(255, 255, 255, 0.08); }
+  .mini-btn, .qtile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
+  .mini-btn { flex-direction: row; align-items: center; gap: 9px; }
+  .mini-btn:hover, .qtile:hover { background: rgba(255, 255, 255, 0.08); }
   .qtile.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
   .mi { font-size: 16px; }
   .mn { font-size: 11.5px; font-weight: 600; color: #f2f7fc; }
   .qs { font-size: 10.5px; color: var(--text-2); }
   .ltile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); }
   .ltile.on { background: color-mix(in srgb, var(--warning) 15%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }
-  .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; flex: 1; }
+  .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; }
   .tune { position: absolute; top: 9px; right: 9px; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); color: #dbe6f0; font-size: 14px; }
   .tune:hover { background: rgba(255, 255, 255, 0.18); }
-  /* ≥40px hit area on touch devices (WCAG target size). */
-  @media (pointer: coarse) { .tune { width: 40px; height: 40px; top: 4px; right: 4px; } }
   .sprow { display: flex; align-items: center; gap: 11px; font-size: 12.5px; color: #e6eef7; }
   .log { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .lic { width: 31px; height: 31px; flex-shrink: 0; border-radius: 9px; display: grid; place-items: center; font-size: 14px; }

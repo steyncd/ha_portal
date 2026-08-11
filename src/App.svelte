@@ -3,70 +3,83 @@
   import { ha } from "./lib/store.svelte";
   import { authStore } from "./lib/auth.svelte";
   import { logAccess } from "./lib/accessLog";
+  import { actionLog } from "./lib/actionLog.svelte";
+  import { computeAttention } from "./lib/attention";
   import { prefs } from "./lib/prefs.svelte";
-  import { NAV, NAV_GROUPS, GUEST_HIDDEN, type ViewId } from "./lib/nav";
+  import { NAV, NAV_GROUPS, GUEST_HIDDEN, RAIL, isSpoke, collapsedCount, type ViewId } from "./lib/nav";
   import { E, ALL_LIGHTS } from "./lib/entities";
   import { ui } from "./lib/ui.svelte";
   import { toast } from "./lib/toast.svelte";
+  import { sabbath, SABBATH_HIDDEN } from "./lib/sabbath.svelte";
   // Views are lazy-loaded (dynamic import) so only the active view's code ships in
   // the initial parse — Vite emits one chunk per view. Keeps first paint light on
   // low-power devices (TV/phone) where parsing the whole app up front was costly.
   import type { Component } from "svelte";
   const VIEWS: Record<string, () => Promise<{ default: Component<any> }>> = {
+    now: () => import("./views/Now.svelte"),
+    home: () => import("./views/Home.svelte"),
     overview: () => import("./views/Overview.svelte"),
     energy: () => import("./views/EnergyHub.svelte"),
     powertrends: () => import("./views/PowerTrends.svelte"),
     solar: () => import("./views/Solar.svelte"),
-    water: () => import("./views/Water.svelte"),
+    water: () => import("./views/WaterHub.svelte"),
+    waterdetail: () => import("./views/Water.svelte"),
     irrigation: () => import("./views/Irrigation.svelte"),
-    climate: () => import("./views/Rooms.svelte"),
+    climate: () => import("./views/RoomsHub.svelte"),
+    roomsdetail: () => import("./views/Rooms.svelte"),
     appliances: () => import("./views/Appliances.svelte"),
-    security: () => import("./views/Security.svelte"),
+    security: () => import("./views/SecurityHub.svelte"),
+    securitydetail: () => import("./views/Security.svelte"),
     cameras: () => import("./views/Cameras.svelte"),
     traffic: () => import("./views/Traffic.svelte"),
     lights: () => import("./views/Lights.svelte"),
     reminders: () => import("./views/Reminders.svelte"),
+    trello: () => import("./views/Trello.svelte"),
+    meals: () => import("./views/Meals.svelte"),
+    fairplay: () => import("./views/FairPlay.svelte"),
     system: () => import("./views/System.svelte"),
     control: () => import("./views/ControlHub.svelte"),
-    life: () => import("./views/Life.svelte"),
     me: () => import("./views/MeHub.svelte"),
+    faith: () => import("./views/Faith.svelte"),
+    kids: () => import("./views/Kids.svelte"),
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
     insights: () => import("./views/Insights.svelte"),
+    usage: () => import("./views/Usage.svelte"),
     markets: () => import("./views/Markets.svelte"),
     settings: () => import("./views/Settings.svelte"),
+    diagnostics: () => import("./views/Diagnostics.svelte"),
+    household: () => import("./views/Household.svelte"),
+    // Spokes: no longer in the rail, still routed, still deep-linkable. Wiring
+    // these is what makes "the five originals still exist" true rather than a
+    // claim in a note column.
+    energydetail: () => import("./views/Energy.svelte"),
+    batteries: () => import("./views/Batteries.svelte"),
+    medetail: () => import("./views/Me.svelte"),
+    focus: () => import("./views/FocusWork.svelte"),
+    devices: () => import("./views/Devices.svelte"),
+    automations: () => import("./views/Automations.svelte"),
+    assist: () => import("./views/Assist.svelte"),
+    server: () => import("./views/ServerControl.svelte"),
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (id === "overview" || id === "energy" || id === "powertrends" || id === "insights") return { onnav: go };
+    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "now", "overview", "powertrends", "security", "usage", "water"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
-
-  // Self-heal stale code-split chunks: after a redeploy an old cached index can
-  // reference a hashed chunk that no longer exists on the server (404 -> "Failed
-  // to fetch dynamically imported module"). On such a failure, reload ONCE to pull
-  // the fresh index + chunks; if it still fails after that reload, surface the error.
-  function loadView(id: ViewId) {
-    return VIEWS[id]().catch((e: any) => {
-      const msg = String(e?.message ?? "");
-      const chunkErr = /dynamically imported module|module script failed|Failed to fetch|error loading dynamically|importing a module script/i.test(msg);
-      const key = "ha_portal_chunk_reload_at";
-      const last = Number(sessionStorage.getItem(key) || 0);
-      if (chunkErr && Date.now() - last > 20000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        location.reload();
-        return new Promise<{ default: Component<any> }>(() => {}); // stay pending through the reload
-      }
-      throw e;
-    });
-  }
-
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
+  import TimeMachine from "./lib/components/TimeMachine.svelte";
+  import Sheet from "./lib/components/Sheet.svelte";
+  import LinkBar from "./lib/components/LinkBar.svelte";
+  import { timeMachine, TM_IDS } from "./lib/timeMachine.svelte";
+  import { loadCachedCadence, refreshCadence } from "./lib/cadence";
+  import { initRemoteConfig, config } from "./lib/remoteConfig";
+  import { initPerf, startTrace } from "./lib/perf";
 
-  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "overview") as ViewId;
+  const initialView = (NAV.some((n) => n.id === prefs.defaultView) ? prefs.defaultView : "home") as ViewId;
   let view = $state<ViewId>(initialView);
   let palette = $state(false);
   // ?tv=1 (or #tv) boots straight into the always-on TV Overview — for wall displays.
@@ -84,6 +97,25 @@
   onMount(() => {
     prefs.apply();
     authStore.init();
+
+    // Freshness thresholds. The cached blob goes in synchronously so the first
+    // paint uses real thresholds rather than domain defaults; the refresh then
+    // catches last night's job.
+    loadCachedCadence();
+    refreshCadence();
+
+    // Remote Config and Performance Monitoring. Both fire-and-forget: the in-app
+    // defaults mean the app is fully functional whether or not either ever
+    // answers, so neither can become a boot dependency.
+    initRemoteConfig();
+    initPerf();
+
+    // Ask the browser to mark our storage persistent, so the HA connection
+    // cache, Firestore's IndexedDB cache and the usage log aren't evicted under
+    // pressure. WebKit grants this heuristically and names home-screen install
+    // as one of the inputs — so on the iPads it usually succeeds. A `false`
+    // answer is normal and not an error; nothing depends on it being granted.
+    navigator.storage?.persist?.().catch(() => {});
     const mq = window.matchMedia("(max-width: 820px)");
     const upd = () => (isMobile = mq.matches);
     upd();
@@ -93,17 +125,27 @@
       else if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); palette = true; }
     };
     window.addEventListener("keydown", onkey);
-    // Catch-all for any lazy import (palette, TV, views) that 404s on a stale
-    // chunk after a deploy: reload once to get the fresh build.
-    const onPreloadErr = () => {
-      const key = "ha_portal_chunk_reload_at";
-      const last = Number(sessionStorage.getItem(key) || 0);
-      if (Date.now() - last > 20000) { sessionStorage.setItem(key, String(Date.now())); location.reload(); }
-    };
-    window.addEventListener("vite:preloadError", onPreloadErr);
+    // Dev/mock-only navigation hook, for the route walk in
+    // scripts/ui-walk.mjs. Guarded so it never exists in a real build: a global
+    // that can change the view is a hole, however small.
+    if (import.meta.env.DEV || mockMode) {
+      (window as unknown as { __nav?: (id: string) => void }).__nav = (id: string) => go(id);
+    }
+
     const tick = setInterval(() => (now = new Date()), 30_000);
-    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); window.removeEventListener("vite:preloadError", onPreloadErr); clearInterval(tick); };
+    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); clearInterval(tick); };
   });
+
+  // ⌘K on Apple, Ctrl K on Windows. Christo drives this from a Windows desktop
+  // with three monitors as well as a MacBook, so a hardcoded ⌘ is wrong half the
+  // time — and a shortcut hint you cannot press is worse than none.
+  // userAgentData.platform where available, userAgent as the fallback; both are
+  // read once, since the OS does not change mid-session.
+  const APPLE = /Mac|iPhone|iPad|iPod/.test(
+    (navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ??
+      navigator.userAgent,
+  );
+  const KBD = APPLE ? "⌘K" : "Ctrl K";
 
   // Live clock/date + day-night weather icon for the top bar.
   const clock = $derived(now.toLocaleTimeString("en-ZA", { hour: "2-digit", minute: "2-digit", hour12: false }));
@@ -133,23 +175,89 @@
     }
   });
 
+  let stopFirstState: (() => void) | null = null;
+
   // Connect to Home Assistant only once the user is signed in and authorised.
   $effect(() => {
-    if ((mockMode || authStore.status === "ready") && ha.status !== "connected") ha.init();
+    if ((mockMode || authStore.status === "ready") && ha.status !== "connected") {
+      // ha_first_state: sign-in to the first full entity snapshot over WSS. That
+      // is the moment the app becomes usable — everything before it is a
+      // skeleton — and it is invisible to any synthetic page-load metric, which
+      // is why the blur-budget argument had no numbers behind it.
+      stopFirstState ??= startTrace("ha_first_state");
+      ha.init();
+    }
+    if (ha.status === "connected" && stopFirstState) {
+      stopFirstState();
+      stopFirstState = null;
+    }
   });
 
+  // App badge — the one ambient channel iOS actually gives a PWA.
+  //
+  // iOS ignores notification icons, won't render action buttons, and `tag` does
+  // NOT replace an existing notification, so pushes only ever stack. The badge
+  // is the only mutable, zero-cost signal available, which makes it the right
+  // home for "things need you" counts that don't deserve a banner (a low
+  // battery, an offline device). Needs an installed home-screen app; it's a
+  // no-op elsewhere, so this is safe to call unconditionally.
+  $effect(() => {
+    if (ha.status !== "connected") return;
+    const n = computeAttention().length;
+    const nav = navigator as Navigator & {
+      setAppBadge?: (n?: number) => Promise<void>;
+      clearAppBadge?: () => Promise<void>;
+    };
+    if (!nav.setAppBadge) return;
+    (n > 0 ? nav.setAppBadge(n) : nav.clearAppBadge?.() ?? Promise.resolve())?.catch(() => {});
+  });
+  // Subscribe to the household Sabbath flag once we're in.
+  $effect(() => { if (mockMode || authStore.status === "ready") sabbath.start(); });
+
+  // ── Two different questions, and conflating them broke every hub link ─────
+  //
+  // `visible()` answers MAY THIS ROUTE BE OPENED — an access question: guest
+  // role, Sabbath mode, the per-device guest toggle.
+  //
+  // `inNav()` answers SHOULD IT APPEAR IN THE SIDEBAR — a curation question,
+  // which is what prefs.viewsOn has always been for.
+  //
+  // These were one function, and prefs.viewsOn gated both. That is the bug
+  // Christo hit: viewsOn was written for the old 18-item nav, so every spoke id
+  // introduced in Phase 3.2 (medetail, waterdetail, devices, diagnostics…) had
+  // no entry, visible() returned false, and the guard on line ~248 bounced you
+  // straight back to Home. Every "Open" link on every hub board looked like it
+  // did nothing.
+  //
+  // The fix is the distinction, not a longer list: a spoke is deliberately NOT
+  // in the sidebar, so gating its reachability on a sidebar preference was never
+  // meaningful. ⌘K, a deep link and a hub link must all still work.
   const visible = (id: ViewId) => {
-    // Guest ROLE (server-defined): only Overview + the views shared with them;
-    // never Settings. Not toggleable by the guest.
-    if (authStore.isGuest) return id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
-    // Members/owners: honour the per-device guest toggle + enabled-views prefs.
-    return (!prefs.guest || !GUEST_HIDDEN.includes(id)) &&
-      (["overview", "security", "settings"].includes(id) || prefs.viewsOn[id]);
+    // Guest ROLE (server-defined): only Home + Overview + what was shared with
+    // them; never Settings. Not toggleable by the guest.
+    if (authStore.isGuest) return id === "home" || id === "overview" || (id !== "settings" && authStore.guestViews.includes(id));
+    // Sabbath mode quietens work/admin/money views (Faith, Overview & Settings stay).
+    if (sabbath.on && SABBATH_HIDDEN.includes(id)) return false;
+    // Per-device guest toggle.
+    return !prefs.guest || !GUEST_HIDDEN.includes(id);
   };
-  const shown = $derived(NAV.filter((nav) => visible(nav.id)));
-  // Never sit on a now-hidden view (entering guest mode, or a guest landing).
-  // Guard on the target so the effect can't read-then-write itself into a loop.
-  $effect(() => { if (view !== "overview" && !visible(view)) view = "overview"; });
+  /** Sidebar curation. Rail items are always in; spokes are opt-in. */
+  const inNav = (id: ViewId) => visible(id) && (RAIL.includes(id) || !!prefs.viewsOn[id]);
+  const shown = $derived(NAV.filter((nav) => inNav(nav.id)));
+  // The desktop rail never shows phoneOnly items. Now and Home are two
+  // different front doors on purpose — Now answers "what now", Home is the
+  // three-monitor board — so offering both in the rail would read as a choice
+  // when only one of them is the desktop answer.
+  // The rail is RAIL's order, not NAV's, and it excludes every spoke. Ordering
+  // from an explicit list rather than filtering NAV means adding a spoke can
+  // never accidentally put it back in the sidebar.
+  const railItems = $derived(
+    RAIL.map((id) => NAV.find((n) => n.id === id)!).filter((n) => n && !n.phoneOnly && inNav(n.id)),
+  );
+  // Never sit on a view this person may not OPEN — entering guest mode, or a
+  // guest landing on a deep link. Deliberately visible(), not inNav(): a spoke is
+  // not in the sidebar by design and must stay reachable.
+  $effect(() => { if (!visible(view)) view = "home"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
   let logged = false;
   $effect(() => {
@@ -170,10 +278,52 @@
     return { label: "Disarmed", color: "var(--warning)" };
   });
 
-  const mobileTabs = ["overview", "energy", "water", "security"] as ViewId[];
+  // Four phone tabs, no sidebar. Tab three is Household — the PLACE — and it
+  // points at the real Household screen even while that screen is partial. A tab
+  // that renames itself when a feature lands teaches the family that the
+  // navigation moves, which is the one thing the whole IA argument is against.
+  const mobileTabs = ["now", "climate", "household", "kids"] as ViewId[];
+  function applyNav(id: string) {
+    view = id as ViewId; palette = false; moreOpen = false;
+  }
+
   function go(id: string) {
     if (id === "__palette") { palette = true; return; }
-    view = id as ViewId; palette = false; moreOpen = false;
+    if (id === "__live") { timeMachine.reset(); return; }
+    if (id === "__timemachine") {
+      palette = false;
+      // Start an hour back — far enough to be obviously "the past", close
+      // enough that the recorder definitely has it.
+      ha.timeTravel(Date.now() - 3_600_000, TM_IDS);
+      return;
+    }
+    // Every navigation counts (not deduped per session) — this is the signal
+    // that tells us which features are genuinely used most often.
+    if (id !== view) actionLog.recordView(id);
+
+    // View Transitions (Safari 18+, Chrome 111+) cross-fade the swap instead of
+    // the content snapping. Feature-detected, and skipped under reduce-motion —
+    // the fallback is exactly the previous behaviour, so nothing depends on it.
+    //
+    // The returned promises MUST be caught. Tapping two nav items quickly, or
+    // navigating while the tab is hidden, aborts the in-flight transition and
+    // rejects `.finished`/`.ready` with InvalidStateError — which surfaces as an
+    // unhandled rejection in the console even though the navigation itself is
+    // fine. Swallow it: an interrupted animation is not an error worth raising.
+    type VT = { finished?: Promise<unknown>; ready?: Promise<unknown>; updateCallbackDone?: Promise<unknown> };
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => VT };
+    if (doc.startViewTransition && prefs.motion && document.visibilityState === "visible") {
+      try {
+        const t = doc.startViewTransition(() => applyNav(id));
+        t?.finished?.catch(() => {});
+        t?.ready?.catch(() => {});
+        t?.updateCallbackDone?.catch(() => {});
+      } catch {
+        applyNav(id);
+      }
+    } else {
+      applyNav(id);
+    }
   }
 </script>
 
@@ -228,22 +378,52 @@
             </svg>
           </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
-          <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")} aria-label="Overview" title="Overview"><span class="ni" style="color:var(--acc)"><Icon name="home" size={17} /></span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
-        {#each groups as g}
-          {@const items = shown.filter((s) => s.group === g.key)}
-          {#if items.length}
-            {#if !prefs.collapsed}<div class="grp">{g.title}</div>{:else}<div class="grpline"></div>{/if}
-            {#each items as it}
-              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)} aria-label={it.name} title={it.name}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
-            {/each}
-          {/if}
+        <!-- Nine items, no group headings. The groups existed to make eighteen
+             navigable; at nine they were labelling categories of one. -->
+        {#each railItems.filter((s) => s.group !== "Bottom") as it (it.id)}
+          {@const count = collapsedCount(it.id)}
+          <button
+            class="nav"
+            class:active={view === it.id}
+            onclick={() => go(it.id)}
+            title={prefs.collapsed ? it.name : undefined}
+            aria-label={prefs.collapsed ? it.name : undefined}
+          >
+            <span class="ni" style="color:{it.color}"><Icon name={it.ic} size={18} /></span>
+            {#if !prefs.collapsed}
+              <span class="nn">{it.name}</span>
+              <!-- Count hides when collapsed: a bare number beside an unlabelled
+                   icon reads as a badge (something needs you) rather than as
+                   "this hub folded five views in". -->
+              {#if count}<span class="ncount">{count}</span>{/if}
+            {/if}
+          </button>
         {/each}
         <div class="navbottom">
-          {#each shown.filter((s) => s.group === "Bottom") as it}
-            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)} aria-label={it.name} title={it.name}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+          {#each railItems.filter((s) => s.group === "Bottom") as it (it.id)}
+            <button
+              class="nav"
+              class:active={view === it.id}
+              onclick={() => go(it.id)}
+              title={prefs.collapsed ? it.name : undefined}
+              aria-label={prefs.collapsed ? it.name : undefined}
+            >
+              <span class="ni" style="color:{it.color}"><Icon name={it.ic} size={18} /></span>
+              {#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}
+            </button>
           {/each}
+          <!-- Collapse lives at the BOTTOM per the design, not in the brand row:
+               it is a preference you set once, not a control you reach for. -->
+          <button
+            class="nav clp"
+            onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}
+            title={prefs.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={prefs.collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            <span class="ni">{prefs.collapsed ? "»" : "«"}</span>
+            {#if !prefs.collapsed}<span class="nn">Collapse</span>{/if}
+          </button>
         </div>
         <button class="user" onclick={() => authStore.signOut()} title="Sign out">
           <span class="uav">{(authStore.user?.displayName ?? authStore.user?.email ?? "C").charAt(0).toUpperCase()}</span>
@@ -256,7 +436,8 @@
       <header>
         <div class="htitle"><span class="hi" style="color:{active.color}"><Icon name={active.ic} size={20} /></span><span class="hn">{active.name}</span></div>
         <div class="hchips">
-          <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">⌘K</span></button>
+          <button class="chip srch" onclick={() => (palette = true)} title="Search & commands">🔍 Search<span class="kbd">{KBD}</span></button>
+          <button class="chip tmc" class:on={timeMachine.active} onclick={() => go(timeMachine.active ? "__live" : "__timemachine")} title="Rewind the dashboard through history">🕰️ {timeMachine.active ? "Live" : "Rewind"}</button>
           {#if hAct}<button class="chip hact" onclick={hAct.run}>{hAct.icon} {hAct.label}</button>{/if}
           <button class="chip arm" style="--c:{alarm.color}" onclick={() => go("security")}><span class="ad"></span>{alarm.label}</button>
           <span class="chip">{tempIcon} {weatherTemp != null ? weatherTemp + "°" : "—"}</span>
@@ -277,9 +458,11 @@
         </div>
       {/if}
 
+      <LinkBar />
+
       <div class="body">
         {#key view}
-          {#await loadView(view)}
+          {#await VIEWS[view]()}
             <div class="vload"><div class="spinner"></div></div>
           {:then mod}
             {@const Cmp = mod.default}
@@ -294,15 +477,13 @@
 
   {#if isMobile}
     {#if moreOpen}
-      <div class="msheet-scrim" onclick={() => (moreOpen = false)} role="presentation"></div>
-      <div class="msheet">
-        <div class="grab"></div>
+      <Sheet open={moreOpen} title="Everything else" onclose={() => (moreOpen = false)}>
         <div class="mgrid">
-          {#each shown.filter((s) => !mobileTabs.includes(s.id)) as it}
+          {#each shown.filter((s) => !mobileTabs.includes(s.id)) as it (it.id)}
             <button class="mitem" onclick={() => go(it.id)}><span>{it.icon}</span>{it.name}</button>
           {/each}
         </div>
-      </div>
+      </Sheet>
     {/if}
     <nav class="mnav">
       {#each mobileTabs as id}
@@ -319,6 +500,7 @@
       <CommandPalette open={true} onnav={go} onclose={() => (palette = false)} />
     {/await}
   {/if}
+  <TimeMachine />
   <LightSheet />
   <Toast />
   {#if tv}
@@ -356,18 +538,28 @@
   }
 
   .shell { position: relative; z-index: 1; display: flex; min-height: 100vh; }
-  aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: rgba(255, 255, 255, 0.02); backdrop-filter: var(--glass-blur); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
-  aside.collapsed { width: 66px; }
+  aside { width: 210px; flex-shrink: 0; position: sticky; top: 0; height: 100vh; border-right: 1px solid rgba(255, 255, 255, 0.07); background: var(--s1); padding: 16px 13px; display: flex; flex-direction: column; gap: 2px; transition: width 0.22s; overflow-y: auto; }
+  /* 68px collapsed, per the design: 18px icon centred in a 44px target with
+     12px either side. 66px was 2px short of that arithmetic. */
+  aside.collapsed { width: 68px; }
   .brand { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding: 0 3px; }
   .logo { width: 32px; height: 32px; flex-shrink: 0; display: block; }
   .bn { font-size: 14.5px; font-weight: 700; flex: 1; white-space: nowrap; }
-  .clp { width: 26px; height: 26px; flex-shrink: 0; border-radius: 8px; background: rgba(255, 255, 255, 0.06); color: #b6c5d6; font-size: 13px; margin-left: auto; }
+  /* Collapse is now a nav row at the bottom, so it inherits .nav and only needs
+     the muted treatment — it is a preference, not a destination. */
+  .nav.clp { color: var(--mut); margin-top: 2px; }
+  .nav.clp .ni { font-size: 13px; }
+  .nav.clp:hover { color: var(--tx2); }
   .nav { position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 13px; border-radius: 11px; width: 100%; text-align: left; }
   aside.collapsed .nav { justify-content: center; padding: 11px 0; }
   .nav:hover { background: rgba(255, 255, 255, 0.04); }
   .nav.active { background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }
   .ni { width: 20px; display: inline-flex; align-items: center; justify-content: center; opacity: 0.95; }
-  .nn { font-size: 13.5px; font-weight: 600; color: #eef4fc; white-space: nowrap; }
+  .nn { font-size: 13.5px; font-weight: 600; color: var(--tx); white-space: nowrap; flex: 1; }
+  /* Tabular so the counts line up down the rail; --mut so they never read as an
+     attention badge, which is what --warn would have implied. */
+  .ncount { flex: none; font-size: 11px; font-weight: 700; color: var(--mut); font-variant-numeric: tabular-nums; }
+  .nav.active .ncount { color: var(--tx2); }
   .grp { font-size: 9.5px; font-weight: 700; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted-2); padding: 0 13px; margin: 13px 0 5px; }
   .grpline { height: 1px; background: rgba(255, 255, 255, 0.07); margin: 10px 6px; }
   .navbottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
@@ -378,10 +570,17 @@
   .ur { font-size: 10.5px; color: var(--muted); }
 
   main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: rgba(7, 11, 17, 0.72); backdrop-filter: var(--glass-blur); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+  header { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 12px; padding: 13px 20px; background: var(--bg); border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   /* Centre content at a comfortable max-width on wide monitors so cards/rows
      don't stretch edge-to-edge. Wall/TV density opts back into full width. */
+  /* 1440px was chosen so cards don't stretch edge-to-edge on a wide monitor.
+     But on a 2K/3K desktop that throws away most of the screen — on a 2560px
+     monitor it leaves ~560px of empty gutter each side. Step it up instead of
+     capping flat, so a big display gets more content rather than more margin,
+     while a laptop keeps a comfortable reading measure. */
   header, .body { width: 100%; max-width: 1440px; margin-inline: auto; }
+  @media (min-width: 1800px) { header, .body { max-width: 1680px; } }
+  @media (min-width: 2200px) { header, .body { max-width: 2000px; } }
   :global(.wall) header, :global(.wall) .body { max-width: none; }
   .htitle { display: flex; align-items: center; gap: 11px; flex: 1; min-width: 0; }
   .hi { display: inline-flex; align-items: center; }
@@ -405,14 +604,11 @@
   .guestbar .gdot { width: 8px; height: 8px; border-radius: 50%; background: var(--acc); flex-shrink: 0; }
   .guestbar button { margin-left: auto; padding: 5px 12px; border-radius: 8px; background: var(--grad); color: #05070c; font-size: 11px; font-weight: 800; }
 
-  .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: rgba(7, 11, 17, 0.92); backdrop-filter: blur(18px); border-top: 1px solid rgba(255, 255, 255, 0.08); }
+  .mnav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 21; display: flex; padding: 7px 4px calc(7px + env(safe-area-inset-bottom)); background: var(--s1); border-top: 1px solid rgba(255, 255, 255, 0.08); }
   .mnav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0; min-height: 46px; color: var(--muted-2); }
   .mnav button.on { color: var(--acc); }
   .mi { font-size: 20px; }
   .ml { font-size: 10px; font-weight: 600; }
-  .msheet-scrim { position: fixed; inset: 0; z-index: 19; background: rgba(0, 0, 0, 0.5); }
-  .msheet { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 20; padding: 16px 16px 20px; background: rgba(10, 15, 22, 0.97); backdrop-filter: blur(20px); border-top: 1px solid rgba(255, 255, 255, 0.12); border-radius: 22px 22px 0 0; animation: ppop 0.18s ease; max-height: calc(100dvh - 76px - env(safe-area-inset-bottom)); overflow-y: auto; overscroll-behavior: contain; }
-  .grab { width: 38px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, 0.2); margin: 0 auto 14px; }
   .mgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .mitem { display: flex; align-items: center; gap: 10px; padding: 13px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); font-size: 12.5px; font-weight: 600; text-align: left; }
   @media (max-width: 820px) {

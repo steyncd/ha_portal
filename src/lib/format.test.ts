@@ -42,11 +42,13 @@ describe("greeting", () => {
 });
 
 describe("tempColor", () => {
-  it("null → muted", () => expect(tempColor(null)).toBe("var(--muted)"));
-  it("cold → water", () => expect(tempColor(15)).toBe("var(--water)"));
-  it("hot → error", () => expect(tempColor(27)).toBe("var(--error)"));
-  it("comfort band → success", () => expect(tempColor(22)).toBe("var(--success)"));
-  it("mild-warm → warning", () => expect(tempColor(25)).toBe("var(--warning)"));
+  // v2 maps temperature onto the luminance-descending --heat-1..5 ramp (CVD-safe).
+  it("null → muted", () => expect(tempColor(null)).toBe("var(--mut)"));
+  it("cold → heat-1", () => expect(tempColor(10)).toBe("var(--heat-1)"));
+  it("cool → heat-2", () => expect(tempColor(15)).toBe("var(--heat-2)"));
+  it("comfort → heat-3", () => expect(tempColor(19)).toBe("var(--heat-3)"));
+  it("warm → heat-4", () => expect(tempColor(23)).toBe("var(--heat-4)"));
+  it("hot → heat-5", () => expect(tempColor(27)).toBe("var(--heat-5)"));
 });
 
 describe("dailyMax", () => {

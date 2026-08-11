@@ -212,7 +212,9 @@
   h3 { font-size: 14.5px; font-weight: 700; }
   .bigrow { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
   .big { font-size: 34px; font-weight: 800; letter-spacing: -1px; }
-  .big .of { font-size: 18px; font-weight: 600; color: var(--muted, #9fb0c3); }
+  /* letter-spacing only, no margin: this is a fraction ("12/30"), not a unit —
+     a leading margin would push the slash away from the numerator. */
+  .big .of { font-size: 18px; font-weight: 600; letter-spacing: 0; color: var(--muted); }
   .sub { font-size: 13px; color: var(--muted, #9fb0c3); font-weight: 600; text-align: right; }
   .sub.good { color: var(--success, #43d17a); }
 

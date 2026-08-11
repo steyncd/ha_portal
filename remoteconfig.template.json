@@ -1,0 +1,35 @@
+{
+  "conditions": [],
+  "parameters": {
+    "default_views": {
+      "defaultValue": {
+        "value": "home,overview,energy,water,security,climate,household,me,diagnostics,settings"
+      },
+      "description": "Views on by default for a fresh install. Comma-separated view ids from src/lib/nav.ts. Christo's own prefs still override this \u2014 it decides what a new device sees, not what he sees.",
+      "valueType": "STRING"
+    },
+    "gemini_model": {
+      "defaultValue": {
+        "value": "gemini-3.5-flash"
+      },
+      "description": "Model the Functions use. Closes a trap that has bitten twice: gemini-2.5-* now returns 'no longer available to new users' and that family shuts down October 2026. No redeploy needed. Verified: gemini-3.5-flash, gemini-3.5-flash-lite.",
+      "valueType": "STRING"
+    },
+    "kill_switches": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "Comma-separated feature ids to hide. The 22:00 escape hatch for a widget that is throwing. Can hide a widget; can never change alarm behaviour or any staleness guard.",
+      "valueType": "STRING"
+    },
+    "notice": {
+      "defaultValue": {
+        "value": ""
+      },
+      "description": "One line the whole household sees at the top of Home. Empty shows nothing.",
+      "valueType": "STRING"
+    }
+  },
+  "parameterGroups": {},
+  "version": {}
+}

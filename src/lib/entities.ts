@@ -43,6 +43,16 @@ export const E = {
   energyGrade: "sensor.energy_report_card",
   gridLostAlarm: "sensor.victron_grid_lost_alarm",
 
+  // Loadshedding + Eskom time-of-use tariff (SA grid context)
+  loadsheddingStatus: "sensor.loadshedding",
+  loadsheddingActive: "binary_sensor.national_loadshedding_active",
+  loadsheddingUrgency: "sensor.load_shedding_urgency",
+  loadsheddingCost: "sensor.loadshedding_cost_impact",
+  eskomStage: "sensor.eskom_national_stage",
+  eskomTariffPeriod: "sensor.eskom_current_tariff_period",
+  eskomRate: "sensor.eskom_current_rate",
+  eskomNextChange: "sensor.eskom_next_rate_change",
+
   // Water
   tankLevel: "sensor.jojo_tank_monitor_tank_water_level",
   tankVolume: "sensor.jojo_tank_monitor_tank_water_volume",
@@ -145,6 +155,10 @@ export const E = {
   scAway: "script.quick_away_mode",
   scMorning: "script.quick_good_morning_scene",
   scLightsOff: "script.quick_lights_all_off",
+  // "In for the night" — arms Stay + beams but LEAVES the inside lamps on, for
+  // when you're done outside and settling in front of the TV. Distinct from
+  // Goodnight, which arms AND turns everything off.
+  scEveningIn: "script.scene_evening_in_home",
 
   // Irrigation (Wyze)
   irrCurrentZone: "sensor.helloeben_sprinkler_current_zone",
@@ -218,6 +232,8 @@ export const SCENES: SceneDef[] = [
   { id: "script.scene_away_mode", label: "Away", icon: "🚪" },
   { id: "script.scene_evening_in_home", label: "Evening In", icon: "🌆" },
   { id: "script.scene_morning_wakeup", label: "Morning", icon: "☀️" },
+  { id: "script.movie_mode", label: "Movie", icon: "🎬" },
+  { id: "script.braai_mode", label: "Braai", icon: "🔥" },
 ];
 
 // Camera feeds (live streams need HLS/WebRTC wiring; shown as labelled tiles for now).
@@ -308,14 +324,21 @@ export const LIGHT_AREAS: LightArea[] = [
     { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️", members: 4 },
   ] },
   { name: "Bedrooms", icon: "🛏️", lights: [
+    // Main-bedroom ceiling + dresser are switch.* entities (not light.*) — the
+    // old light.* ids didn't exist, so the tiles showed "Unavailable".
     { id: "switch.main_bedroom_lamp", label: "Main Bedroom Lamp", icon: "🛏️" },
-    { id: "switch.bedroom_reading_lamp", label: "Reading Lamp", icon: "📖" },
     { id: "switch.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
     { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "switch.bedroom_reading_lamp", label: "Reading Lamp", icon: "📖" },
     { id: "switch.main_bathroom_light", label: "Main Bathroom", icon: "🛁" },
     { id: "light.eben_room_lamp", label: "Eben's Room", icon: "🛏️" },
+    { id: "light.liam_study_lamp", label: "Liam's Lamp", icon: "🛏️" },
     { id: "switch.guest_room", label: "Guest Room", icon: "🛏️" },
     { id: "group.room_lamps", label: "Room Lamps", icon: "🗂️", members: 3 },
+  ] },
+  { name: "Bathroom & Hallway", icon: "🚿", lights: [
+    { id: "switch.main_bathroom_light", label: "Main Bathroom", icon: "🚿" },
+    { id: "switch.hallway_light", label: "Hallway", icon: "🚶" },
   ] },
   { name: "Study", icon: "📚", lights: [
     { id: "light.study_lamp", label: "Study Lamp", icon: "📚" },

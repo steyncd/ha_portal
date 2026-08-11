@@ -456,11 +456,11 @@
           {#each armByHour as v, hr}<div class="armcol" title="{String(hr).padStart(2,'0')}:00 — armed {v} time{v === 1 ? '' : 's'} in the last 7 days"><div class="armbar" style="height:{Math.max(3, (v / armMax) * 100)}%;opacity:{v ? 1 : 0.25}"></div>{#if hourTicks.includes(hr)}<span class="armtick">{hr}h</span>{/if}</div>{/each}
         </div>
         <div class="secstats">
-          <div class="ss2"><span class="ssv">{typicalArm}</span><span class="ssk">usual arm time</span></div>
-          <div class="ss2"><span class="ssv" style="color:{forgot ? 'var(--warning)' : 'var(--success)'}">{forgot}</span><span class="ssk">left home un-armed</span></div>
-          <div class="ss2"><span class="ssv" style="color:{unarmedNow ? 'var(--error)' : 'var(--success)'}">{unarmedNow ? "Yes" : "No"}</span><span class="ssk">unarmed away now</span></div>
+          <div class="ss2"><span class="ssv">{typicalArm}</span><span class="ssk">Usual arm time</span></div>
+          <div class="ss2"><span class="ssv" style="color:{forgot ? 'var(--warning)' : 'var(--success)'}">{forgot}</span><span class="ssk">Left home un-armed</span></div>
+          <div class="ss2"><span class="ssv" style="color:{unarmedNow ? 'var(--error)' : 'var(--success)'}">{unarmedNow ? "Yes" : "No"}</span><span class="ssk">Unarmed away now</span></div>
           {#if armVsTypical}
-            <div class="ss2"><span class="ssv" style="color:{armVsTypical.pct == null ? 'var(--text)' : armVsTypical.pct >= 0 ? 'var(--success)' : 'var(--warning)'}">{armVsTypical.week}{#if armVsTypical.pct != null}<span class="sspct"> {armVsTypical.pct > 0 ? "+" : ""}{armVsTypical.pct}%</span>{/if}</span><span class="ssk">arms this wk · vs usual</span></div>
+            <div class="ss2"><span class="ssv" style="color:{armVsTypical.pct == null ? 'var(--text)' : armVsTypical.pct >= 0 ? 'var(--success)' : 'var(--warning)'}">{armVsTypical.week}{#if armVsTypical.pct != null}<span class="sspct"> {armVsTypical.pct > 0 ? "+" : ""}{armVsTypical.pct}%</span>{/if}</span><span class="ssk">Arms this wk · vs usual</span></div>
           {/if}
           {#if loiter}
             <div class="ss2"><span class="ssv" style="color:{loiter.week ? 'var(--warning)' : 'var(--success)'}">{loiter.total}</span><span class="ssk">gate dwells 3m+ · {loiter.week} this wk</span></div>
@@ -513,7 +513,7 @@
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
   .note { font-size: 12.5px; color: var(--muted-2); }
-  .lb { font-size: 11px; font-weight: 700; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted); }
+  .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
 
   .hl { display: flex; flex-direction: column; gap: 10px; background: linear-gradient(180deg, color-mix(in srgb, var(--acc) 10%, transparent), rgba(255, 255, 255, 0.028)); }
   .hlrow { display: flex; align-items: center; gap: 12px; font-size: 13.5px; color: var(--text); }
@@ -564,9 +564,9 @@
   .ss2 { display: flex; flex-direction: column; gap: 2px; }
   .ssv { font-size: 18px; font-weight: 800; }
   .sspct { font-size: 11px; font-weight: 700; }
-  .ssk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .ssk { font-size: 10px; color: var(--muted); font-weight: 700;}
   .loiterrow { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
-  .lrk { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-right: 2px; }
+  .lrk { font-size: 10.5px; font-weight: 700; color: var(--muted); margin-right: 2px; }
   .lrpill { font-size: 11px; font-weight: 600; color: var(--text-2); background: color-mix(in srgb, var(--warning) 12%, transparent); padding: 3px 9px; border-radius: 999px; }
 
   .blines { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

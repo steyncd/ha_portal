@@ -9,18 +9,43 @@
   const PERSON = "person.christo_steyn";
   const MY_GEO = "sensor.hello_geocoded_location";
 
-  // Okabe-Ito 8-colour palette — the canonical set chosen to stay distinguishable
-  // under red/green colour blindness (black swapped for grey on the dark surface).
+  // Eight rooms composited into ONE occupancy band, so colour is the only thing
+  // that says which room — the hardest case for a red-green deficiency, and the
+  // old set (#a78bfa / #f472b6 / #38bdf8 / #34d399 / #fbbf24 / #fb923c /
+  // #22d3ee / #c084fc) failed it three times over: mint/sky/cyan collapsed into
+  // each other, pink/violet collapsed, and amber/orange collapsed.
+  //
+  // Rebuilt on the two channels deuteranopia leaves intact — the blue↔yellow
+  // axis, and lightness. Four cool and four warm, interleaved so neighbours in
+  // the legend never share a family, and spread across L≈33–87 so any two that
+  // do sit near each other in hue are far apart in luminance. The last pair are
+  // both light on purpose: they differ only on the blue↔yellow axis, which is
+  // precisely the axis that survives.
+  // Ordered by PHYSICAL ADJACENCY, not alphabetically — Study, Liam, Eben, Main
+  // along one side; TV, Dining, Kitchen, Passage, Guest, Garage along the other.
+  // A reader who forgets which colour a room is can still find it by position,
+  // which is a second channel that costs nothing.
+  //
+  // And the band is LABELLED DIRECTLY (see the legend below): with eight
+  // categories, colour cannot be the primary identifier even with a good
+  // palette. Colour is the accent; the label is the identifier.
+  //
+  // Palette: four cool + four warm interleaved so legend neighbours never share
+  // a family, spread L≈33–87 so anything close in hue is far apart in luminance.
+  // The old set failed three times over — mint/sky/cyan collapsed, pink/violet
+  // collapsed, amber/orange collapsed.
   const ROOMS = [
-    { label: "Main", id: "binary_sensor.main_room_pir", color: "#0072B2" },
-    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#CC79A7" },
-    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#56B4E9" },
-    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#009E73" },
-    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#E69F00" },
-    { label: "Garage", id: "binary_sensor.garage_pir", color: "#D55E00" },
-    { label: "Passage", id: "binary_sensor.passage_pir", color: "#F0E442" },
-    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#999999" },
+    { label: "Study", id: "binary_sensor.study_occupancy", color: "var(--load)" }, //        L50 blue
+    { label: "Main", id: "binary_sensor.main_room_pir", color: "var(--energy)" }, //        L76 amber
+    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#1f4f8f" }, // L33 navy
+    { label: "Passage", id: "binary_sensor.passage_pir", color: "#c87a2e" }, //             L57 orange
+    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "var(--heat-2)" }, // L70 mid blue
+    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#7a5320" }, //               L38 bronze
+    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#b8def7" }, //             L87 ice
+    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#f3d89b" }, //            L87 sand
+    { label: "Garage", id: "binary_sensor.garage_pir", color: "#9db3c4" }, //               L72 slate
   ];
+
   const QUIET = "rgba(255,255,255,.06)";
   const AWAY = "rgba(255,255,255,.13)";
   const DAY = 86_400_000;
@@ -292,13 +317,19 @@
     <!-- movement bar -->
     <div class="card pad">
       <div class="rh"><span class="lb">Movement through the house · {hero.ctx}</span><span class="sub">from room sensors</span></div>
+      <!-- The legend sits IMMEDIATELY ABOVE the band, not below the axis. With
+           eight rooms composited into one band, colour cannot be the primary
+           identifier however good the palette is: the label identifies, the
+           colour is only the accent. Rooms are also ordered by physical
+           adjacency, so a reader who forgets a colour can still find the room by
+           position — a second channel that costs nothing. -->
+      <div class="legend">
+        {#each legend as r}<span class="lg"><span class="lgd" style="background:{r.color}"></span>{r.label}</span>{/each}
+      </div>
       <div class="movebar">
         {#each segs as s}<div class="mseg" style="width:{s.w}%;background:{s.color}" title={s.title}></div>{/each}
       </div>
       <div class="axis"><span>00h</span><span>06h</span><span>12h</span><span>18h</span><span>24h</span></div>
-      <div class="legend">
-        {#each legend as r}<span class="lg"><span class="lgd" style="background:{r.color}"></span>{r.label}</span>{/each}
-      </div>
     </div>
 
     <div class="two">
@@ -355,7 +386,7 @@
     <div class="card pad">
       <div class="rh"><span class="lb">Christo's phone</span><span class="sub">iPhone · live</span></div>
       <div class="phone">
-        <div class="pbatt"><div class="pbv" style="color:{meBatt != null && meBatt < 20 ? 'var(--error)' : 'var(--success)'}">{meBatt != null ? n(meBatt) : "—"}%{#if meBatt != null && meBatt < 20} ⚠ Low{/if}</div><div class="pbk">{chargeState(meBattState)}</div></div>
+        <div class="pbatt"><div class="pbv" style="color:{meBatt != null && meBatt < 20 ? 'var(--error)' : 'var(--success)'}">{meBatt != null ? n(meBatt) : "—"}%</div><div class="pbk">{chargeState(meBattState)}</div></div>
         <div class="chips">
           {#each mePhone as c}<div class="chip"><span class="ck">{c.k}</span><span class="cv">{c.v}</span></div>{/each}
         </div>
@@ -383,14 +414,15 @@
   .hstats { position: relative; display: flex; gap: 20px; flex-shrink: 0; }
   .hstats > div { text-align: center; }
   .hv { font-size: 22px; font-weight: 800; }
-  .hk { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+  .hk { font-size: 10px; color: var(--muted); margin-top: 2px; font-weight: 700;}
 
   .movebar { display: flex; height: 30px; border-radius: 9px; overflow: hidden; gap: 1px; background: rgba(255, 255, 255, 0.03); }
   .mseg { min-width: 1px; }
   .axis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted-2); margin-top: 6px; }
-  .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; }
-  .lg { display: inline-flex; align-items: center; gap: 7px; font-size: 11.5px; color: var(--text-2); }
-  .lgd { width: 10px; height: 10px; border-radius: 3px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 7px 14px; margin: 10px 0 8px; }
+  .lg { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--mut); }
+  /* Small: the swatch is the accent, the word is the identifier. */
+  .lgd { width: 8px; height: 8px; border-radius: 2px; flex: none; }
 
   .rtlist { display: flex; flex-direction: column; gap: 9px; }
   .rtrow { display: flex; align-items: center; gap: 11px; }
@@ -421,7 +453,7 @@
   .pinfo { flex: 1; min-width: 0; }
   .ptop { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .pn { font-size: 13.5px; font-weight: 600; }
-  .ptag { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); padding: 2px 7px; border-radius: 999px; }
+  .ptag { font-size: 9.5px; font-weight: 700; color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); padding: 2px 7px; border-radius: 999px; }
   .ptag.geo { color: var(--water); background: color-mix(in srgb, var(--water) 16%, transparent); }
   .psub { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
   .pright { text-align: right; flex-shrink: 0; }
@@ -435,6 +467,6 @@
   .pbk { font-size: 11px; color: var(--muted); margin-top: 2px; }
   .chips { flex: 1; min-width: 220px; display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { display: flex; flex-direction: column; gap: 1px; padding: 8px 12px; border-radius: 11px; background: rgba(255, 255, 255, 0.045); }
-  .ck { font-size: 9.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .ck { font-size: 9.5px; color: var(--muted); font-weight: 700;}
   .cv { font-size: 13px; font-weight: 700; }
 </style>

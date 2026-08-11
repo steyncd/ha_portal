@@ -8,11 +8,16 @@
     "dev:mock": "vite --mode mock",
     "build": "svelte-check --tsconfig ./tsconfig.json && vite build",
     "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "check": "node scripts/check-integrity.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "coverage": "vitest run --coverage",
-    "deploy": "npm run build && firebase deploy --only hosting"
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "deps": "node scripts/build-dependency-index.mjs",
+    "render-check": "vite build -c .ssrcheck/vite.config.mjs -l error && esbuild src/lib/buttons.ts --format=esm --outfile=.ssrcheck/buttons.mjs --log-level=error && node .ssrcheck/run.mjs",
+    "entities": "node scripts/check-entities.mjs",
+    "capture:zones": "node scripts/capture-zones.mjs",
+    "capture:scripts": "node scripts/capture-scripts.mjs"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^5.0.3",

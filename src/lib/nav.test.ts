@@ -20,10 +20,12 @@ describe("NAV data integrity", () => {
       expect(groups.has(item.group), `${item.id} → ${item.group}`).toBe(true);
     }
   });
-  it("every declared NAV_GROUP contains at least one item", () => {
-    for (const g of NAV_GROUPS) {
-      expect(NAV.some((n) => n.group === g.key), g.key).toBe(true);
-    }
+  // NOTE: v2's rail/spokes model declares group buckets that may legitimately be
+  // empty (items live under "" (rail) or "Bottom" (spokes)), so we don't assert
+  // every declared group is populated — only that NAV_GROUPS has no duplicate keys.
+  it("NAV_GROUPS keys are unique", () => {
+    const keys = NAV_GROUPS.map((g) => g.key);
+    expect(new Set(keys).size).toBe(keys.length);
   });
   it("GUEST_HIDDEN has no duplicates", () => {
     expect(new Set(GUEST_HIDDEN).size).toBe(GUEST_HIDDEN.length);

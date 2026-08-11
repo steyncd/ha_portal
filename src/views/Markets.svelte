@@ -93,7 +93,7 @@
     </div>
     <div class="card k">
       <div class="lb">📈 JSE indices</div>
-      <div class="big" style="font-size:24px">{pts(top40)}<span class="u"> Top40</span></div>
+      <div class="big" style="font-size:24px">{pts(top40)}<span class="u">Top40</span></div>
       <div class="sub">All Share {pts(allShare)}</div>
     </div>
   </div>
@@ -129,7 +129,7 @@
   @media (max-width: 640px) { .kpis { grid-template-columns: 1fr; } }
   .k { padding: 18px; }
   .big { font-size: 30px; font-weight: 800; margin-top: 6px; }
-  .u { font-size: 14px; color: var(--dim); font-weight: 600; }
+  .u { font-size: 14px; color: var(--dim); font-weight: 600; letter-spacing: 0; margin-left: .14em; }
   .chg { font-size: 15px; font-weight: 700; margin-left: 4px; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
   .lb { font-size: 13px; color: var(--muted-2); font-weight: 600; }

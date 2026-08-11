@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { ha } from "../lib/store.svelte";
-  import { E, ALARM_ZONES, ACCESS, type AlarmZone } from "../lib/entities";
+  import { E, ACCESS } from "../lib/entities";
+  import { deriveZones, type Zone } from "../lib/zones";
   import { toast } from "../lib/toast.svelte";
   import { clock } from "../lib/format";
   import StatusChip from "../lib/components/StatusChip.svelte";
@@ -50,27 +51,133 @@
   }
 
   // ---- zones ----
-  const activeZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.id)));
-  const bypassedZones = $derived(ALARM_ZONES.filter((z) => ha.isOn(z.bypass)));
+  // Derived from Home Assistant, so all 32 the panel exposes appear. The old
+  // hand-typed list had 25, which hid seven zones including 030 (Beam · Garage).
+  const ZONES = $derived(deriveZones(Object.keys(ha.entities)));
+  const activeZones = $derived(ZONES.filter((z) => ha.isOn(z.id)));
+  const bypassedZones = $derived(ZONES.filter((z) => ha.isOn(z.bypass)));
 
-  // zones grid: filter + sort
-  let zoneFilter = $state<"all" | "active" | "bypassed" | "clear">("all");
-  let zoneSort = $state<"status" | "name">("status");
-  const zonesView = $derived.by(() => {
-    const rank = (z: AlarmZone) => (ha.isOn(z.id) ? 0 : ha.isOn(z.bypass) ? 1 : 2);
-    const f = ALARM_ZONES.filter((z) => {
-      const a = ha.isOn(z.id), b = ha.isOn(z.bypass);
-      return zoneFilter === "all" ? true : zoneFilter === "active" ? a : zoneFilter === "bypassed" ? b : !a && !b;
-    });
-    return [...f].sort((x, y) => (zoneSort === "name" ? 0 : rank(x) - rank(y)) || x.label.localeCompare(y.label));
+  // A pressed bypass button does not show up in the bypass sensor instantly, so
+  // a press is recorded here as an intention, the row says it is waiting, and
+  // NOTHING IS RE-SENT — re-sending is what flapped this panel historically.
+  //
+  // FIVE minutes, and the number is measured, twice, because the first
+  // measurement was misleading:
+  //
+  //   zone 022  press 17:08:28 -> sensor 'on' 17:08:42      14 seconds
+  //   zone 032  press 18:23:12 -> sensor 'on' 18:26:31   3m 19 seconds
+  //
+  // I set this to 60s on the first figure alone, watched zone 032 for a minute,
+  // saw nothing, and concluded the zone was not configured on the panel. It was:
+  // the bypass landed two minutes after I stopped looking. The fast case is a
+  // press that happens while the integration is already polling; the slow case is
+  // the honest worst case to design for.
+  //
+  // So the timeout is generous, and running out of it means "the panel has not
+  // said yes" — NOT "it failed". Nothing is re-sent either way.
+  const PANEL_WAIT = 300_000;
+  type Waiting = { want: boolean; at: number };
+  let waiting = $state<Record<string, Waiting>>({});
+  let now = $state(Date.now());
+  $effect(() => {
+    const t = setInterval(() => (now = Date.now()), 2_000);
+    return () => clearInterval(t);
   });
 
-  function toggleBypass(z: AlarmZone) {
+  /** Elapsed time on a pending press. A button disabled for up to five minutes
+   *  with a static label reads as broken; a counter reads as waiting. */
+  function waited(z: Zone): string {
+    const w = waiting[z.n];
+    if (!w) return "";
+    const secs = Math.max(0, Math.round((now - w.at) / 1000));
+    return secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m${String(secs % 60).padStart(2, "0")}`;
+  }
+
+  /** "pending" while the panel has not caught up, "stale" once it has given up. */
+  function pendingState(z: Zone): "none" | "pending" | "stale" {
+    const w = waiting[z.n];
+    if (!w) return "none";
+    if (ha.isOn(z.bypass) === w.want) return "none";   // panel agreed; nothing to say
+    return now - w.at > PANEL_WAIT ? "stale" : "pending";
+  }
+  // Clearing a settled intention has to happen outside the derivation above —
+  // writing to `waiting` from inside it would re-trigger it.
+  $effect(() => {
+    for (const [n, w] of Object.entries(waiting)) {
+      const z = ZONES.find((x) => x.n === n);
+      if (z && ha.isOn(z.bypass) === w.want) {
+        const { [n]: _drop, ...rest } = waiting;
+        waiting = rest;
+      }
+    }
+  });
+
+  // zones grid: search + filter + sort
+  let zoneFilter = $state<"all" | "open" | "bypassed" | "clear">("all");
+  let zoneSort = $state<"number" | "status" | "name">("number");
+  let zoneQ = $state("");
+  const zonesView = $derived.by(() => {
+    const rank = (z: Zone) => (ha.isOn(z.id) ? 0 : ha.isOn(z.bypass) ? 1 : 2);
+    const q = zoneQ.trim().toLowerCase();
+    const f = ZONES.filter((z) => {
+      if (q && !z.label.toLowerCase().includes(q) && !z.n.includes(q)) return false;
+      const a = ha.isOn(z.id), b = ha.isOn(z.bypass);
+      return zoneFilter === "all" ? true : zoneFilter === "open" ? a : zoneFilter === "bypassed" ? b : !a && !b;
+    });
+    return [...f].sort((x, y) =>
+      zoneSort === "name" ? x.label.localeCompare(y.label)
+      : zoneSort === "status" ? (rank(x) - rank(y)) || x.n.localeCompare(y.n)
+      : x.n.localeCompare(y.n),
+    );
+  });
+
+  // Both areas disarmed is the condition the auto-restore automation checks
+  // (Alarm - Auto-Restore Bypassed Zones), so the note below has to test the same
+  // thing rather than just the house.
+  const fullyDisarmed = $derived(homeState === "disarmed" && beamsState === "disarmed");
+
+  // Bypassing REMOVES protection, so it asks twice. Restoring puts protection
+  // back, so it does not — the confirm step belongs on the direction that can
+  // leave a door unwatched, not on the one that fixes it.
+  let confirmZone = $state<string | null>(null);
+  let confirmTimer: ReturnType<typeof setTimeout>;
+
+  function setBypass(z: Zone, want: boolean) {
+    const btn = want ? z.bypassBtn : z.unbypassBtn;
+    if (!btn) { toast.show(`${z.label}: the panel exposes no ${want ? "bypass" : "restore"} control`); return; }
+    // Already there, or already asked — pressing again is what flapped this panel
+    // historically, so both cases are a no-op rather than a second command.
+    if (ha.isOn(z.bypass) === want) return;
+    if (pendingState(z) === "pending") return;
+    waiting = { ...waiting, [z.n]: { want, at: Date.now() } };
+    ha.mockSet(z.bypass, want ? "on" : "off");           // dev mode only
+    ha.pressButton(btn);                                  // live
+    toast.show(`${z.label} · ${want ? "bypassing" : "restoring"} — waiting for the panel`);
+  }
+
+  function tapZone(z: Zone) {
     const bypassed = ha.isOn(z.bypass);
-    const next = !bypassed;
-    ha.mockSet(z.bypass, next ? "on" : "off"); // reflect in mock
-    ha.pressButton(next ? z.bypassBtn : z.unbypassBtn); // live
-    toast.show(`${z.label} ${next ? "bypassed" : "restored"}`);
+    if (bypassed) { setBypass(z, false); return; }        // restoring needs no confirm
+    if (confirmZone === z.n) {
+      clearTimeout(confirmTimer);
+      confirmZone = null;
+      setBypass(z, true);
+      return;
+    }
+    confirmZone = z.n;
+    clearTimeout(confirmTimer);
+    confirmTimer = setTimeout(() => (confirmZone = null), 4000);
+  }
+
+  /** Restore every bypassed zone, one command at a time. */
+  async function restoreAll() {
+    const list = [...bypassedZones];
+    for (const z of list) {
+      setBypass(z, false);
+      // Spaced deliberately. Firing 30 button presses into this panel in one tick
+      // is the same mistake as the old retry loops.
+      await new Promise((r) => setTimeout(r, 700));
+    }
   }
 
   // ---- hero status (driven by the Home area) ----
@@ -211,39 +318,91 @@
     </div>
   </div>
 
-  <!-- zones + per-zone bypass -->
+  <!-- zones: status of all of them, and bypass / restore -->
   <div class="card pad">
     <div class="rh">
-      <span class="lb">Zones · {zonesView.length} of {ALARM_ZONES.length}</span>
-      {#if bypassedZones.length}<button class="restoreall" onclick={() => { bypassedZones.forEach((z) => toggleBypass(z)); }}>Restore all</button>{/if}
+      <span class="lb">Zones · {zonesView.length} of {ZONES.length}</span>
+      {#if bypassedZones.length}
+        <button class="restoreall" onclick={restoreAll}>Restore all {bypassedZones.length}</button>
+      {/if}
     </div>
+
     <div class="zctl">
+      <input class="zq" type="search" placeholder="Search {ZONES.length} zones" bind:value={zoneQ} autocomplete="off" />
       <div class="zseg">
-        {#each [["all", "All"], ["active", "Active"], ["bypassed", "Bypassed"], ["clear", "Clear"]] as [k, l]}
-          <button class:on={zoneFilter === k} onclick={() => (zoneFilter = k as typeof zoneFilter)}>{l}</button>
+        {#each [["all", "All"], ["open", "Open"], ["bypassed", "Bypassed"], ["clear", "Clear"]] as [k, l]}
+          <button class:on={zoneFilter === k} onclick={() => (zoneFilter = k as typeof zoneFilter)}>
+            {l}{#if k === "bypassed" && bypassedZones.length} {bypassedZones.length}{/if}{#if k === "open" && activeZones.length} {activeZones.length}{/if}
+          </button>
         {/each}
       </div>
       <div class="zseg">
-        {#each [["status", "Status"], ["name", "A–Z"]] as [k, l]}
+        {#each [["number", "No."], ["status", "Status"], ["name", "A–Z"]] as [k, l]}
           <button class:on={zoneSort === k} onclick={() => (zoneSort = k as typeof zoneSort)}>{l}</button>
         {/each}
       </div>
     </div>
+
     <div class="zgrid">
       {#if zonesView.length}
-        {#each zonesView as z}
-          {@const active = ha.isOn(z.id)}
+        {#each zonesView as z (z.n)}
+          {@const open = ha.isOn(z.id)}
           {@const bypassed = ha.isOn(z.bypass)}
-          <div class="zrow" class:bypassed>
-            <span class="zd" class:active></span>
+          {@const gone = !ha.available(z.id)}
+          {@const pend = pendingState(z)}
+          <div class="zrow" class:bypassed class:open>
+            <span class="zno">{z.n}</span>
             <span class="zn">{z.label}</span>
-            <StatusChip state={active ? "warn" : "ok"} label={active ? "Active" : "Clear"} />
-            <button class="byp" class:on={bypassed} onclick={() => toggleBypass(z)}>{bypassed ? "Restore" : "Bypass"}</button>
+            <!-- Three states, not two: a bypassed zone is neither open nor clear,
+                 and showing it as "Clear" would be the most misleading thing on
+                 this screen. -->
+            <StatusChip
+              state={gone ? "off" : bypassed ? "warn" : open ? "warn" : "ok"}
+              label={gone ? "No data" : bypassed ? "Bypassed" : open ? "Open" : "Clear"}
+            />
+            <button
+              class="byp"
+              class:on={bypassed}
+              class:confirm={confirmZone === z.n}
+              disabled={pend === "pending" || !(bypassed ? z.unbypassBtn : z.bypassBtn)}
+              onclick={() => tapZone(z)}
+            >
+              {#if pend === "pending"}Waiting {waited(z)}
+              {:else if bypassed}Restore
+              {:else if confirmZone === z.n}Confirm bypass
+              {:else}Bypass{/if}
+            </button>
+            {#if pend === "stale"}
+              <span class="zwarn">
+                The panel has not confirmed this after five minutes. The command
+                was sent and has not been re-sent; check the keypad for the real
+                state rather than pressing again.
+              </span>
+            {/if}
           </div>
         {/each}
-      {:else}<div class="note">No zones match this filter.</div>{/if}
+      {:else}<div class="note">No zones match{zoneQ ? ` “${zoneQ}”` : " this filter"}.</div>{/if}
     </div>
-    <div class="note">Bypassed zones are excluded from arming until restored. Changes press the alarm's per-zone bypass / unbypass controls.</div>
+
+    <div class="note">
+      A bypassed zone is excluded while the alarm is armed — it will not report and
+      will not trigger. Bypass asks twice; restoring does not. Both press the
+      panel's own per-zone controls, which confirm in anything from fifteen
+      seconds to about three minutes — measured on this panel, not estimated.
+      <!-- The auto-restore rule is not optional information. Without it you
+           bypass a zone, come back, and find it un-bypassed with no explanation
+           on this screen. The behaviour differs by armed state, so the sentence
+           does too. -->
+      {#if fullyDisarmed}
+        <strong>The alarm is fully disarmed, so anything left bypassed for an hour
+        is restored automatically</strong> and you get a notification — the next
+        arming starts clean.
+      {:else}
+        <strong>The alarm is armed, so a bypass you set now stays for this whole
+        armed session.</strong> It is only auto-restored once both the house and
+        the beams are disarmed, and then only after an hour.
+      {/if}
+    </div>
   </div>
 
   <!-- access & openings -->
@@ -313,15 +472,34 @@
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
   .restoreall { font-size: 11.5px; font-weight: 600; color: var(--acc2); padding: 6px 12px; border-radius: 9px; background: rgba(255, 255, 255, 0.05); }
   .restoreall:hover { background: rgba(255, 255, 255, 0.1); }
-  .zctl { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  /* Search on its own row, then the two segmented controls side by side —
+     four filter chips plus three sort chips plus a search box does not fit on a
+     phone in one line. */
+  .zctl { display: grid; gap: 8px; margin-bottom: 12px; }
+  .zctl > .zseg { justify-self: start; }
   .zseg { display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
   .zseg button { padding: 6px 11px; border-radius: 7px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
   .zseg button.on { background: var(--grad); color: #07131c; }
-  .zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; }
+  .zgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 8px; }
+  .zq {
+    width: 100%; padding: 9px 11px; border-radius: 9px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text); font-size: 13px; min-height: 40px;
+  }
+  .zno {
+    flex: none; font-size: 10.5px; font-weight: 700; color: var(--text-3);
+    font-variant-numeric: tabular-nums; min-width: 24px;
+  }
+  .zrow.open { background: color-mix(in srgb, var(--warning) 13%, transparent); }
+  .zwarn {
+    flex-basis: 100%; font-size: 11px; line-height: 1.45;
+    color: var(--warning); margin-top: 4px; text-wrap: pretty;
+  }
+  .byp.confirm { background: color-mix(in srgb, var(--warning) 40%, transparent); color: #fff; }
+  .byp:disabled { opacity: 0.5; }
   .zrow { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); }
   .zrow.bypassed { opacity: 0.55; background: color-mix(in srgb, var(--warning) 9%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 26%, transparent); }
-  .zd { width: 8px; height: 8px; border-radius: 50%; background: var(--success); box-shadow: 0 0 7px var(--success); flex-shrink: 0; }
-  .zd.active { background: var(--warning); box-shadow: 0 0 7px var(--warning); }
   .zn { font-size: 12.5px; color: var(--text); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .zrow :global(.status) { flex-shrink: 0; }
   .byp { flex-shrink: 0; padding: 6px 11px; border-radius: 8px; background: rgba(255, 255, 255, 0.08); font-size: 11px; font-weight: 700; color: var(--text-2); }

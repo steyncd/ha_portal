@@ -3,24 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <script>
-      // Canonical origin: apex and www are SEPARATE origins -> separate service
-      // workers / PWA caches, which causes flip-flopping and stale-chunk errors.
-      // Force everything to www.helloliam.co.za (path/query/hash preserved).
-      if (location.hostname === "helloliam.co.za") {
-        location.replace("https://www.helloliam.co.za" + location.pathname + location.search + location.hash);
-      }
-    </script>
-    <meta name="theme-color" content="#0b0f1a" />
+    <meta name="theme-color" content="#22252A" />
+    <!-- The 16px is a separate flat-copper drawing, not a scaled favicon.svg:
+         the gradient muddies below ~20px and the stroke is drawn at 2px against
+         the hexagon's 1px. Declared before the SVG so browsers that prefer a
+         sized raster still find it. -->
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-180.png" />
     <title>Steyn Home</title>
     <script>
       // No-flash theme: set data-theme before first paint (reads the persisted prefs blob).
+      // This list MUST track THEMES in prefs.svelte.ts. It was still naming the
+      // retired v1 set (aurora/tide/meadow/spectrum), so every cold load stamped
+      // data-theme="tide" — a theme app.css no longer defines — and the page
+      // painted unthemed until the app booted and corrected it.
       try {
-        var t = (JSON.parse(localStorage.getItem("ha_portal_prefs") || "{}").theme) || "tide";
-        document.documentElement.dataset.theme = ["aurora", "tide", "meadow", "spectrum"].indexOf(t) >= 0 ? t : "tide";
-      } catch (e) { document.documentElement.dataset.theme = "tide"; }
+        var ok = ["stone", "basalt", "fog", "slate", "harbour", "ink", "clay", "graphite", "plum"];
+        var t = (JSON.parse(localStorage.getItem("ha_portal_prefs") || "{}").theme) || "stone";
+        document.documentElement.dataset.theme = ok.indexOf(t) >= 0 ? t : "stone";
+      } catch (e) { document.documentElement.dataset.theme = "stone"; }
     </script>
   </head>
   <body>
