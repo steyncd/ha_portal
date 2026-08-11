@@ -11,7 +11,8 @@
     "moduleDetection": "force",
     "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "strict": true
+    "strict": true,
+    "noEmit": true
   },
   "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "vite.config.ts"]
 }

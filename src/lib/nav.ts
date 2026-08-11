@@ -1,6 +1,6 @@
 export type ViewId =
   | "overview" | "energy" | "powertrends" | "water" | "irrigation" | "climate" | "appliances"
-  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "control" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
+  | "security" | "cameras" | "traffic" | "lights" | "reminders" | "system" | "control" | "life" | "me" | "vitality" | "timeline" | "insights" | "markets" | "solar" | "settings";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -22,6 +22,7 @@ export const NAV: NavItem[] = [
   { id: "cameras", name: "Cameras", icon: "📷", ic: "camera", group: "Safety", color: "var(--security)" },
   { id: "traffic", name: "Traffic", icon: "🚗", ic: "car", group: "Safety", color: "var(--security)" },
 
+  { id: "life", name: "Life", icon: "✅", ic: "tasks", group: "Home", color: "var(--acc)" },
   { id: "lights", name: "Lights", icon: "💡", ic: "bulb", group: "Home", color: "var(--solar)" },
   { id: "appliances", name: "Appliances", icon: "🔌", ic: "plug", group: "Home", color: "var(--load)" },
   { id: "reminders", name: "Reminders", icon: "⏰", ic: "clock", group: "Home", color: "var(--acc)" },
@@ -37,7 +38,7 @@ export const NAV: NavItem[] = [
 ];
 
 // Views hidden in guest mode (recc 5j) — security, cameras, location & health.
-export const GUEST_HIDDEN: ViewId[] = ["security", "cameras", "traffic", "control", "me", "vitality", "timeline"];
+export const GUEST_HIDDEN: ViewId[] = ["security", "cameras", "traffic", "control", "life", "me", "vitality", "timeline"];
 
 // The domain groups rendered between Overview (top) and Insights/Settings (bottom).
 export const NAV_GROUPS: { key: NavGroup; title: string }[] = [

@@ -34,8 +34,8 @@
       temps: [{ id: "sensor.main_room_temperature", label: "Main" }], hum: "sensor.main_bedroom_lamp_si7021_humidity",
       lights: [
         { id: "switch.main_bedroom_lamp", label: "Bedside", icon: "🛏️", power: "sensor.main_bedroom_lamp_power" },
-        { id: "light.main_bedroom_light", label: "Ceiling", icon: "💡" },
-        { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+        { id: "switch.main_bedroom_light", label: "Ceiling", icon: "💡" },
+        { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
       ],
     },
     {
@@ -71,16 +71,25 @@
   ];
 
   // 5-band temperature heat scale (house runs cold; bands per prototype 14/17/21.5/25)
+  // Colourblind-safe cold→hot ramp: blue → neutral (comfort) → orange (Okabe-Ito).
+  // Avoids the green/amber/red axis; the °C number in each room is the primary cue.
   function heat(t: number | null): string {
     if (t == null) return "rgba(255,255,255,.03)";
-    const c = t < 14 ? "#3b82f6" : t < 17 ? "#38bdf8" : t < 21.5 ? "#34d399" : t < 25 ? "#fbbf24" : "#fb7185";
+    const c = t < 14 ? "#0072B2" : t < 17 ? "#56B4E9" : t < 21.5 ? "#9aa7b3" : t < 25 ? "#E69F00" : "#D55E00";
     return `color-mix(in srgb, ${c} 26%, transparent)`;
   }
   const HEAT_LEGEND = [
-    { c: "#3b82f6", l: "<14°" }, { c: "#38bdf8", l: "14–17°" }, { c: "#34d399", l: "17–21°" }, { c: "#fbbf24", l: "22–25°" }, { c: "#fb7185", l: ">25°" },
+    { c: "#0072B2", l: "<14°" }, { c: "#56B4E9", l: "14–17°" }, { c: "#9aa7b3", l: "17–21°" }, { c: "#E69F00", l: "22–25°" }, { c: "#D55E00", l: ">25°" },
   ];
 
   let activeId = $state("study");
+  // Door contact sensors shown as a strip on the Rooms page.
+  const DOORS = [
+    { id: "binary_sensor.kitchen_door", label: "Kitchen" },
+    { id: "binary_sensor.helloliam_alarm_zone_024_door_lounge", label: "Patio" },
+    { id: "binary_sensor.front_door", label: "Entrance" },
+  ];
+
   const active = $derived(PLAN.find((r) => r.id === activeId)!);
   const temps = $derived(active.temps ?? []);
   const primaryId = $derived(temps[0]?.id);
@@ -113,10 +122,15 @@
   let fcHist = $state<{ t: number; v: number }[]>([]);
   // Floating (portable) temperature sensor — roams the house, not tied to a room.
   let fhist = $state<{ t: number; v: number }[]>([]);
+  let histError = $state(false);
   onMount(async () => {
-    outHist = await ha.history("sensor.outdoor_temperature", 48);
-    fcHist = await ha.history("sensor.outdoor_forecast_temperature", 48);
-    fhist = await ha.history("sensor.floating_temp_sensor_temperature", 24);
+    try {
+      [outHist, fcHist, fhist] = await Promise.all([
+        ha.history("sensor.outdoor_temperature", 48),
+        ha.history("sensor.outdoor_forecast_temperature", 48),
+        ha.history("sensor.floating_temp_sensor_temperature", 24),
+      ]);
+    } catch { histError = true; }
   });
   const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
 
@@ -155,6 +169,16 @@
 <div class="grid">
   <div class="card pad">
     <div class="rh"><span class="lb">302 Wyoming · tap a room</span><span class="sub">{#if ha.available("sensor.outdoor_temperature")}🌡️ Outdoor {n(ha.num("sensor.outdoor_temperature"), 1)}°{#if ha.available("sensor.outdoor_humidity")} · {n(ha.num("sensor.outdoor_humidity"))}% RH{/if} · {/if}{n(ha.num("sensor.indoor_average_temperature"), 1)}° avg indoor</span></div>
+    <div class="doors">
+      {#each DOORS as d}
+        {@const open = ha.isOn(d.id)}
+        <div class="door" class:open={open}>
+          <span class="dicon">{open ? "🚪" : "🔒"}</span>
+          <span class="dlabel">{d.label}</span>
+          <span class="dstate">{ha.available(d.id) ? (open ? "Open" : "Closed") : "—"}</span>
+        </div>
+      {/each}
+    </div>
     <div class="plan">
       {#each PLAN as r}
         {@const t = r.temps?.[0] ? ha.num(r.temps[0].id) : null}
@@ -163,15 +187,15 @@
         <button class="room" class:active={activeId === r.id} style="left:{r.left}%;top:{r.top}%;width:{r.w}%;height:{r.h}%;background:{activeId === r.id ? 'var(--soft)' : heat(t)}" onclick={() => (activeId = r.id)}>
           <span class="rn">{r.label}</span>
           {#if t != null}<span class="rt">{n(t, 1)}°</span>{/if}
-          {#if lit}<span class="dot"></span>{/if}
-          {#if occ}<span class="odot"></span>{/if}
+          {#if lit}<span class="dot" title="Lights on" aria-label="Lights on">💡</span>{/if}
+          {#if occ}<span class="odot" title="Occupied" aria-label="Occupied">👤</span>{/if}
         </button>
       {/each}
     </div>
     <div class="legend">
-      <span class="ll2">Cool</span>
-      {#each HEAT_LEGEND as h}<span class="lc" style="background:{h.c}" title={h.l}></span>{/each}
-      <span class="ll2">Warm</span>
+      <span class="ll2">Cooler</span>
+      {#each HEAT_LEGEND as h}<span class="lgi"><span class="lc" style="background:{h.c}"></span>{h.l}</span>{/each}
+      <span class="ll2">Warmer</span>
     </div>
   </div>
 
@@ -238,10 +262,12 @@
   {#if ha.available("sensor.outdoor_temperature")}
     <div class="card pad wide">
       <div class="rh"><span class="lb">Outdoor · actual vs forecast · 48h</span><span class="sub">Now {n(ha.num("sensor.outdoor_temperature"), 1)}° · forecast {n(ha.num("sensor.outdoor_forecast_temperature"), 1)}°{#if fcDelta != null} · <span style="color:{Math.abs(fcDelta) >= 2 ? 'var(--warning)' : 'var(--muted)'}">{fcDelta > 0 ? "+" : ""}{n(fcDelta, 1)}° vs forecast</span>{/if}</span></div>
-      <Overlay height={150} unit="°" series={[
-        { data: outHist, color: "var(--acc)", label: "Actual", fill: true },
-        { data: fcHist, color: "var(--muted)", label: "Forecast", dash: "4 3" },
-      ]} />
+      {#if histError}<div class="note">Couldn't load temperature history — check the Home Assistant connection.</div>{:else}
+        <Overlay height={150} unit="°" series={[
+          { data: outHist, color: "var(--acc)", label: "Actual", fill: true },
+          { data: fcHist, color: "var(--muted)", label: "Forecast", dash: "4 3" },
+        ]} />
+      {/if}
       <div class="note">Your microclimate sensor vs the weather service. A persistent gap means the forecast runs warm or cool for your spot — both are logged, so the pattern builds over time.</div>
     </div>
   {/if}
@@ -256,17 +282,26 @@
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .sub { font-size: 12px; color: var(--dim); }
+  .doors { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .door { flex: 1; min-width: 96px; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.04); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
+  .door.open { border-color: color-mix(in srgb, var(--warning) 45%, transparent); background: color-mix(in srgb, var(--warning) 12%, transparent); }
+  .dicon { font-size: 15px; }
+  .dlabel { font-size: 12.5px; font-weight: 700; flex: 1; }
+  .dstate { font-size: 12px; font-weight: 700; color: var(--muted); }
+  .door.open .dstate { color: var(--warning); }
   .plan { position: relative; width: 100%; aspect-ratio: 18600 / 14800; border-radius: 14px; background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); overflow: hidden; }
   .room { position: absolute; padding: 3px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14); overflow: hidden; }
   .room.active { box-shadow: inset 0 0 0 1.5px var(--line); }
   .room:hover { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
-  .dot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--warning); box-shadow: 0 0 6px var(--warning); }
-  .odot { position: absolute; top: 4px; left: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--success); box-shadow: 0 0 6px var(--success); }
+  /* Glyph badges (not colour-only): shape distinguishes lights vs occupancy. */
+  .dot { position: absolute; top: 3px; right: 3px; font-size: 10px; line-height: 1; filter: drop-shadow(0 0 2px var(--warning)); }
+  .odot { position: absolute; top: 3px; left: 3px; font-size: 10px; line-height: 1; filter: drop-shadow(0 0 2px var(--success)); }
   .occ { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-left: 9px; padding: 3px 8px; border-radius: 999px; background: rgba(255, 255, 255, 0.06); color: var(--muted); vertical-align: middle; }
   .occ.oon { background: color-mix(in srgb, var(--success) 18%, transparent); color: var(--success); }
-  .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; }
-  .legend .lc { width: 26px; height: 9px; border-radius: 2px; }
-  .legend .ll2 { font-size: 10.5px; color: var(--muted); margin: 0 5px; }
+  .legend { display: flex; align-items: center; justify-content: center; gap: 5px; margin-top: 12px; flex-wrap: wrap; }
+  .legend .lgi { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; color: var(--muted); }
+  .legend .lc { width: 14px; height: 9px; border-radius: 2px; }
+  .legend .ll2 { font-size: 10.5px; color: var(--muted); margin: 0 4px; font-weight: 600; }
   .rn { font-size: 10px; font-weight: 700; color: #f5f8ff; white-space: nowrap; text-shadow: 0 1px 3px rgba(5, 9, 15, 0.9); }
   .rt { font-size: 9.5px; font-weight: 700; color: #c4e3ff; text-shadow: 0 1px 3px rgba(5, 9, 15, 0.95); }
   .ah { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; gap: 10px; }
@@ -291,6 +326,6 @@
   .ln { font-size: 12.5px; font-weight: 600; }
   .ls { font-size: 11px; color: var(--text-2); font-variant-numeric: tabular-nums; }
   .tune { width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); font-size: 14px; flex-shrink: 0; }
-  @media (max-width: 640px) { .tune { width: 36px; height: 36px; font-size: 16px; } }
+  @media (max-width: 640px) { .tune { width: 40px; height: 40px; font-size: 16px; } }
   .none { padding: 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.03); font-size: 12.5px; color: var(--muted-2); }
 </style>

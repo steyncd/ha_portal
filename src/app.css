@@ -46,9 +46,13 @@
   --idle: #fcd34d;
   --off: #93a3b5;
   --warn: #fdba74;
-  --success: #34d399; /* legacy */
-  --warning: #fbbf24; /* legacy */
-  --error: #fb7185; /* legacy */
+  /* Okabe-Ito status hues: good = bluish-green, warning = amber, bad = vermillion.
+     Chosen so good-vs-bad no longer relies on the red/green axis (owner is red/green
+     colourblind). Consumers pick these up automatically via the CSS variables. */
+  --success: #0aa17a; /* legacy → Okabe bluish-green (lightened for dark bg) */
+  --warning: #e69f00; /* legacy → Okabe amber */
+  --error: #e8590c; /* legacy → Okabe vermillion (lightened for dark bg) */
+  --danger: #e8590c; /* alias of --error — used by destructive controls */
 
   /* Surface helpers (kept for un-reskinned views) */
   --card-hover: rgba(255, 255, 255, 0.09);

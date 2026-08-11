@@ -21,9 +21,11 @@
   let solarHist = $state<{ t: number; v: number }[]>([]);
   let fcRaw = $state<{ datetime: string; temperature: number; condition: string }[]>([]);
   onMount(async () => {
-    battHist = await ha.history(E.batterySoc, 24);
-    solarHist = await ha.history(E.pvPower, 24);
-    fcRaw = (await ha.getForecast(E.weather, "hourly")).slice(0, 6);
+    // Guard each independently so one failing fetch doesn't blank the others
+    // (and never leave an unhandled rejection).
+    try { battHist = await ha.history(E.batterySoc, 24); } catch { /* chart shows empty */ }
+    try { solarHist = await ha.history(E.pvPower, 24); } catch { /* chart shows empty */ }
+    try { fcRaw = (await ha.getForecast(E.weather, "hourly")).slice(0, 6); } catch { /* forecast hidden */ }
   });
   const WX_ICON: Record<string, string> = { sunny: "☀️", "clear-night": "🌙", clear: "🌙", partlycloudy: "⛅", cloudy: "☁️", rainy: "🌧️", pouring: "⛈️", lightning: "⚡", "lightning-rainy": "⛈️", snowy: "❄️", "snowy-rainy": "🌨️", fog: "🌫️", windy: "💨", hail: "🌨️", exceptional: "🌡️" };
   const fc = $derived(fcRaw.map((f, i) => ({ h: i === 0 ? "Now" : (() => { try { return new Date(f.datetime).getHours() + "h"; } catch { return ""; } })(), ic: WX_ICON[f.condition] ?? "🌡️", t: Math.round(f.temperature) })));
@@ -48,6 +50,32 @@
     return parts.join(" · ");
   });
   const litCount = $derived(ALL_LIGHTS.filter((id) => ha.isOn(id)).length);
+
+  // --- Quick-action scenes: prominent top bar + live "it worked" feedback ---
+  const HUIS = "alarm_control_panel.helloliam_alarm_area_01_huis";
+  const alarmState = $derived(ha.state(HUIS) ?? "");
+  let justRan = $state<string | null>(null);
+  let ranTimer: ReturnType<typeof setTimeout> | null = null;
+  function runScene(s: { id: string; label: string }) {
+    ha.script(s.id);
+    toast.show(`${s.label} activated`);
+    justRan = s.id;
+    if (ranTimer) clearTimeout(ranTimer);
+    ranTimer = setTimeout(() => (justRan = null), 3000);
+  }
+  // Which scene the house currently reflects (best-effort) so the mode is visible.
+  const activeScene = $derived.by(() => {
+    if (alarmState === "armed_away") return "script.scene_away_mode";
+    if (alarmState === "armed_home" || alarmState === "armed_night") return "script.scene_evening_in_home";
+    if (ha.isOn("switch.patio_lamp") && alarmState === "disarmed") return "script.scene_patio_outdoors";
+    return null;
+  });
+  // Live one-liner so the effect of a tap is visible immediately.
+  const sceneStatus = $derived.by(() => {
+    const armed = alarmState === "disarmed" || alarmState === "" ? "Disarmed" : alarmState.replace(/_/g, " ");
+    const doors = ha.isOn("binary_sensor.house_doors_closed") ? "doors closed" : "door open";
+    return `🛡️ ${armed} · 💡 ${litCount} on · 🚪 ${doors}`;
+  });
 
   const quick = [
     { id: E.poolPump, ic: "waves", name: "Pool Pump" },
@@ -161,6 +189,23 @@
 
 <HomeStatusStrip />
 
+<!-- Quick actions (prominent, top): the scenes you reach for first, with a live
+     status line + a per-button "Done" tick so you can see it was actioned. -->
+{#if prefs.widgets.scenes}
+  <div class="qactions">
+    <div class="qa-head"><span class="lb">Quick actions</span><span class="qa-status">{sceneStatus}</span></div>
+    <div class="qa-grid">
+      {#each SCENES as s}
+        <button class="qa-btn" class:active={activeScene === s.id} class:done={justRan === s.id} onclick={() => runScene(s)}>
+          <span class="qa-ic">{justRan === s.id ? "✓" : s.icon}</span>
+          <span class="qa-nm">{s.label}</span>
+          {#if justRan === s.id}<span class="qa-tag done">Done</span>{:else if activeScene === s.id}<span class="qa-tag cur">Active</span>{/if}
+        </button>
+      {/each}
+    </div>
+  </div>
+{/if}
+
 <div class="masonry">
   <!-- power flow -->
   <div class="w card tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
@@ -195,20 +240,6 @@
     <div><div class="lb">Water tank</div><div class="big2">{n(ha.num(E.tankLevel))}%</div><div class="sub2">{n(ha.num(E.tankDays))} days · {n(ha.num(E.tankVolume))} L</div></div>
   </div>
 
-  <!-- scenes -->
-  {#if prefs.widgets.scenes}
-    <div class="w card">
-      <div class="lb" style="margin-bottom:12px">Scenes</div>
-      <div class="grid2">
-        {#each SCENES as s}
-          <button class="mini-btn" onclick={() => { ha.script(s.id); toast.show(`${s.label} scene`); }}>
-            <span class="mi">{s.icon}</span><span class="mn">{s.label}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
-
   <!-- solar -->
   <div class="w card card--hero tap" role="button" tabindex="0" onclick={() => onnav("energy")} onkeydown={(e) => e.key === "Enter" && onnav("energy")}>
     <span class="glow" style="--gc:var(--solar)"></span>
@@ -241,9 +272,9 @@
       <div class="grid2" style="margin-top:12px">
         {#each INDOOR_LIGHTS.slice(0, 6) as l}
           <div class="ltile" class:on={ha.isOn(l.id)}>
-            <div class="ltap" onclick={() => ha.toggle(l.id)} role="button" tabindex="0" onkeydown={() => {}}>
+            <button type="button" class="ltap" onclick={() => ha.toggle(l.id)} aria-pressed={ha.isOn(l.id)} aria-label="{l.label} — {ha.isOn(l.id) ? 'on, tap to turn off' : 'off, tap to turn on'}">
               <span class="mi">{l.icon}</span><span class="mn">{l.label}</span><span class="qs">{ha.isOn(l.id) ? "On" : "Off"}</span>
-            </div>
+            </button>
             <button class="tune" onclick={() => lightSheet.open(l.id, l.label)} aria-label="brightness">⋯</button>
           </div>
         {/each}
@@ -333,7 +364,31 @@
   .spx { color: var(--muted); font-size: 12px; }
   .spd { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
   .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+  /* Mobile: stack the heading above the action buttons so Search never overlaps the title. */
+  @media (max-width: 560px) {
+    .head { flex-direction: column; align-items: stretch; gap: 10px; }
+    h1 { font-size: 23px; }
+    .actions { justify-content: flex-start; flex-wrap: wrap; }
+    .custom { right: auto; left: 0; width: min(258px, calc(100vw - 40px)); }
+  }
 
+  .qactions { margin-bottom: 16px; padding: 14px 16px; border-radius: 18px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
+  .qa-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+  .qa-status { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .qa-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  @media (max-width: 720px) { .qa-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 420px) { .qa-grid { grid-template-columns: repeat(2, 1fr); } }
+  .qa-btn { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 16px 10px; border-radius: 14px; cursor: pointer; color: var(--text); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.1)); transition: transform 0.1s, background 0.15s, border-color 0.15s; }
+  .qa-btn:hover { background: rgba(255, 255, 255, 0.09); }
+  .qa-btn:active { transform: scale(0.96); }
+  .qa-btn.active { border-color: var(--acc); background: color-mix(in srgb, var(--acc) 14%, transparent); }
+  .qa-btn.done { border-color: var(--success); background: color-mix(in srgb, var(--success) 16%, transparent); }
+  .qa-ic { font-size: 22px; line-height: 1; }
+  .qa-btn.done .qa-ic { color: var(--success); }
+  .qa-nm { font-size: 12.5px; font-weight: 700; }
+  .qa-tag { position: absolute; top: 6px; right: 7px; font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 5px; border-radius: 6px; }
+  .qa-tag.cur { color: var(--acc); background: color-mix(in srgb, var(--acc) 20%, transparent); }
+  .qa-tag.done { color: var(--success); background: color-mix(in srgb, var(--success) 20%, transparent); }
   .masonry { column-count: 3; column-gap: 14px; }
   @media (max-width: 1000px) { .masonry { column-count: 2; } }
   @media (max-width: 640px) { .masonry { column-count: 1; } }
@@ -359,18 +414,19 @@
   .big3 { font-size: 30px; font-weight: 800; letter-spacing: -1.2px; margin-top: 6px; }
   .u { font-size: 15px; color: var(--dim); }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
-  .mini-btn, .qtile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
-  .mini-btn { flex-direction: row; align-items: center; gap: 9px; }
-  .mini-btn:hover, .qtile:hover { background: rgba(255, 255, 255, 0.08); }
+  .qtile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.045); text-align: left; }
+  .qtile:hover { background: rgba(255, 255, 255, 0.08); }
   .qtile.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }
   .mi { font-size: 16px; }
   .mn { font-size: 11.5px; font-weight: 600; color: #f2f7fc; }
   .qs { font-size: 10.5px; color: var(--text-2); }
   .ltile { position: relative; display: flex; flex-direction: column; gap: 5px; padding: 12px; border-radius: 13px; background: rgba(255, 255, 255, 0.05); }
   .ltile.on { background: color-mix(in srgb, var(--warning) 15%, transparent); box-shadow: inset 0 0 0 1.5px var(--warning); }
-  .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; }
+  .ltap { display: flex; flex-direction: column; gap: 5px; cursor: pointer; align-items: flex-start; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; flex: 1; }
   .tune { position: absolute; top: 9px; right: 9px; width: 26px; height: 26px; border-radius: 8px; background: rgba(255, 255, 255, 0.09); color: #dbe6f0; font-size: 14px; }
   .tune:hover { background: rgba(255, 255, 255, 0.18); }
+  /* ≥40px hit area on touch devices (WCAG target size). */
+  @media (pointer: coarse) { .tune { width: 40px; height: 40px; top: 4px; right: 4px; } }
   .sprow { display: flex; align-items: center; gap: 11px; font-size: 12.5px; color: #e6eef7; }
   .log { display: flex; align-items: flex-start; gap: 11px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .lic { width: 31px; height: 31px; flex-shrink: 0; border-radius: 9px; display: grid; place-items: center; font-size: 14px; }

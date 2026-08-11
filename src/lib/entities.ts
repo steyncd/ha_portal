@@ -213,11 +213,11 @@ export const PUMPS: Pump[] = [
 ];
 
 export const SCENES: SceneDef[] = [
-  { id: "script.quick_goodnight_scene", label: "Goodnight", icon: "🌙" },
-  { id: "script.movie_mode", label: "Movie", icon: "🎬" },
-  { id: "script.braai_mode", label: "Braai", icon: "🔥" },
-  { id: "script.quick_away_mode", label: "Away", icon: "🚪" },
-  { id: "script.quick_good_morning_scene", label: "Morning", icon: "☀️" },
+  { id: "script.scene_bed_time", label: "Bed Time", icon: "🌙" },
+  { id: "script.scene_patio_outdoors", label: "Patio", icon: "🎇" },
+  { id: "script.scene_away_mode", label: "Away", icon: "🚪" },
+  { id: "script.scene_evening_in_home", label: "Evening In", icon: "🌆" },
+  { id: "script.scene_morning_wakeup", label: "Morning", icon: "☀️" },
 ];
 
 // Camera feeds (live streams need HLS/WebRTC wiring; shown as labelled tiles for now).
@@ -277,6 +277,7 @@ export const INDOOR_LIGHTS: LightDef[] = [
   { id: "switch.living_room_lamp", label: "Living Room", icon: "🛋️" },
   { id: "switch.tv_room_lamp", label: "TV Room", icon: "📺" },
   { id: "switch.main_bedroom_lamp", label: "Main Bedroom", icon: "🛏️" },
+  { id: "switch.bedroom_reading_lamp", label: "Reading Lamp", icon: "📖" },
   { id: "light.study_lamp", label: "Study", icon: "📚" },
   { id: "group.room_lamps", label: "Room Lamps", icon: "💡" },
   { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🛋️" },
@@ -303,12 +304,15 @@ export const LIGHT_AREAS: LightArea[] = [
     { id: "switch.living_room_lamp", label: "Living Room", icon: "🛋️" },
     { id: "switch.tv_room_lamp", label: "TV Room", icon: "📺" },
     { id: "light.dining_room_lamp", label: "Dining", icon: "🍽️" },
-    { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️", members: 3 },
+    { id: "switch.hallway_light", label: "Hallway", icon: "🚪" },
+    { id: "group.lounge_lamps", label: "Lounge Lamps", icon: "🗂️", members: 4 },
   ] },
   { name: "Bedrooms", icon: "🛏️", lights: [
     { id: "switch.main_bedroom_lamp", label: "Main Bedroom Lamp", icon: "🛏️" },
-    { id: "light.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
-    { id: "light.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "switch.bedroom_reading_lamp", label: "Reading Lamp", icon: "📖" },
+    { id: "switch.main_bedroom_light", label: "Main Bedroom Light", icon: "💡" },
+    { id: "switch.main_bedroom_dresser_light", label: "Dresser", icon: "🪞" },
+    { id: "switch.main_bathroom_light", label: "Main Bathroom", icon: "🛁" },
     { id: "light.eben_room_lamp", label: "Eben's Room", icon: "🛏️" },
     { id: "switch.guest_room", label: "Guest Room", icon: "🛏️" },
     { id: "group.room_lamps", label: "Room Lamps", icon: "🗂️", members: 3 },

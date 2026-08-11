@@ -35,9 +35,11 @@ class AuthStore {
   guestConfig = $state<{ e: string; v: string[] }[]>([]); // per-guest views (admin view)
   error = $state("");
   #unsub: (() => void) | null = null;
+  #authUnsub: (() => void) | null = null;
 
   init() {
-    onAuthStateChanged(auth, (u) => {
+    if (this.#authUnsub) return; // idempotent: a second init() must not stack a listener
+    this.#authUnsub = onAuthStateChanged(auth, (u) => {
       this.user = u;
       if (this.#unsub) { this.#unsub(); this.#unsub = null; }
       if (!u) { this.status = "signedout"; this.role = null; return; }

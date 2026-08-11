@@ -3,6 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <script>
+      // Canonical origin: apex and www are SEPARATE origins -> separate service
+      // workers / PWA caches, which causes flip-flopping and stale-chunk errors.
+      // Force everything to www.helloliam.co.za (path/query/hash preserved).
+      if (location.hostname === "helloliam.co.za") {
+        location.replace("https://www.helloliam.co.za" + location.pathname + location.search + location.hash);
+      }
+    </script>
     <meta name="theme-color" content="#0b0f1a" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/icon-180.png" />

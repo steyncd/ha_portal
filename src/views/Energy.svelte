@@ -22,19 +22,22 @@
   let gridHist = $state<{ t: number; v: number }[]>([]);
   let solarWeek = $state<{ label: string; value: number | null }[]>([]);
   let solarMonth = $state<{ t: number; v: number }[]>([]);
+  let loadError = $state(false);
   onMount(async () => {
-    // Parallel + batched: the four 24h reads collapse to a single WS request.
-    const [soc, pv, load, grid, week, month] = await Promise.all([
-      ha.history(E.batterySoc, 24),
-      ha.history(E.pvPower, 24),
-      ha.history(E.loads, 24),
-      ha.history(E.gridPower, 24),
-      ha.history(E.solarYieldToday, 24 * 7),
-      ha.history(E.solarYieldToday, 24 * 30),
-    ]);
-    socHist = soc; pvHist = pv; loadHist = load; gridHist = grid;
-    solarWeek = dailyMax(week, 7);
-    solarMonth = dailyMax(month, 30).map((d, i) => ({ t: i, v: d.value ?? 0 }));
+    try {
+      // Parallel + batched: the four 24h reads collapse to a single WS request.
+      const [soc, pv, load, grid, week, month] = await Promise.all([
+        ha.history(E.batterySoc, 24),
+        ha.history(E.pvPower, 24),
+        ha.history(E.loads, 24),
+        ha.history(E.gridPower, 24),
+        ha.history(E.solarYieldToday, 24 * 7),
+        ha.history(E.solarYieldToday, 24 * 30),
+      ]);
+      socHist = soc; pvHist = pv; loadHist = load; gridHist = grid;
+      solarWeek = dailyMax(week, 7);
+      solarMonth = dailyMax(month, 30).map((d, i) => ({ t: i, v: d.value ?? 0 }));
+    } catch { loadError = true; }
   });
 
   const indep = $derived(ha.num(E.gridIndepToday));
@@ -97,7 +100,8 @@
     const out: { label: string; value: number; color: string }[] = [];
     if (budget && budget.devices?.length) {
       const shown = budget.devices.filter((d) => d.w >= 5).slice(0, 8);
-      const restW = budget.devices.filter((d) => !shown.includes(d)).reduce((s, d) => s + d.w, 0);
+      const shownSet = new Set(shown);
+      const restW = budget.devices.filter((d) => !shownSet.has(d)).reduce((s, d) => s + d.w, 0);
       shown.forEach((d, i) => out.push({ label: d.name, value: d.w, color: SINK_PALETTE[i % SINK_PALETTE.length] }));
       if (restW > 0) out.push({ label: "Other devices", value: restW, color: "#64748b" });
       if (pbUnknown > 0) out.push({ label: "Unidentified", value: pbUnknown, color: "var(--muted)" });
@@ -136,6 +140,7 @@
 </script>
 
 <div class="col">
+  {#if loadError}<div style="padding:10px 14px;border-radius:12px;background:rgba(230,159,0,.12);border:1px solid rgba(230,159,0,.35);font-size:12.5px;color:var(--text)">⚠ Couldn't load history — check the Home Assistant connection.</div>{/if}
   <!-- self-powered hero -->
   <div class="card hero">
     <div class="heroglow"></div>

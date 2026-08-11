@@ -2,6 +2,7 @@
   // Universal entity control — search any controllable entity and act on it
   // inline (toggle, run, press, open/close, lock, set number/option) without
   // opening Home Assistant. Automations live in their own tab, so are excluded.
+  import { untrack } from "svelte";
   import { ha } from "../lib/store.svelte";
   import Toggle from "../lib/components/Toggle.svelte";
 
@@ -21,24 +22,24 @@
   let q = $state("");
   let domain = $state("all");
 
-  type Row = { id: string; name: string; domain: string; kind: string; state: string; attrs: Record<string, unknown> };
+  type Row = { id: string; name: string; domain: string; kind: string };
 
+  // The sorted catalog only changes when entities are added/removed/renamed, so
+  // gate its (O(N log N)) rebuild on the entity-set size rather than rerunning it
+  // on every state tick. Live state/attrs are read per-row in the template below.
+  const catalogLen = $derived(Object.keys(ha.entities).length);
   const all = $derived.by<Row[]>(() => {
-    const out: Row[] = [];
-    for (const e of Object.values(ha.entities)) {
-      const d = e.entity_id.split(".")[0];
-      const kind = KIND[d];
-      if (!kind) continue;
-      out.push({
-        id: e.entity_id,
-        name: (e.attributes?.friendly_name as string) ?? e.entity_id,
-        domain: d,
-        kind,
-        state: e.state,
-        attrs: e.attributes ?? {},
-      });
-    }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
+    catalogLen; // dependency: rebuild only when the entity set changes size
+    return untrack(() => {
+      const out: Row[] = [];
+      for (const e of Object.values(ha.entities)) {
+        const d = e.entity_id.split(".")[0];
+        const kind = KIND[d];
+        if (!kind) continue;
+        out.push({ id: e.entity_id, name: (e.attributes?.friendly_name as string) ?? e.entity_id, domain: d, kind });
+      }
+      return out.sort((a, b) => a.name.localeCompare(b.name));
+    });
   });
 
   const domains = $derived([...new Set(all.map((r) => r.domain))].sort());
@@ -51,7 +52,10 @@
   });
   const shown = $derived(filtered.slice(0, CAP));
 
-  const on = (r: Row) => r.state === "on";
+  // Live reads (kept out of the catalog so state changes don't trigger a re-sort).
+  const st = (id: string) => ha.state(id) ?? "";
+  const at = (id: string): Record<string, unknown> => ha.entities[id]?.attributes ?? {};
+  const on = (r: Row) => st(r.id) === "on";
 </script>
 
 <div class="wrap">
@@ -69,38 +73,39 @@
       <div class="row">
         <div class="meta">
           <div class="nm">{r.name}</div>
-          <div class="sub">{DOMAIN_LABEL[r.domain] ?? r.domain} · {r.state}</div>
+          <div class="sub">{DOMAIN_LABEL[r.domain] ?? r.domain} · {st(r.id)}</div>
         </div>
 
         {#if r.kind === "toggle"}
           <button class="tg" onclick={() => ha.toggle(r.id)} aria-label="Toggle"><Toggle on={on(r)} /></button>
         {:else if r.kind === "cover"}
           <div class="pair">
-            <button class="mini" class:act={r.state === "open"} onclick={() => ha.cover(r.id, true)}>Open</button>
-            <button class="mini" class:act={r.state !== "open"} onclick={() => ha.cover(r.id, false)}>Close</button>
+            <button class="mini" class:act={st(r.id) === "open"} onclick={() => ha.cover(r.id, true)}>Open</button>
+            <button class="mini" class:act={st(r.id) !== "open"} onclick={() => ha.cover(r.id, false)}>Close</button>
           </div>
         {:else if r.kind === "lock"}
           <div class="pair">
-            <button class="mini" class:act={r.state === "locked"} onclick={() => ha.lock(r.id, true)}>Lock</button>
-            <button class="mini" class:act={r.state !== "locked"} onclick={() => ha.lock(r.id, false)}>Unlock</button>
+            <button class="mini" class:act={st(r.id) === "locked"} onclick={() => ha.lock(r.id, true)}>Lock</button>
+            <button class="mini" class:act={st(r.id) !== "locked"} onclick={() => ha.lock(r.id, false)}>Unlock</button>
           </div>
         {:else if r.kind === "run"}
           <button class="mini go" onclick={() => (r.domain === "scene" ? ha.scene(r.id) : ha.script(r.id))}>Run</button>
         {:else if r.kind === "press"}
           <button class="mini go" onclick={() => ha.pressButton(r.id)}>Press</button>
         {:else if r.kind === "number"}
+          {@const a = at(r.id)}
           <input
             class="num"
             type="number"
-            value={r.state}
-            min={(r.attrs.min as number) ?? undefined}
-            max={(r.attrs.max as number) ?? undefined}
-            step={(r.attrs.step as number) ?? undefined}
+            value={st(r.id)}
+            min={(a.min as number) ?? undefined}
+            max={(a.max as number) ?? undefined}
+            step={(a.step as number) ?? undefined}
             onchange={(e) => ha.setNumber(r.id, Number((e.currentTarget as HTMLInputElement).value))}
           />
         {:else if r.kind === "select"}
-          <select class="sel" value={r.state} onchange={(e) => ha.setSelect(r.id, (e.currentTarget as HTMLSelectElement).value)}>
-            {#each ((r.attrs.options as string[]) ?? []) as opt}<option value={opt}>{opt}</option>{/each}
+          <select class="sel" value={st(r.id)} onchange={(e) => ha.setSelect(r.id, (e.currentTarget as HTMLSelectElement).value)}>
+            {#each ((at(r.id).options as string[]) ?? []) as opt}<option value={opt}>{opt}</option>{/each}
           </select>
         {/if}
       </div>

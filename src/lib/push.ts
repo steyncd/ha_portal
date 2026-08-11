@@ -10,6 +10,11 @@ import { toast } from "./toast.svelte";
 
 const VAPID = import.meta.env.VITE_FIREBASE_VAPID_KEY;
 
+// Register the foreground-message handler at most once, even if the user toggles
+// push on repeatedly — otherwise each toggle stacks a listener and one push
+// fires N duplicate toasts.
+let foregroundBound = false;
+
 export function pushGranted() {
   return typeof Notification !== "undefined" && Notification.permission === "granted";
 }
@@ -35,10 +40,13 @@ export async function enablePush(): Promise<{ ok: boolean; msg: string }> {
       ts: Date.now(),
     });
 
-    onMessage(messaging, (payload) => {
-      const n = payload.notification;
-      if (n?.title || n?.body) toast.show(`${n.title ?? ""} ${n.body ?? ""}`.trim());
-    });
+    if (!foregroundBound) {
+      foregroundBound = true;
+      onMessage(messaging, (payload) => {
+        const n = payload.notification;
+        if (n?.title || n?.body) toast.show(`${n.title ?? ""} ${n.body ?? ""}`.trim());
+      });
+    }
 
     return { ok: true, msg: "Notifications enabled on this device" };
   } catch (e) {

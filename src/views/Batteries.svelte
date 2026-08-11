@@ -22,11 +22,14 @@
   ];
 
   let hist = $state<Record<string, { t: number; v: number }[]>>({});
+  let loadError = $state(false);
   onMount(async () => {
-    const entries = await Promise.all(
-      DEVICES.map((d) => ha.history(d.level, 24 * 7).then((h) => [d.key, h] as const)),
-    );
-    hist = Object.fromEntries(entries);
+    try {
+      const entries = await Promise.all(
+        DEVICES.map((d) => ha.history(d.level, 24 * 7).then((h) => [d.key, h] as const)),
+      );
+      hist = Object.fromEntries(entries);
+    } catch { loadError = true; }
   });
 
   // Derive charge sessions + discharge rate from a level series.
@@ -69,6 +72,7 @@
 </script>
 
 <div class="col">
+  {#if loadError}<div style="padding:10px 14px;border-radius:12px;background:rgba(230,159,0,.12);border:1px solid rgba(230,159,0,.35);font-size:12.5px;color:var(--text)">⚠ Couldn't load battery history — check the Home Assistant connection.</div>{/if}
   <div class="hdr">
     <div>
       <h2>Device batteries</h2>

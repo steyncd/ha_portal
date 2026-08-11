@@ -28,6 +28,7 @@
     reminders: () => import("./views/Reminders.svelte"),
     system: () => import("./views/System.svelte"),
     control: () => import("./views/ControlHub.svelte"),
+    life: () => import("./views/Life.svelte"),
     me: () => import("./views/MeHub.svelte"),
     vitality: () => import("./views/Vitality.svelte"),
     timeline: () => import("./views/Timeline.svelte"),
@@ -41,6 +42,26 @@
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
+
+  // Self-heal stale code-split chunks: after a redeploy an old cached index can
+  // reference a hashed chunk that no longer exists on the server (404 -> "Failed
+  // to fetch dynamically imported module"). On such a failure, reload ONCE to pull
+  // the fresh index + chunks; if it still fails after that reload, surface the error.
+  function loadView(id: ViewId) {
+    return VIEWS[id]().catch((e: any) => {
+      const msg = String(e?.message ?? "");
+      const chunkErr = /dynamically imported module|module script failed|Failed to fetch|error loading dynamically|importing a module script/i.test(msg);
+      const key = "ha_portal_chunk_reload_at";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (chunkErr && Date.now() - last > 20000) {
+        sessionStorage.setItem(key, String(Date.now()));
+        location.reload();
+        return new Promise<{ default: Component<any> }>(() => {}); // stay pending through the reload
+      }
+      throw e;
+    });
+  }
+
   import LightSheet from "./lib/components/LightSheet.svelte";
   import Toast from "./lib/components/Toast.svelte";
   import Icon from "./lib/components/Icon.svelte";
@@ -72,8 +93,16 @@
       else if (e.key === "/" && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); palette = true; }
     };
     window.addEventListener("keydown", onkey);
+    // Catch-all for any lazy import (palette, TV, views) that 404s on a stale
+    // chunk after a deploy: reload once to get the fresh build.
+    const onPreloadErr = () => {
+      const key = "ha_portal_chunk_reload_at";
+      const last = Number(sessionStorage.getItem(key) || 0);
+      if (Date.now() - last > 20000) { sessionStorage.setItem(key, String(Date.now())); location.reload(); }
+    };
+    window.addEventListener("vite:preloadError", onPreloadErr);
     const tick = setInterval(() => (now = new Date()), 30_000);
-    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); clearInterval(tick); };
+    return () => { mq.removeEventListener("change", upd); window.removeEventListener("keydown", onkey); window.removeEventListener("vite:preloadError", onPreloadErr); clearInterval(tick); };
   });
 
   // Live clock/date + day-night weather icon for the top bar.
@@ -119,7 +148,8 @@
   };
   const shown = $derived(NAV.filter((nav) => visible(nav.id)));
   // Never sit on a now-hidden view (entering guest mode, or a guest landing).
-  $effect(() => { if (!visible(view)) view = "overview"; });
+  // Guard on the target so the effect can't read-then-write itself into a loop.
+  $effect(() => { if (view !== "overview" && !visible(view)) view = "overview"; });
   // Access log: record sign-in once, then each distinct view opened (deduped).
   let logged = false;
   $effect(() => {
@@ -200,19 +230,19 @@
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
           <button class="clp" onclick={() => { prefs.collapsed = !prefs.collapsed; prefs.save(); }}>{prefs.collapsed ? "»" : "«"}</button>
         </div>
-        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")}><span class="ni" style="color:var(--acc)"><Icon name="home" size={17} /></span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
+        <button class="nav" class:active={view === "overview"} onclick={() => go("overview")} aria-label="Overview" title="Overview"><span class="ni" style="color:var(--acc)"><Icon name="home" size={17} /></span>{#if !prefs.collapsed}<span class="nn">Overview</span>{/if}</button>
         {#each groups as g}
           {@const items = shown.filter((s) => s.group === g.key)}
           {#if items.length}
             {#if !prefs.collapsed}<div class="grp">{g.title}</div>{:else}<div class="grpline"></div>{/if}
             {#each items as it}
-              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+              <button class="nav" class:active={view === it.id} onclick={() => go(it.id)} aria-label={it.name} title={it.name}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
             {/each}
           {/if}
         {/each}
         <div class="navbottom">
           {#each shown.filter((s) => s.group === "Bottom") as it}
-            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
+            <button class="nav" class:active={view === it.id} onclick={() => go(it.id)} aria-label={it.name} title={it.name}><span class="ni" style="color:{it.color}"><Icon name={it.ic} size={17} /></span>{#if !prefs.collapsed}<span class="nn">{it.name}</span>{/if}</button>
           {/each}
         </div>
         <button class="user" onclick={() => authStore.signOut()} title="Sign out">
@@ -249,7 +279,7 @@
 
       <div class="body">
         {#key view}
-          {#await VIEWS[view]()}
+          {#await loadView(view)}
             <div class="vload"><div class="spinner"></div></div>
           {:then mod}
             {@const Cmp = mod.default}

@@ -69,6 +69,8 @@ class HAStore {
   #conn: Connection | undefined;
   #auth: { accessToken: string; expired: boolean; refreshAccessToken: () => Promise<void> } | undefined;
   #mock = false;
+  #connecting = false; // guards against a second init() firing mid-connect
+  #unsubEntities: (() => void) | undefined;
   #pending: HassEntities | null = null;
   #throttle: ReturnType<typeof setTimeout> | null = null;
   // Batches concurrent history() / historyStates() calls sharing the same time
@@ -94,7 +96,19 @@ class HAStore {
   }
 
   async init() {
-    if (this.status === "connected") return;
+    // Bail if already connected OR a connect is in flight — otherwise a re-run of
+    // the caller's $effect (during the async connect, when status is still
+    // "connecting") would open a second, never-torn-down entity subscription.
+    if (this.status === "connected" || this.#connecting) return;
+    this.#connecting = true;
+    try {
+      await this.#connect();
+    } finally {
+      this.#connecting = false;
+    }
+  }
+
+  async #connect() {
     const mock =
       new URLSearchParams(location.search).get("mock") === "1" ||
       import.meta.env.VITE_MOCK === "1";
@@ -124,12 +138,23 @@ class HAStore {
       }
       this.#conn = connection;
       this.#auth = auth;
-      subscribeEntities(connection, (ents) => this.#applyEntities(ents));
+      this.#unsubEntities = subscribeEntities(connection, (ents) => this.#applyEntities(ents));
       this.status = "connected";
     } catch (e) {
       this.error = e instanceof Error ? e.message : String(e);
       this.status = "error";
     }
+  }
+
+  /** Tear down the live subscription + pending timer (HMR / tests / re-init). */
+  stop() {
+    this.#unsubEntities?.();
+    this.#unsubEntities = undefined;
+    if (this.#throttle != null) { clearTimeout(this.#throttle); this.#throttle = null; }
+    this.#pending = null;
+    try { this.#conn?.close(); } catch { /* ignore */ }
+    this.#conn = undefined;
+    this.status = "connecting";
   }
 
   // ---- readers ----
@@ -652,12 +677,12 @@ class HAStore {
 
   // ---- per-destination message templates (message_templates.json store) ----
   /** The full template library { key: { label, base, announce, push_christo, wa_* } }. */
-  messageTemplates(): Record<string, Record<string, string>> {
-    return (this.attr("sensor.message_templates", "templates") as Record<string, Record<string, string>>) ?? {};
+  messageTemplates(): Record<string, Record<string, any>> {
+    return (this.attr("sensor.message_templates", "templates") as Record<string, Record<string, any>>) ?? {};
   }
 
   /** Persist the whole template library (base64 → shell writer) and re-read. */
-  async saveMessageTemplates(templates: Record<string, Record<string, string>>) {
+  async saveMessageTemplates(templates: Record<string, Record<string, any>>) {
     if (this.#mock) return;
     const json = JSON.stringify({ templates });
     const b64 = btoa(unescape(encodeURIComponent(json)));
@@ -668,6 +693,28 @@ class HAStore {
       if (this.exists(legacy) && typeof m.base === "string") this.#svc("input_text", "set_value", { entity_id: legacy, value: m.base });
     }
     await this.#svc("homeassistant", "update_entity", { entity_id: "sensor.message_templates" });
+  }
+
+  /** Gemini-composed "what changed this week" paragraph (script.insights_narrative). */
+  async insightsNarrative(): Promise<string> {
+    if (this.#mock)
+      return "This week your standby power and baseline load are steady versus the 90-day average, and water use is slightly lower. Nothing needs your attention right now.";
+    if (!this.#conn) return "";
+    try {
+      const res = (await withTimeout(
+        this.#conn.sendMessagePromise({
+          type: "call_service",
+          domain: "script",
+          service: "insights_narrative",
+          return_response: true,
+        }),
+        30_000,
+        { response: {} },
+      )) as { response?: { text?: string } };
+      return res?.response?.text ?? "";
+    } catch {
+      return "";
+    }
   }
 }
 

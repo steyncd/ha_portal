@@ -9,15 +9,17 @@
   const PERSON = "person.christo_steyn";
   const MY_GEO = "sensor.hello_geocoded_location";
 
+  // Okabe-Ito 8-colour palette — the canonical set chosen to stay distinguishable
+  // under red/green colour blindness (black swapped for grey on the dark surface).
   const ROOMS = [
-    { label: "Main", id: "binary_sensor.main_room_pir", color: "#a78bfa" },
-    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#f472b6" },
-    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#38bdf8" },
-    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#34d399" },
-    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#fbbf24" },
-    { label: "Garage", id: "binary_sensor.garage_pir", color: "#fb923c" },
-    { label: "Passage", id: "binary_sensor.passage_pir", color: "#22d3ee" },
-    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#c084fc" },
+    { label: "Main", id: "binary_sensor.main_room_pir", color: "#0072B2" },
+    { label: "Kids", id: "binary_sensor.helloliam_alarm_zone_003_pir_kids_room", color: "#CC79A7" },
+    { label: "TV Room", id: "binary_sensor.helloliam_alarm_zone_007_pir_tv_room", color: "#56B4E9" },
+    { label: "Lounge", id: "binary_sensor.lounge_pir", color: "#009E73" },
+    { label: "Kitchen", id: "binary_sensor.kitchen_pir", color: "#E69F00" },
+    { label: "Garage", id: "binary_sensor.garage_pir", color: "#D55E00" },
+    { label: "Passage", id: "binary_sensor.passage_pir", color: "#F0E442" },
+    { label: "Guest", id: "binary_sensor.guest_room_pir", color: "#999999" },
   ];
   const QUIET = "rgba(255,255,255,.06)";
   const AWAY = "rgba(255,255,255,.13)";
@@ -353,7 +355,7 @@
     <div class="card pad">
       <div class="rh"><span class="lb">Christo's phone</span><span class="sub">iPhone · live</span></div>
       <div class="phone">
-        <div class="pbatt"><div class="pbv" style="color:{meBatt != null && meBatt < 20 ? 'var(--error)' : 'var(--success)'}">{meBatt != null ? n(meBatt) : "—"}%</div><div class="pbk">{chargeState(meBattState)}</div></div>
+        <div class="pbatt"><div class="pbv" style="color:{meBatt != null && meBatt < 20 ? 'var(--error)' : 'var(--success)'}">{meBatt != null ? n(meBatt) : "—"}%{#if meBatt != null && meBatt < 20} ⚠ Low{/if}</div><div class="pbk">{chargeState(meBattState)}</div></div>
         <div class="chips">
           {#each mePhone as c}<div class="chip"><span class="ck">{c.k}</span><span class="cv">{c.v}</span></div>{/each}
         </div>

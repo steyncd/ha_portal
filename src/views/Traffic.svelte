@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { ha } from "../lib/store.svelte";
   import { E } from "../lib/entities";
   import { n, thousands, dailyMax } from "../lib/format";
@@ -15,17 +15,20 @@
 
   let weekBars = $state<{ label: string; value: number | null }[]>([]);
   onMount(async () => {
-    weekBars = dailyMax(await ha.history(E.vehiclesToday, 24 * 7), 7);
+    try { weekBars = dailyMax(await ha.history(E.vehiclesToday, 24 * 7), 7); } catch { /* week bars stay empty */ }
   });
 
   // ---- ANPR: known-vs-unknown + repeat-visitor tracking ----
   const norm = (s: string) => s.toUpperCase().replace(/\s+/g, "");
   const BAD = new Set(["UNKNOWN", "UNAVAILABLE", "NONE", ""]);
 
-  // PLATE=Name pairs from input_text.known_vehicle_plates
+  // PLATE=Name pairs from input_text.known_vehicle_plates. Memoise on the raw
+  // string (a scalar) so this only recomputes when the plate list changes — not
+  // on every entity tick.
+  const knownSig = $derived(ha.state(E.knownPlates) ?? "");
   const known = $derived.by(() => {
     const m = new Map<string, string>();
-    for (const pair of (ha.state(E.knownPlates) ?? "").split(",")) {
+    for (const pair of knownSig.split(",")) {
       const [p, name] = pair.split("=");
       if (p && name) m.set(norm(p), name.trim());
     }
@@ -44,8 +47,12 @@
 
   // ---- full detection log (sensor.anpr_log, newest first) ----
   type Det = { i: number; ts: number; plate: string; vehicle: string; camera: string };
+  // Gate the (potentially large, unbounded) log re-parse on the entity's
+  // last_updated so it only runs when the log actually changes, not per tick.
+  const anprSig = $derived(ha.entities["sensor.anpr_log"]?.last_updated ?? "");
   const detections = $derived.by<Det[]>(() => {
-    const ev = (ha.attr("sensor.anpr_log", "events") as { i: number; ts: string; plate: string; vehicle: string; camera: string }[]) ?? [];
+    anprSig; // dependency: recompute only when the ANPR log entity updates
+    const ev = untrack(() => (ha.attr("sensor.anpr_log", "events") as { i: number; ts: string; plate: string; vehicle: string; camera: string }[]) ?? []);
     return ev.map((e) => ({ i: e.i, ts: Date.parse((e.ts || "").replace(" ", "T")) || 0, plate: e.plate || "", vehicle: e.vehicle || "", camera: e.camera || "" }));
   });
 
@@ -70,8 +77,8 @@
   const configured = $derived(known.size > 0);
 
   // ---- known-plate management (edits input_text.known_vehicle_plates) ----
-  const knownRaw = $derived.by(() =>
-    (ha.state(E.knownPlates) ?? "").split(",").map((p) => { const [pl, nm] = p.split("="); return { plate: (pl || "").trim(), name: (nm || "").trim() }; }).filter((x) => x.plate),
+  const knownRaw = $derived(
+    knownSig.split(",").map((p) => { const [pl, nm] = p.split("="); return { plate: (pl || "").trim(), name: (nm || "").trim() }; }).filter((x) => x.plate),
   );
   async function saveKnown(pairs: { plate: string; name: string }[], toastMsg = "Saved") {
     const value = pairs.filter((p) => p.plate).map((p) => `${p.plate}=${p.name}`).join(",");
@@ -181,7 +188,7 @@
     <div class="rh"><span class="lb">Detections · gate + driveway</span><span class="sub">{detections.length} logged{ha.num("sensor.anpr_log") ? ` · ${ha.num("sensor.anpr_log")} total` : ""}</span></div>
     {#if detections.length}
       <div class="detlist">
-        {#each detections as d}
+        {#each detections as d (d.i)}
           {@const owner = ownerOf(d.plate, d.vehicle)}
           <div class="detrow" class:kn={owner}>
             <div class="dt"><span class="dtt">{hhmm(d.ts)}</span><span class="dtd">{dayLabel(d.ts)}</span></div>
