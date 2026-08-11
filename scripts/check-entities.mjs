@@ -50,12 +50,21 @@ async function token() {
   return m[1].trim().replace(/^["']|["']$/g, "");
 }
 
+// Test files are skipped for the same reason mock.ts is excluded below: a fixture
+// entity id is SUPPOSED to be fake. src/lib/trends.test.ts uses "sensor.x", and
+// reporting that as a broken reference is reporting the point of the file.
+const isTest = (name) => /\.test\.ts$/.test(name);
+
 async function walk(dir) {
   const out = [];
   for (const e of await readdir(dir, { withFileTypes: true })) {
     const p = join(dir, e.name);
-    if (e.isDirectory()) out.push(...(await walk(p)));
-    else if (/\.(ts|svelte)$/.test(e.name)) out.push(p);
+    if (e.isDirectory()) {
+      if (e.name === "test") continue;              // src/test/ — harness + smoke tests
+      out.push(...(await walk(p)));
+    } else if (/\.(ts|svelte)$/.test(e.name) && !isTest(e.name)) {
+      out.push(p);
+    }
   }
   return out;
 }
