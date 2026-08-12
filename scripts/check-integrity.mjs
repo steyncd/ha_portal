@@ -177,6 +177,33 @@ for (const [f, src] of read) {
   }
 }
 
+// ── 10 · Every icon index.html references must EXIST ──────────────────────
+// Added after /favicon.ico turned out to be missing: this is an SPA whose
+// hosting rewrite sends any unknown path to /index.html, so a missing icon does
+// not 404 — it returns HTML with content-type text/html, and the browser quietly
+// falls back to its own generic default. A dead icon link is therefore invisible
+// in every way except the tab looking wrong.
+{
+  const html = await readFile("index.html", "utf8");
+  const refs = [...html.matchAll(/<link[^>]+href="\/([^"]+)"[^>]*>/g)]
+    .filter((m) => /rel="(icon|apple-touch-icon|mask-icon)"/.test(m[0]))
+    .map((m) => m[1]);
+  if (!refs.length) fail("icons", "index.html references no icons at all");
+  for (const r of refs) {
+    try {
+      await readFile(`public/${r}`);
+    } catch {
+      fail("icons", `index.html links /${r} but public/${r} does not exist — the SPA rewrite will serve index.html as the icon`);
+    }
+  }
+  // The browser asks for this one whether or not it is linked.
+  try {
+    await readFile("public/favicon.ico");
+  } catch {
+    fail("icons", "public/favicon.ico is missing — browsers request it unprompted and will get HTML");
+  }
+}
+
 // ── Report ─────────────────────────────────────────────────────────────────
 console.log(`routes ${routes.size} · NAV ${navIds.length} · RAIL ${railIds.length} · folded ${collapsed.length}`);
 if (warns.length) {

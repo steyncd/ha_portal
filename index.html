@@ -8,6 +8,12 @@
          the gradient muddies below ~20px and the stroke is drawn at 2px against
          the hexagon's 1px. Declared before the SVG so browsers that prefer a
          sized raster still find it. -->
+    <!-- favicon.ico first, and it must EXIST: browsers request /favicon.ico on
+         their own, and this is an SPA whose rewrite returns index.html for any
+         unknown path — so without a real file the browser got HTML with
+         content-type text/html where an icon should be, and fell back to its own
+         generic (blue-ish) default. Added 2026-08-11. -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />

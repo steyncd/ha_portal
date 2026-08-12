@@ -351,11 +351,13 @@
     <div class="login">
       <span class="llogo" aria-label="Steyn Home">
         <svg viewBox="0 0 96 96" width="64" height="64" aria-hidden="true">
+          <!-- The same mark as public/favicon.svg and icon-512.png: a black
+               rounded square with a copper house OUTLINE. This used to be a
+               filled hexagon with a house knocked out of it — a different logo
+               from the one on the tab and the home screen. -->
           <defs><linearGradient id="steynLoginG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--acc)" /><stop offset="1" stop-color="var(--acc2)" /></linearGradient></defs>
-          <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLoginG)" />
-          <path d="M30 47 L48 30 L66 47" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M35 46 V67 H61 V46" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M44 67 V57 a4 4 0 0 1 8 0 V67" fill="none" stroke="#0b0d12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
+          <rect width="96" height="96" rx="21" fill="#16171A" />
+          <path d="M21 75 V46.5 L48 21 L75 46.5 V75" fill="none" stroke="url(#steynLoginG)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
         </svg>
       </span>
       <h1>Steyn Home</h1>
@@ -406,12 +408,14 @@
         <div class="brand">
           <span class="logo" aria-label="Steyn Home">
             <svg viewBox="0 0 96 96" width="100%" height="100%" aria-hidden="true">
-              <defs><linearGradient id="steynLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--acc)" /><stop offset="1" stop-color="var(--acc2)" /></linearGradient></defs>
-              <path d="M48 5 L84 26 L84 70 L48 91 L12 70 L12 26 Z" fill="url(#steynLogoG)" />
-              <path d="M30 47 L48 30 L66 47" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M35 46 V67 H61 V46" fill="none" stroke="#0b0d12" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M44 67 V57 a4 4 0 0 1 8 0 V67" fill="none" stroke="#0b0d12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+          <!-- The same mark as public/favicon.svg and icon-512.png: a black
+               rounded square with a copper house OUTLINE. This used to be a
+               filled hexagon with a house knocked out of it — a different logo
+               from the one on the tab and the home screen. -->
+          <defs><linearGradient id="steynLogoG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--acc)" /><stop offset="1" stop-color="var(--acc2)" /></linearGradient></defs>
+          <rect width="96" height="96" rx="21" fill="#16171A" />
+          <path d="M21 75 V46.5 L48 21 L75 46.5 V75" fill="none" stroke="url(#steynLogoG)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
           </span>
           {#if !prefs.collapsed}<span class="bn">Steyn Home</span>{/if}
         </div>
