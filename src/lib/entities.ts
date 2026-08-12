@@ -284,6 +284,28 @@ export const ROOMS: Room[] = [
   { id: "sensor.back_yard_temperature", label: "Back Yard" },
 ];
 
+/**
+ * The outdoor temperature probes, and what each one is actually measuring.
+ *
+ * There are THREE genuinely different sensors outside, in three microclimates,
+ * and on 2026-08-12 at 05:15 they read 12.2 / 8.0 / 6.9 — a 5.3° spread. That is
+ * not sensor error: the patio is roofed and sheltered, the back yard is open to
+ * the sky and loses heat to it overnight, and the courtyard sits between them.
+ * A single "outside" number therefore hides more than it tells, which is why the
+ * card shows all three AND the spread alongside the average.
+ *
+ * `sensor.back_yard_temperature` is the JoJo TANK MONITOR's own probe — the
+ * esp32 on the tank reports temperature as well as level. It is one device, not
+ * a separate weather station.
+ */
+export type OutdoorSrc = { id: string; label: string; note: string };
+
+export const OUTDOOR_TEMPS: OutdoorSrc[] = [
+  { id: "sensor.patio_sensor_temperature", label: "Patio", note: "sheltered, under the roof" },
+  { id: "sensor.outdoor_temperature", label: "Courtyard · back door", note: "the floating sensor" },
+  { id: "sensor.back_yard_temperature", label: "Back yard", note: "the JoJo tank monitor's probe" },
+];
+
 export type LightDef = { id: string; label: string; icon: string; members?: number };
 
 export const INDOOR_LIGHTS: LightDef[] = [

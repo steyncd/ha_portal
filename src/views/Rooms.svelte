@@ -5,6 +5,7 @@
   import AreaChart from "../lib/components/AreaChart.svelte";
   import Overlay from "../lib/components/Overlay.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
+  import { OUTDOOR_TEMPS } from "../lib/entities";
   import BatterySignal from "../lib/components/BatterySignal.svelte";
 
   type Dev = { id: string; label: string; icon: string; power?: string };
@@ -14,7 +15,11 @@
   const PLAN: Room[] = [
     {
       id: "open_patio", label: "Patio", left: 0, top: 0, w: 33.6, h: 24.3, occ: "binary_sensor.helloliam_alarm_zone_023_beam_patio",
-      temps: [{ id: "sensor.back_yard_temperature", label: "Outside" }],
+      // Labelled "Outside" until 2026-08-12, which read as "the outdoor
+      // temperature" when it is one specific probe — the JoJo tank monitor's, in
+      // the back yard, which runs several degrees colder than the patio it was
+      // sitting under. The Outside card below carries all three.
+      temps: [{ id: "sensor.back_yard_temperature", label: "Back yard · JoJo" }],
       lights: [
         { id: "switch.patio_lamp", label: "Patio Lamp", icon: "🪑" },
         { id: "light.back_yard_pool_light", label: "Pool", icon: "🏊", power: "sensor.pool_light_power" },
@@ -208,6 +213,29 @@
   });
   const fcDelta = $derived(ha.num("sensor.outdoor_temp_vs_forecast"));
 
+  // ---- Outside: three probes, three microclimates ----
+  //
+  // Averaged only over the probes REPORTING RIGHT NOW. A sensor that has gone
+  // flat must not drag the mean toward a number nobody measured, so an
+  // unavailable probe is excluded from the average and shown as "—" in its row
+  // rather than silently counted as anything.
+  const outdoor = $derived(
+    OUTDOOR_TEMPS.map((o) => ({ ...o, v: ha.available(o.id) ? ha.num(o.id) : null })),
+  );
+  const outLive = $derived(outdoor.filter((o) => o.v != null).map((o) => o.v as number));
+  const outAvg = $derived(
+    outLive.length ? outLive.reduce((a, b) => a + b, 0) / outLive.length : null,
+  );
+  // The spread is shown WITH the average, never instead of it. On this property
+  // it runs to five degrees between the roofed patio and the open back yard, and
+  // an average that hides that is a worse answer than three numbers.
+  const outSpread = $derived(
+    outLive.length > 1 ? Math.max(...outLive) - Math.min(...outLive) : null,
+  );
+  const outComfort = $derived(
+    outAvg == null ? { label: "No reading", color: "var(--mut)" } : comfortOf(outAvg),
+  );
+
   // Courtyard / back-door sensor (Zigbee, outdoors): temp + humidity + light + battery.
   const FLOAT_T = "sensor.floating_temp_sensor_temperature";
   const ftemp = $derived(ha.num(FLOAT_T));
@@ -344,6 +372,52 @@
 
   <BatterySignal />
 
+  <!-- Outside: every probe separately, then one number for the whole outdoors -->
+  <div class="card pad">
+    <div class="rh">
+      <span class="an">🌤️ Outside</span>
+      <span class="sub">{outLive.length} of {outdoor.length} reporting</span>
+    </div>
+    <div class="tr">
+      <div class="bigt" style="color:{tempColor(outAvg)}">
+        {outAvg == null ? "—" : n(outAvg, 1)}{#if outAvg != null}<span class="deg">°</span>{/if}
+      </div>
+      <div
+        class="pill"
+        style="background:color-mix(in srgb,{outComfort.color} 15%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,{outComfort.color} 30%,transparent)"
+      >
+        <span class="pd" style="background:{outComfort.color};box-shadow:0 0 8px {outComfort.color}"></span>{outComfort.label}
+      </div>
+    </div>
+
+    <div class="osrc">
+      {#each outdoor as o (o.id)}
+        <div class="orow" class:dead={o.v == null}>
+          <span class="ok">{o.label}<span class="onote">{o.note}</span></span>
+          <span class="ov" style="color:{tempColor(o.v)}">
+            {o.v == null ? "—" : `${n(o.v, 1)}°`}
+          </span>
+        </div>
+      {/each}
+    </div>
+
+    <div class="note">
+      {#if outAvg == null}
+        No outdoor probe is reporting, so there is no average to give.
+      {:else}
+        The average of the {outLive.length} probe{outLive.length === 1 ? "" : "s"} reporting.
+        {#if outSpread != null && outSpread >= 2}
+          They disagree by <strong>{n(outSpread, 1)}°</strong> — the patio is roofed
+          and holds its heat, the back yard is open to the sky and loses it. That
+          spread is real, so treat the average as a summary rather than the
+          temperature at any one spot.
+        {:else if outSpread != null}
+          They agree to within {n(outSpread, 1)}°.
+        {/if}
+      {/if}
+    </div>
+  </div>
+
   {#if ha.available(FLOAT_T)}
     <div class="card pad">
       <div class="rh"><span class="an">🌿 Courtyard / Back door</span><span class="sub">outside{#if fbatt != null} · 🔋 {n(fbatt)}%{/if}</span></div>
@@ -406,6 +480,16 @@
   .tr { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   .bigt { font-size: 64px; font-weight: 800; letter-spacing: -3px; line-height: 0.85; }
   .deg { font-size: 26px; color: #60a5fa; }
+  .osrc { display: grid; gap: 1px; margin-top: 14px; }
+  .orow {
+    display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+    padding: 9px 0; border-bottom: 1px solid var(--line, rgba(255, 255, 255, 0.06));
+  }
+  .orow:last-child { border-bottom: 0; }
+  .orow.dead { opacity: 0.5; }
+  .ok { font-size: 13px; font-weight: 700; color: var(--text); display: grid; gap: 1px; }
+  .onote { font-size: 11px; font-weight: 500; color: var(--text-3); }
+  .ov { font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .pill { display: flex; align-items: center; gap: 9px; padding: 9px 15px; border-radius: 999px; font-size: 13px; font-weight: 700; }
   .pd { width: 9px; height: 9px; border-radius: 50%; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }

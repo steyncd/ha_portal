@@ -18,6 +18,10 @@ export const ha = {
   pressButton: (id: string) => { pressed.push(id); },
   mockSet: () => {},
   historyStates: async () => [],
+  history: async () => [],
+  unit: () => "°C",
+  name: (id: string) => id,
+  toggle: () => {},
   armAway: () => {}, armHome: () => {}, armNight: () => {}, disarm: () => {}, script: () => {},
   status: "connected",
 };

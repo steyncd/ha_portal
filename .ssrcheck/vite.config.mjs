@@ -21,7 +21,7 @@ export default defineConfig({
   plugins: [svelte({ configFile: false, compilerOptions: { generate: "server" } })],
   build: { outDir: R + "/.ssrcheck/out", emptyOutDir: true, minify: false, ssr: true,
            rollupOptions: {
-             input: { entry: R + "/.ssrcheck/entry.ts", security: R + "/.ssrcheck/entry-security.ts" },
+             input: { entry: R + "/.ssrcheck/entry.ts", security: R + "/.ssrcheck/entry-security.ts", rooms: R + "/.ssrcheck/entry-rooms.ts" },
              output: { format: "esm", entryFileNames: "[name].mjs" },
            } },
 });

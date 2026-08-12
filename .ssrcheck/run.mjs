@@ -180,5 +180,42 @@ const flap = sec.run({
 t("an actor-less disarm is called out", has(flap, "State changed with no actor"));
 t("and it is not dressed up as normal", !has(flap, "Disarmed for"));
 
+// ---------------------------------------------------------------------------
+console.log("\nH · Rooms: the Outside card, three probes and one number");
+const rooms = await import("./out/rooms.mjs");
+// The real readings from the house at 05:15 on 2026-08-12. The 5.3 degree spread
+// between the roofed patio and the open back yard is genuine, not sensor error,
+// and is the whole reason this card shows all three.
+const OUT = {
+  "sensor.patio_sensor_temperature": "12.16",
+  "sensor.outdoor_temperature": "8.0",
+  "sensor.back_yard_temperature": "6.9",
+};
+const r = rooms.run(OUT);
+t("lists the patio probe", has(r, "Patio"));
+t("lists the courtyard / back door probe", has(r, "Courtyard · back door"));
+t("lists the back yard probe and says it is the JoJo's", has(r, "Back yard") && has(r, "JoJo tank monitor"));
+t("shows each reading separately", has(r, "12.2°") && has(r, "8.0°") && has(r, "6.9°"));
+// (12.16 + 8.0 + 6.9) / 3 = 9.02
+t("gives one cumulative number for outside", has(r, "9"));
+t("says how many probes are reporting", has(r, "3 of 3 reporting"));
+t("states the spread rather than hiding it", has(r, "disagree by") && has(r, "5.3"));
+
+// A flat probe must not drag the average toward a number nobody measured.
+const r2 = rooms.run({ ...OUT, "sensor.back_yard_temperature": "unavailable" });
+t("an unavailable probe is excluded from the average", has(r2, "2 of 3 reporting"));
+// Checked on the ROW, not the whole card: "8.0°" contains "0°", so a naive
+// !has(r2, "0°") fails against a perfectly correct render.
+t("and the dead probe's row reads em-dash", /Back yard[^0-9]*—/.test(strip(r2)));
+// (12.16 + 8.0) / 2 = 10.08
+t("the average is over the live probes only", has(r2, "10.1"));
+
+const r3 = rooms.run({
+  "sensor.patio_sensor_temperature": "unavailable",
+  "sensor.outdoor_temperature": "unavailable",
+  "sensor.back_yard_temperature": "unavailable",
+});
+t("with nothing reporting it says so rather than inventing", has(r3, "No outdoor probe is reporting"));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
