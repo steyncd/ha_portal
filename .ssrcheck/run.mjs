@@ -288,7 +288,10 @@ const TVBASE = {
   "sensor.tv_room_plug_power": "90",
   "switch.tv_room_plug": "on",
   "sensor.tv_room_temperature": "unknown",
-  "climate.tv_room_tv_room_aircon": "off",
+  // A climate entity's target lives in an attribute, not its state.
+  "climate.tv_room_tv_room_aircon": ["off", { temperature: 23, current_temperature: null, hvac_modes: ["off", "cool", "heat", "fan_only", "dry"] }],
+  "sensor.living_room_sensor_temperature": "20.33",
+  "sensor.living_room_sensor_humidity": "38.12",
 };
 const tv = rooms.run(TVBASE);
 t("the TV Room card is on Rooms", has(tv, "TV Room") && has(tv, "mmWave presence"));
@@ -297,7 +300,20 @@ t("target distance in metres, not raw cm", has(tv, "2.1 m"));
 t("shows the watched window the sensor is configured with", has(tv, "watched window") && has(tv, "6.0 m"));
 t("exposes the hold that debounces presence", has(tv, "45 s"));
 t("the aircon is offered", has(tv, "Aircon") && has(tv, "cool") && has(tv, "heat"));
-t("and is honest that it has no temperature feedback", has(tv, "running blind"));
+// The living room sensor is physically beside the aircon (Christo, 2026-08-23),
+// so it IS the feedback — but the card must say where the number came from.
+t("uses the neighbouring sensor as the aircon's feedback", has(tv, "20.3°"));
+t("attributes it rather than implying the aircon knows", has(tv, "the living room sensor beside it"));
+t("states the gap to target, with direction", has(tv, "2.7° below") && has(tv, "23° target"));
+t("mentions the aircon is off while that gap stands", has(tv, "with the aircon off"));
+t("still says the aircon's own probe reports nothing", has(tv, "no temperature of its own"));
+t("and that the neighbour is not in the same spot", has(tv, "not in the same spot"));
+
+const tvblind = rooms.run({ ...TVBASE,
+  "sensor.living_room_sensor_temperature": "unavailable",
+  "sensor.living_room_sensor_humidity": "unavailable" });
+t("with NOTHING nearby reporting it says running blind", has(tvblind, "running blind"));
+t("and does not claim a temperature it does not have", !has(tvblind, "20.3°"));
 
 const tvc = rooms.run({ ...TVBASE, "binary_sensor.tv_room_room_occupied": "off", "binary_sensor.tv_room_presence": "off" });
 t("clear reads Clear", has(tvc, "Clear"));

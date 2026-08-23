@@ -1,9 +1,26 @@
 // Stubbed HA store: a fixed entity set, so what renders is provably a function
 // of the data and not of anything hard-coded in the component.
 const ents: Record<string, { state: string; attributes: Record<string, unknown> }> = {};
-export function setEntities(list: Record<string, string>, names: Record<string, string> = {}) {
+
+/**
+ * A value may be a bare state string, or [state, attributes].
+ *
+ * The tuple form exists because a climate entity keeps its target in an
+ * ATTRIBUTE (temperature), not its state — so without it the aircon test set
+ * target to undefined and silently skipped the gap-to-target sentence entirely
+ * while still reporting green.
+ */
+type Val = string | [string, Record<string, unknown>];
+
+export function setEntities(list: Record<string, Val>, names: Record<string, string> = {}) {
   for (const k of Object.keys(ents)) delete ents[k];
-  for (const [id, st] of Object.entries(list)) ents[id] = { state: st, attributes: names[id] ? { friendly_name: names[id] } : {} };
+  for (const [id, v] of Object.entries(list)) {
+    const [st, attrs] = Array.isArray(v) ? v : [v, {}];
+    ents[id] = {
+      state: st,
+      attributes: { ...attrs, ...(names[id] ? { friendly_name: names[id] } : {}) },
+    };
+  }
 }
 export const pressed: string[] = [];
 export const ha = {

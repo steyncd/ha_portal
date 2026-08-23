@@ -29,6 +29,13 @@
     autoOff: "switch.tv_room_auto_off_when_empty",
     temp: "sensor.tv_room_temperature",
     hum: "sensor.tv_room_humidity",
+    // The living room sensor is physically NEXT TO the aircon (Christo,
+    // 2026-08-23), which makes it the aircon's real feedback: the climate entity
+    // reports no current_temperature and this sensor's own probe reads unknown.
+    // Attributed rather than silently substituted — a number standing in for a
+    // measurement somewhere else has to say where it came from.
+    beside: "sensor.living_room_sensor_temperature",
+    besideHum: "sensor.living_room_sensor_humidity",
     wifi: "sensor.tv_room_wifi_signal",
     plug: "switch.tv_room_plug",
     plugPower: "sensor.tv_room_plug_power",
@@ -54,15 +61,24 @@
     return Math.max(0, Math.min(100, ((m - minM) / (maxM - minM)) * 100));
   });
 
-  // The aircon has NO temperature feedback: climate.current_temperature is null
-  // and sensor.tv_room_temperature reads unknown, so nothing in the room tells
-  // it — or us — how warm it actually is. Saying that plainly matters more than
-  // the target number does.
   const mode = $derived(ha.state(TV.aircon) ?? "unknown");
   const target = $derived(ha.attr(TV.aircon, "temperature") as number | null);
-  const feedback = $derived(
-    (ha.attr(TV.aircon, "current_temperature") as number | null) ?? num(TV.temp),
-  );
+
+  // Feedback, most authoritative first: the aircon's own reading, then this
+  // sensor's probe, then the living room sensor standing beside it. Only the
+  // third one actually reports today, so the card names it — an unattributed
+  // number would imply the aircon knows something it does not.
+  const feedback = $derived.by<{ v: number; src: string } | null>(() => {
+    const own = ha.attr(TV.aircon, "current_temperature") as number | null;
+    if (own != null) return { v: own, src: "the aircon" };
+    const probe = num(TV.temp);
+    if (probe != null) return { v: probe, src: "this sensor" };
+    const near = num(TV.beside);
+    if (near != null) return { v: near, src: "the living room sensor beside it" };
+    return null;
+  });
+  const gap = $derived(feedback && target != null ? feedback.v - target : null);
+  const nearHum = $derived(num(TV.besideHum));
   const MODES = ["off", "cool", "heat", "fan_only", "dry"];
 </script>
 
@@ -125,7 +141,10 @@
     <div class="hr"></div>
     <div class="rh">
       <span class="lb">Aircon</span>
-      <span class="sub">{target != null ? `set to ${n(target, 0)}°` : "no target"}</span>
+      <span class="sub">
+        {#if feedback}{n(feedback.v, 1)}° now{#if target != null} · set to {n(target, 0)}°{/if}
+        {:else}{target != null ? `set to ${n(target, 0)}°` : "no target"}{/if}
+      </span>
     </div>
     <div class="modes">
       {#each MODES as m (m)}
@@ -137,12 +156,20 @@
     </div>
     <div class="note">
       {#if feedback == null}
-        <strong>It is running blind.</strong> The aircon reports no room
-        temperature and this sensor's own probe reads unknown, so nothing is
-        measuring whether {target != null ? `${n(target, 0)}°` : "the target"} was
-        reached. Mode and target are set open-loop until that probe reports.
+        <strong>It is running blind.</strong> Nothing in or near this room reports
+        a temperature, so nothing is measuring whether
+        {target != null ? `${n(target, 0)}°` : "the target"} was reached.
       {:else}
-        Room is {n(feedback, 1)}° against a {n(target, 0)}° target.
+        <strong>{n(feedback.v, 1)}°</strong> from {feedback.src}{#if nearHum != null && feedback.src.includes("living room")}, {n(nearHum, 0)}% humidity{/if}.
+        {#if gap != null}
+          That is <strong>{n(Math.abs(gap), 1)}° {gap < 0 ? "below" : "above"}</strong>
+          the {n(target, 0)}° target{#if mode === "off"}, with the aircon off{/if}.
+        {/if}
+        {#if feedback.src.includes("living room")}
+          The aircon reports no temperature of its own and this sensor's probe
+          reads unknown, so that neighbouring sensor is the only real measurement
+          — close enough to be useful, but it is not in the same spot.
+        {/if}
       {/if}
     </div>
   {/if}

@@ -186,10 +186,9 @@
           // climate.tv_room_tv_room_aircon with off/cool/heat/fan_only/dry and a
           // 23° target. A cheatsheet that is confidently out of date is worse
           // than one with a gap, so this now says what is actually there.
-          k: "One aircon, and it runs blind",
-          s: "climate.tv_room_tv_room_aircon is the only climate entity in the house — off / cool / heat / fan / dry, 17-30°. It reports NO room temperature, and the TV Room sensor's own probe reads unknown, so nothing measures whether the target was reached. Every other temperature in the app is still monitoring only.",
+          k: "One aircon, and its thermometer is the neighbour's",
+          s: "climate.tv_room_tv_room_aircon is the only climate entity in the house — off / cool / heat / fan / dry, 17-30°. It reports no temperature of its own and the TV Room sensor's probe reads unknown, so the portal uses sensor.living_room_sensor_temperature, which sits physically beside the aircon. Close enough to be useful, but it is not in the same spot — the card says so. Every other temperature in the app is still monitoring only.",
           v: "Note",
-          warn: true,
         },
         {
           k: "The street lights are flaky",
