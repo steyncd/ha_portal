@@ -217,5 +217,94 @@ const r3 = rooms.run({
 });
 t("with nothing reporting it says so rather than inventing", has(r3, "No outdoor probe is reporting"));
 
+// ---------------------------------------------------------------------------
+console.log("\nI · Security: the gate card (reed truth, graded camera)");
+// The house's real values at 2026-08-23 16:20. supported_features 11 on the
+// cover = open + close + stop.
+const GATEBASE = {
+  "cover.study_gate_controller_gate": "closed",
+  "sensor.front_yard_gate_controller_gate_state": "Closed",
+  "binary_sensor.study_gate_controller_gate_closed_contact": "on",
+  "binary_sensor.study_gate_controller_gate_open_contact": "off",
+  "binary_sensor.study_gate_controller_gate_locks_engaged": "on",
+  "binary_sensor.front_yard_gate_controller_gate_moving": "off",
+  "binary_sensor.front_yard_gate_controller_gate_tamper": "off",
+  "binary_sensor.front_yard_gate_controller_gate_battery_low": "off",
+  "sensor.study_gate_controller_gate_battery_voltage": "13.34",
+  "sensor.front_yard_gate_controller_gate_lock_feed_voltage": "13.45",
+  "sensor.front_yard_gate_controller_gate_wifi_signal": "-60",
+  "sensor.front_yard_gate_controller_gate_uptime": "17402",
+  "sensor.gate_opens_today": "18",
+  "sensor.gate_open_time_today": "0.69",
+  "input_number.gate_lifetime_cycles": "2",
+  "input_number.gate_maintenance_cycles": "5000",
+  "sensor.gate_camera_accuracy": "86",
+  "input_number.gate_cam_checks_total": "7",
+  "input_number.gate_cam_correct": "6",
+  "input_number.gate_cam_false_closed": "1",
+  "input_number.gate_cam_false_open": "0",
+  "input_text.gate_cam_last_verdict": "truth=closed cam=closed",
+  "input_boolean.gate_cam_grading_enabled": "on",
+  "binary_sensor.gate_recently_opened": "off",
+};
+const g = sec.run({ ...base, ...GATEBASE, "alarm_control_panel.helloliam_alarm_area_01_huis": "armed_home" });
+t("the gate card is on Security", has(g, "Gate") && has(g, "reed-confirmed"));
+t("posture comes from the reed", has(g, "Closed") && has(g, "closed reed made"));
+t("Open asks twice, Close and Stop do not", has(g, "Open the gate") && has(g, "Close") && has(g, "Stop"));
+t("shows today's usage", has(g, "18") && has(g, "0.7 h"));
+t("accuracy NEVER appears without its sample size", has(g, "86% over only 7 checks"));
+t("and says outright that 7 is too few", has(g, "too few to trust yet"));
+t("names the one miss by direction", has(g, "Called closed while open"));
+t("says the reeds decide, not the camera", has(g, "The reeds decide"));
+t("flags that the cycle counter only started recently", has(g, "counts from the day the controller was fitted"));
+
+// Stopped partway: both reeds off and not moving — the state that matters.
+const gp = sec.run({ ...base, ...GATEBASE,
+  "binary_sensor.study_gate_controller_gate_closed_contact": "off",
+  "binary_sensor.study_gate_controller_gate_open_contact": "off" });
+t("both reeds off = stopped partway, not 'closed'", has(gp, "Stopped partway"));
+t("and it says you can walk through it", has(gp, "wide enough to walk through"));
+
+// Both reeds made is electrically impossible.
+const gu = sec.run({ ...base, ...GATEBASE,
+  "binary_sensor.study_gate_controller_gate_open_contact": "on" });
+t("both reeds made is called out as impossible", has(gu, "Reeds disagree") && has(gu, "electrically impossible"));
+
+// Locks dropping while the gate is shut is a real fault.
+const gl = sec.run({ ...base, ...GATEBASE, "binary_sensor.study_gate_controller_gate_locks_engaged": "off" });
+t("locks dropping while shut is flagged", has(gl, "DROPPED while shut"));
+
+console.log("\nJ · Rooms: the TV Room mmWave sensor");
+const TVBASE = {
+  "binary_sensor.tv_room_room_occupied": "on",
+  "binary_sensor.tv_room_presence": "on",
+  "binary_sensor.tv_room_presence_direct": "on",
+  "sensor.tv_room_target_distance": "208",
+  "number.tv_room_min_distance_gate": "0",
+  "number.tv_room_max_distance_gate": "6",
+  "number.tv_room_presence_timeout": "45",
+  "switch.tv_room_auto_off_when_empty": "off",
+  "sensor.tv_room_wifi_signal": "-32",
+  "sensor.tv_room_plug_power": "90",
+  "switch.tv_room_plug": "on",
+  "sensor.tv_room_temperature": "unknown",
+  "climate.tv_room_tv_room_aircon": "off",
+};
+const tv = rooms.run(TVBASE);
+t("the TV Room card is on Rooms", has(tv, "TV Room") && has(tv, "mmWave presence"));
+t("occupancy reads as a word", has(tv, "Occupied"));
+t("target distance in metres, not raw cm", has(tv, "2.1 m"));
+t("shows the watched window the sensor is configured with", has(tv, "watched window") && has(tv, "6.0 m"));
+t("exposes the hold that debounces presence", has(tv, "45 s"));
+t("the aircon is offered", has(tv, "Aircon") && has(tv, "cool") && has(tv, "heat"));
+t("and is honest that it has no temperature feedback", has(tv, "running blind"));
+
+const tvc = rooms.run({ ...TVBASE, "binary_sensor.tv_room_room_occupied": "off", "binary_sensor.tv_room_presence": "off" });
+t("clear reads Clear", has(tvc, "Clear"));
+
+// The hold is why raw and debounced can disagree; say so rather than look broken.
+const tvh = rooms.run({ ...TVBASE, "binary_sensor.tv_room_presence": "off" });
+t("a raw/debounced disagreement is explained by the hold", has(tvh, "hold is still running"));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

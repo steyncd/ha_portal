@@ -6,6 +6,8 @@
   import { toast } from "../lib/toast.svelte";
   import { clock } from "../lib/format";
   import StatusChip from "../lib/components/StatusChip.svelte";
+  import GateCard from "../lib/components/GateCard.svelte";
+  import { GATE } from "../lib/gate";
   import { alarmHero, alarmLog, PROV_ENTITIES, type LogEntry } from "../lib/provenance.svelte";
 
   // This IS the Security screen now — the nav used to land on SecurityHub, which
@@ -276,6 +278,15 @@
     <span class="ps">{hero.sub}</span>
     {#if hero.limit}<span class="plim">{hero.limit}</span>{/if}
   </div>
+
+  <!-- The gate. Above the zones deliberately: after the alarm state itself, an
+       open gate is the most consequential fact on this screen, and the
+       three-second glance should reach it without scrolling. Rendered only when
+       the controller is actually present, so the card cannot become a row of
+       em-dashes if the ESP goes offline for good. -->
+  {#if ha.exists(GATE.cover)}
+    <GateCard />
+  {/if}
 
   <!-- active-zones indicator -->
   <div class="card ind" class:alert={activeZones.length > 0}>

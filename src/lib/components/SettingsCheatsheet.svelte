@@ -130,6 +130,33 @@
       ],
     },
     {
+      t: "The gate",
+      lead:
+        "A DIY Centurion CP75 controller (ESPHome) since 23 August 2026. The important part is which sensor is believed.",
+      rows: [
+        {
+          k: "The reed switches are the truth, not the camera",
+          s: "Gate-open detection was repointed off the camera/LLM guess onto the physical closed reed, so every downstream alert — open announce, open-too-long, close-confirm — now runs off the contact. The camera AI open-detector was deliberately switched off so it cannot fight the reed.",
+          v: "By design",
+        },
+        {
+          k: "The camera is being graded, not trusted",
+          s: "On every settled transition the LLM's verdict is scored against the reed, and every misclassified frame is saved to /config/www/gate_training/misclassified/. Security shows the running agreement with its sample size — a percentage over seven checks is not a percentage over seven hundred.",
+          v: "By design",
+        },
+        {
+          k: "Auto-close was deliberately left out",
+          s: "feature_gate_smarts.yaml implements the left-open escalation, forced-gate intrusion, lock-failure, battery and stuck-gate alerts — but nothing closes the gate on its own. A gate that closes itself on a timer closes on whatever is in the way.",
+          v: "By design",
+        },
+        {
+          k: "Open asks twice in the portal",
+          s: "Security's gate card requires a second tap to open, and Close and Stop do not. Opening lets anything in and cannot be un-opened once someone has walked through; closing and stopping both increase safety, and a confirmation on Stop would be dangerous with a leaf closing on something.",
+          v: "By design",
+        },
+      ],
+    },
+    {
       t: "Worth remembering",
       rows: [
         {
@@ -154,9 +181,15 @@
           v: "By design",
         },
         {
-          k: "There are no thermostats",
-          s: "No climate entities exist. Every temperature in the app is monitoring only — there is nothing to set.",
-          v: "By design",
+          // Was "There are no thermostats — no climate entities exist". True when
+          // written; false since 2026-08-23, when the TV Room aircon appeared as
+          // climate.tv_room_tv_room_aircon with off/cool/heat/fan_only/dry and a
+          // 23° target. A cheatsheet that is confidently out of date is worse
+          // than one with a gap, so this now says what is actually there.
+          k: "One aircon, and it runs blind",
+          s: "climate.tv_room_tv_room_aircon is the only climate entity in the house — off / cool / heat / fan / dry, 17-30°. It reports NO room temperature, and the TV Room sensor's own probe reads unknown, so nothing measures whether the target was reached. Every other temperature in the app is still monitoring only.",
+          v: "Note",
+          warn: true,
         },
         {
           k: "The street lights are flaky",

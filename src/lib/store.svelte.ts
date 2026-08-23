@@ -767,6 +767,24 @@ class HAStore {
     if (this.#mock) return this.#setMock(entity_id, open ? "open" : "closed");
     return this.#svc("cover", open ? "open_cover" : "close_cover", { entity_id });
   }
+  /**
+   * Halt a cover mid-travel.
+   *
+   * Separate from cover() because stop is not a third value of "open" — it is
+   * the escape hatch, and on the gate it is the only way to catch a leaf that is
+   * closing on something. `cover` is already in NEVER_QUEUE, so offline this
+   * fails loudly instead of firing later at a moment nobody chose.
+   */
+  coverStop(entity_id: string) {
+    if (this.#mock) return;
+    return this.#svc("cover", "stop_cover", { entity_id });
+  }
+  /** Set an aircon's mode, and optionally its target, in one call. */
+  setClimate(entity_id: string, hvac_mode?: string, temperature?: number) {
+    if (this.#mock) return;
+    if (hvac_mode != null) this.#svc("climate", "set_hvac_mode", { entity_id, hvac_mode });
+    if (temperature != null) this.#svc("climate", "set_temperature", { entity_id, temperature });
+  }
   /** Lock/unlock a lock. */
   lock(entity_id: string, locked: boolean) {
     if (this.#mock) return this.#setMock(entity_id, locked ? "locked" : "unlocked");

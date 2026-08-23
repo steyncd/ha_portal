@@ -6,6 +6,7 @@
   import Overlay from "../lib/components/Overlay.svelte";
   import { lightSheet } from "../lib/lightSheet.svelte";
   import { OUTDOOR_TEMPS } from "../lib/entities";
+  import TvRoomCard from "../lib/components/TvRoomCard.svelte";
   import BatterySignal from "../lib/components/BatterySignal.svelte";
 
   type Dev = { id: string; label: string; icon: string; power?: string };
@@ -67,7 +68,11 @@
       appliances: [{ id: "switch.main_bedroom_plugs", label: "Plugs", icon: "🔌", power: "sensor.main_bedroom_plugs_current_consumption" }],
     },
     {
-      id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8, occ: "binary_sensor.lounge_area_occupancy",
+      // Occupancy repointed 2026-08-23 from binary_sensor.lounge_area_occupancy
+      // to the room's own mmWave sensor. room_occupied is the debounced one that
+      // honours the 45 s hold, so the plan does not flicker as someone shifts on
+      // the couch — which is exactly what a PIR-derived lounge sensor did.
+      id: "tv", label: "TV Room", left: 0, top: 51.4, w: 25.3, h: 33.8, occ: "binary_sensor.tv_room_room_occupied",
       temps: [{ id: "sensor.living_room_sensor_temperature", label: "TV Room" }], hum: "sensor.living_room_sensor_humidity",
       lights: [
         { id: "switch.living_room_lamp", label: "Living", icon: "🛋️", power: "sensor.living_room_lamp_power" },
@@ -371,6 +376,10 @@
   </div>
 
   <BatterySignal />
+
+  {#if ha.exists("binary_sensor.tv_room_room_occupied")}
+    <TvRoomCard />
+  {/if}
 
   <!-- Outside: every probe separately, then one number for the whole outdoors -->
   <div class="card pad">
