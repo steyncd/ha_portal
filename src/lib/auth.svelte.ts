@@ -9,6 +9,8 @@
 import { auth, googleProvider, db } from "./firebase";
 import {
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signOut as fbSignOut,
   onAuthStateChanged,
   updateProfile,
@@ -22,6 +24,19 @@ export const BOOTSTRAP_OWNERS = [
 ];
 
 const lc = (s: string | null | undefined) => (s ?? "").toLowerCase();
+
+// Installed as a home-screen web app (iOS/Android standalone), the browser blocks
+// the OAuth POPUP window — so signInWithPopup silently fails there. In that mode
+// we use the full-page REDIRECT flow instead (completed by getRedirectResult on
+// next load). Regular browser tabs keep the popup (nicer UX, no full reload).
+function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia?.("(display-mode: standalone)").matches === true ||
+    // iOS Safari's non-standard flag for home-screen web apps
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
 type AuthStatus = "loading" | "signedout" | "denied" | "ready";
 
 class AuthStore {
@@ -39,6 +54,9 @@ class AuthStore {
 
   init() {
     if (this.#authUnsub) return; // idempotent: a second init() must not stack a listener
+    // Complete a pending redirect sign-in (the iOS-PWA path). Resolves around the
+    // same time as onAuthStateChanged; surface any error to the sign-in screen.
+    getRedirectResult(auth).catch((e) => { this.error = e instanceof Error ? e.message : String(e); });
     this.#authUnsub = onAuthStateChanged(auth, (u) => {
       this.user = u;
       if (this.#unsub) { this.#unsub(); this.#unsub = null; }
@@ -79,9 +97,22 @@ class AuthStore {
 
   async signIn() {
     this.error = "";
+    // Installed PWA → popups are blocked, so go straight to the redirect flow.
+    if (isStandalone()) {
+      try { await signInWithRedirect(auth, googleProvider); } // navigates away; returns via getRedirectResult()
+      catch (e) { this.error = e instanceof Error ? e.message : String(e); }
+      return;
+    }
     try {
       await signInWithPopup(auth, googleProvider);
     } catch (e) {
+      // Some environments (blocked popup, in-app browsers) can't do popups even
+      // in a normal tab — fall back to a full-page redirect rather than dead-end.
+      const code = (e as { code?: string })?.code ?? "";
+      if (["auth/popup-blocked", "auth/cancelled-popup-request", "auth/operation-not-supported-in-this-environment"].includes(code)) {
+        try { await signInWithRedirect(auth, googleProvider); return; }
+        catch (e2) { this.error = e2 instanceof Error ? e2.message : String(e2); return; }
+      }
       this.error = e instanceof Error ? e.message : String(e);
     }
   }
