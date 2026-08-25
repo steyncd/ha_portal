@@ -322,5 +322,39 @@ t("clear reads Clear", has(tvc, "Clear"));
 const tvh = rooms.run({ ...TVBASE, "binary_sensor.tv_room_presence": "off" });
 t("a raw/debounced disagreement is explained by the hold", has(tvh, "hold is still running"));
 
+// ---------------------------------------------------------------------------
+console.log("\nK · Notify: all 83 notification switches as a destination matrix");
+const nt = await import("./out/notify.mjs");
+const NFIX = JSON.parse(await (await import("node:fs/promises"))
+  .readFile(new URL("./notify-fixture.json", import.meta.url), "utf8"));
+const nv = nt.run(NFIX);
+
+t("renders the six destinations Christo asked for",
+  ["Christo · push", "Mandri · push", "Christo · WhatsApp", "Mandri · WhatsApp", "Christo · email", "Mandri · email"]
+    .every((d) => has(nv, d)));
+t("every destination gets an all-on / all-off control", (nv.match(/All on/g) || []).length === 6);
+t("all 17 categories are listed", has(nv, "17 categories"));
+t("counts the other settings too", has(nv, "14 other settings"));
+
+// The urgent ones must not be buried alphabetically.
+const iAlarm = strip(nv).indexOf("Alarm"), iAnom = strip(nv).indexOf("Anomaly");
+t("urgent categories sort above the rest", iAlarm > -1 && iAlarm < iAnom, `alarm@${iAlarm} anomaly@${iAnom}`);
+t("and are tagged as urgent", has(nv, "urgent"));
+
+// The two facts that must never look the same.
+t("an absent destination shows em-dash, not 'off'", has(nv, "—"));
+t("explains that em-dash means it never sends there", has(nv, "never sends there"));
+t("a person-less switch is marked as moving both", has(nv, "both"));
+t("and explains that tapping it changes the other person too", has(nv, "changes the other too"));
+
+// Safety's per-person master has no channel at all.
+t("surfaces the per-person master where one exists", has(nv, "per-person master"));
+
+// Counts come from the live data, not a hard-coded number.
+t("column counts are live", /\d+ of \d+ on/.test(strip(nv)));
+
+const empty = nt.run({});
+t("with no helpers it does not invent a matrix", has(empty, "0 categories"));
+
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

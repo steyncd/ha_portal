@@ -17,6 +17,7 @@
   import SettingsCheatsheet from "../lib/components/SettingsCheatsheet.svelte";
   import SettingsAutomations from "../lib/components/SettingsAutomations.svelte";
   import SettingsButtons from "../lib/components/SettingsButtons.svelte";
+  import SettingsNotifications from "../lib/components/SettingsNotifications.svelte";
   import SettingsTwins from "../lib/components/SettingsTwins.svelte";
   import SettingsCalendars from "../lib/components/SettingsCalendars.svelte";
   import SettingsCloud from "../lib/components/SettingsCloud.svelte";
@@ -270,7 +271,7 @@
     { id: "alarm", name: "Alarm", sub: "Arming behaviour and the rules that guard it" },
     { id: "autos", name: "Automations", sub: "What ran, what did not, and what it did" },
     { id: "reminders", name: "Reminders", sub: "Announce on the speakers, send on WhatsApp, or both" },
-    { id: "notify", name: "Notify", sub: "Three classes, two digests, and the badge" },
+    { id: "notify", name: "Notify", sub: "Who gets told what — six destinations, every category" },
     { id: "health", name: "Health", sub: "Oura, and who can see it" },
     { id: "views", name: "Views", sub: "What appears in nav, and what Home opens on" },
     { id: "buttons", name: "Buttons", sub: "What each Zigbee button press does — reassign any of the twelve" },
@@ -570,6 +571,14 @@
       {/each}
       <div class="note">Feeds the Oura automations (steps nudge, low-readiness morning, illness warning).</div>
     </div>
+  {/if}
+
+  {#if tab === "notify"}
+  <!-- Destinations first. Every one of these 77 switches lived only in HA's own
+       UI until now, and "who gets told what" is the question this tab exists for
+       — broadcast and parcels are downstream of it. -->
+  <h2 class="section">Who gets told what</h2>
+  <SettingsNotifications />
   {/if}
 
   {#if tab === "notify"}
