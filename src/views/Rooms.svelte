@@ -463,7 +463,7 @@
   .ob.on { background: var(--fill-strong); color: var(--tx); }
   .lg2 { display: inline-flex; align-items: center; gap: 6px; font-size: 10.5px; color: var(--mut); }
   .lcd { width: 10px; height: 10px; border-radius: 3px; flex: none; }
-  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+  .grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; align-items: start; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
   .wide { grid-column: 1 / -1; }
   .note { font-size: 11.5px; color: var(--muted-2); margin-top: 10px; }

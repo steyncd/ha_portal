@@ -127,7 +127,7 @@
   .big { font-size: 26px; font-weight: 800; margin-top: 5px; }
   .u { font-size: 12px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
-  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
   .rings { display: flex; gap: 22px; align-items: center; justify-content: center; }
   .ringwrap { text-align: center; }

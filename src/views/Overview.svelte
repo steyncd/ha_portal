@@ -367,7 +367,7 @@
     .masonry > .w { margin: 0; }
   }
 
-  .w { break-inside: avoid; margin: 0 0 14px; padding: 18px; }
+  .w { break-inside: avoid; margin: 0 0 14px; padding: var(--pad-card); }
   /* Skip layout/paint for cards below the fold. contain-intrinsic-size is
      mandatory here — without it the browser collapses them to zero height and
      the scrollbar jumps as you scroll. */

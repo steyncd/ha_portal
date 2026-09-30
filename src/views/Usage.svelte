@@ -181,7 +181,7 @@
   .confirm { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin-bottom: 16px; border-radius: 13px; font-size: 12.5px; color: var(--text-2); background: color-mix(in srgb, var(--error) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--error) 34%, transparent); }
   .confirm button { margin-left: auto; padding: 7px 15px; border-radius: 9px; background: var(--error); color: #fff; font-size: 12px; font-weight: 700; }
 
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; margin-bottom: 14px; }
   @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
   .card { padding: var(--pad-card); border-radius: var(--r-surface); background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 14px; }
   .ch { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }

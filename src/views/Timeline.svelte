@@ -402,7 +402,7 @@
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
   .note { font-size: 12.5px; color: var(--muted-2); padding: 8px 0; }
-  .two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
+  .two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; align-items: start; }
   @media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
 
   .hero { padding: 20px var(--pad-card); display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; overflow: hidden; }
