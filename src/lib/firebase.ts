@@ -19,9 +19,40 @@ import {
 } from "firebase/firestore";
 
 const env = import.meta.env;
+
+/**
+ * The auth domain must be the SAME ORIGIN as the page, or Safari breaks sign-in.
+ *
+ * Firebase's default authDomain is <project>.firebaseapp.com while this app is
+ * served from helloliam-ha-dashboard.web.app. Those are different origins, so the
+ * auth flow's iframe/storage is THIRD-PARTY — and Safari 16.1+, Firefox, Chrome's
+ * storage partitioning and every home-screen web app block third-party storage.
+ * The result is sign-in that silently fails everywhere except Chrome, which is
+ * exactly what Christo saw. This is Firebase's own documented Option 1 for an app
+ * hosted on a web.app subdomain:
+ * https://firebase.google.com/docs/auth/web/redirect-best-practices
+ *
+ * Taken from location at RUNTIME rather than hard-coded, because every Firebase
+ * Hosting site serves /__/auth/handler on its own domain (verified: both
+ * helloliam-ha-dashboard.web.app and .firebaseapp.com return 200). So this stays
+ * first-party on web.app today and on any custom domain added later, with no
+ * second place to remember to change.
+ *
+ * The dev server is the exception — localhost:5173 has no /__/auth/handler of its
+ * own, so it keeps the configured domain and signs in cross-origin as before.
+ */
+function sameOriginAuthDomain(): string {
+  const configured = env.VITE_FIREBASE_AUTH_DOMAIN;
+  if (typeof location === "undefined") return configured;
+  const h = location.hostname;
+  const isLocal =
+    h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h.endsWith(".local") || h.endsWith(".test");
+  return isLocal ? configured : location.hostname;
+}
+
 const firebaseConfig = {
   apiKey: env.VITE_FIREBASE_API_KEY,
-  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+  authDomain: sameOriginAuthDomain(),
   projectId: env.VITE_FIREBASE_PROJECT_ID,
   storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
