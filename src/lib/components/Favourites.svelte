@@ -69,7 +69,7 @@
 </div>
 
 <style>
-  .fav { margin-bottom: 16px; }
+  .fav { margin-bottom: var(--gap-section); }
   .fh { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
   .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .edit { font-size: 11.5px; font-weight: 600; color: var(--acc2, var(--acc)); background: rgba(255,255,255,0.05); border-radius: 9px; padding: 5px 11px; }

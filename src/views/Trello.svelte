@@ -211,7 +211,7 @@
 </div>
 
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 0.9rem; }
+  .wrap { display: flex; flex-direction: column; gap: var(--gap-section); }
   .tbar { display: flex; align-items: center; gap: 0.5rem; }
   .tspacer { flex: 1; }
   .bsel {

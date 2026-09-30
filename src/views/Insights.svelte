@@ -475,7 +475,6 @@
   .itxt { display: flex; flex-direction: column; gap: 1px; }
   .im { font-size: 13px; font-weight: 600; color: var(--text); }
   .id { font-size: 11.5px; color: var(--muted); }
-  .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
   .note { font-size: 12.5px; color: var(--muted-2); }

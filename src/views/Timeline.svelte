@@ -399,14 +399,13 @@
   .tabs { display: flex; gap: 6px; padding: 5px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); align-self: flex-start; }
   .tabs button { padding: 8px 16px; border-radius: 9px; font-size: 12.5px; font-weight: 700; color: var(--text-2); }
   .tabs button.active { background: var(--grad); color: #07131c; }
-  .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .sub { font-size: 12px; color: var(--dim); }
   .note { font-size: 12.5px; color: var(--muted-2); padding: 8px 0; }
   .two { display: grid; grid-template-columns: 1.1fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
 
-  .hero { padding: 20px 22px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; overflow: hidden; }
+  .hero { padding: 20px var(--pad-card); display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; overflow: hidden; }
   .hero::before { content: ""; position: absolute; inset: 0; background: radial-gradient(120% 150% at 0% 0%, color-mix(in srgb, var(--acc) 15%, transparent), transparent 60%); pointer-events: none; }
   .hleft { position: relative; flex: 1; min-width: 200px; }
   .hsum { font-size: 22px; font-weight: 800; letter-spacing: -0.4px; margin-top: 4px; }

@@ -278,13 +278,12 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .head { padding: 18px 22px; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .head { padding: 18px var(--pad-card); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
   .sub { font-size: 12.5px; color: var(--dim); margin-top: 3px; }
   .hact { display: flex; align-items: center; gap: 14px; }
   .en { display: flex; align-items: center; gap: 9px; font-size: 12.5px; color: var(--text-2); font-weight: 600; }
   .new, .addmsg { padding: 10px 15px; border-radius: 12px; background: var(--grad); color: #0b1017; font-size: 12.5px; font-weight: 800; }
   .addmsg { background: rgba(255, 255, 255, 0.07); color: var(--text-2); }
-  .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 13px; }
   .builder { display: flex; flex-direction: column; gap: 15px; }
   .brow { display: flex; align-items: center; justify-content: space-between; }

@@ -101,6 +101,13 @@
      new code; --r-card / --r-ctl are kept as aliases because ~37 views already
      reference them. */
   --r-surface: 16px;
+  /* The third tier the app already had but never named. "Two radii, plus pill"
+     was the intent; a measurement of the live DOM found ten distinct values in
+     use, and 14px was the second most common (274 elements) — it is the real
+     radius of a tile or row sitting INSIDE a card, distinct from the card's own
+     16px and from a 10px control. Naming it is how the strays around it (11,
+     12, 13, 15, 18, 20) get collapsed instead of multiplying. */
+  --r-inner: 14px;
   --r-control: 10px;
   --r-pill: 999px;
   --r-card: var(--r-surface); /* alias */
@@ -108,6 +115,25 @@
   --r-hero: var(--r-surface); /* legacy */
   --r: var(--r-surface);      /* legacy */
   --r-tile: var(--r-control); /* legacy */
+
+  /* ---- Spacing: ONE card padding, ONE section gap.
+     There were no spacing tokens here, and it showed. Nineteen views each
+     declared their own `.pad` — at 18, 18/20, 20, 20/22 and 22px — so the same
+     class name meant a different inset on every page, and a column of stacked
+     full-width cards had a ragged left edge (Security measured 24 / 16 / 18 /
+     20 down one column). Worse, seven cards used `class="card pad"` with no
+     `.pad` rule in scope at all, which is not a scoping subtlety: they rendered
+     with ZERO padding, text flush against the card border. The gate card and
+     the TV Room card were two of them.
+
+     A column of cards has to share one left edge or the page reads as broken,
+     so the horizontal inset is the part that is not negotiable. Vertical
+     padding may vary with a card's role — a hero breathes more than a status
+     strip — which is why cards that need that write `padding: 13px var(--pad-card)`
+     rather than redeclaring `.pad`. */
+  --pad-card: 20px;
+  --pad-row: 12px 14px; /* a list row INSIDE a card */
+  --gap-section: 14px; /* between a view's top-level sections */
 
   --dur: 180ms;
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
@@ -165,6 +191,16 @@
 [data-theme="plum"] {
   --bg: #201c26; --s1: #292430; --s2: #332d3c; --line: #3d3647;
   --mut: #a29aae; --tx: #ede9f2; --tx2: #cbc4d4;
+}
+
+/* On a phone, 20px of page gutter plus 20px of card padding spends 80px of a
+   375px screen on empty space before a single character is read. Step both down
+   to 16px — the standard phone gutter — which hands ~24px back to content per
+   card without the text ever touching an edge. Desktop is unchanged. */
+@media (max-width: 640px) {
+  :root {
+    --pad-card: 16px;
+  }
 }
 
 * {
@@ -301,6 +337,15 @@ input[type="range"]::-moz-range-thumb {
   background: rgba(255, 255, 255, 0.028);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   border-radius: var(--r-tile);
+}
+
+/* The card inset, defined ONCE and globally.
+   Views must not redeclare `.pad`: a Svelte-scoped `.pad` carries the
+   component's hash class, so it outranks this rule and silently reintroduces
+   the per-page drift this replaced. A card needing a different VERTICAL rhythm
+   writes `padding: 13px var(--pad-card)` and keeps the shared left edge. */
+.pad {
+  padding: var(--pad-card);
 }
 /* Domain corner glow RETIRED (v2): surfaces are neutral, colour lives on ink.
    The element is kept as an inert no-op so existing markup doesn't need edits. */

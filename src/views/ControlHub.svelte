@@ -33,7 +33,10 @@
 
 <style>
   .hub { display: flex; flex-direction: column; gap: 14px; }
-  .tabs { display: flex; gap: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 4px; align-self: flex-start; max-width: 1180px; margin: 0 auto; width: 100%; }
+  .tabs { display: flex; gap: 4px; background: rgba(255, 255, 255, 0.05); border-radius: 12px; padding: 4px; align-self: flex-start; max-width: 1180px; margin: 0 auto; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  /* Without this the tabs shrink to illegible slivers instead of scrolling. */
+  .tab { flex: none; }
   .tab { padding: 8px 18px; border-radius: 9px; font-size: 13px; font-weight: 600; color: var(--text); }
   .tab.on { background: var(--grad); color: #0b1017; }
   .load { display: grid; place-items: center; min-height: 200px; }

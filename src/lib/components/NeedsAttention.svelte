@@ -47,7 +47,9 @@
 {/if}
 
 <style>
-  .attn-card { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025)); border-radius: var(--r-card, 18px); padding: 6px; margin-bottom: 16px; box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 40px -28px #000; }
+  /* 6px, NOT --pad-card: this is a wrapper, and .hd/.row inside carry 14px of
+     their own. 6 + 14 puts the text on the shared 20px edge; 8 pushed it to 22. */
+  .attn-card { background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025)); border-radius: var(--r-card, 18px); padding: 6px; margin-bottom: var(--gap-section); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 40px -28px #000; }
   .hd { display: flex; align-items: center; gap: 9px; padding: 11px 14px 9px; }
   .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
   .ttl { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }

@@ -70,7 +70,6 @@
   .big { font-size: 26px; font-weight: 800; margin-top: 5px; }
   .big.pl { font-size: 22px; color: var(--muted); }
   .sub { font-size: 11px; color: var(--dim); margin-top: 2px; }
-  .pad { padding: 18px 20px; }
   .ev { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
   .ei { font-size: 16px; width: 24px; text-align: center; }
   .ec { font-size: 12.5px; font-weight: 600; width: 104px; }

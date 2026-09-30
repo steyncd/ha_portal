@@ -129,7 +129,6 @@
   .sub { font-size: 11px; color: var(--dim); margin-top: 3px; }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
-  .pad { padding: 20px; }
   .rings { display: flex; gap: 22px; align-items: center; justify-content: center; }
   .ringwrap { text-align: center; }
   .ring { width: 78px; height: 78px; border-radius: 50%; display: grid; place-items: center; margin: 0 auto; }

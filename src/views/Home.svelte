@@ -289,7 +289,7 @@
 </section>
 
 <style>
-  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 16px; flex-wrap: wrap; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: var(--gap-section); flex-wrap: wrap; }
   h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .htext p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
   .hactions { display: flex; align-items: center; gap: 9px; }
@@ -301,7 +301,7 @@
   .hbtn.ghost { background: var(--soft); color: var(--acc); box-shadow: inset 0 0 0 1px var(--line); }
 
   /* Security hero */
-  .hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; padding: 20px; border-radius: 18px; margin-bottom: 14px; background: rgba(255,255,255,0.045); box-shadow: inset 0 0 0 1px var(--line); transition: transform 0.12s, box-shadow 0.15s; }
+  .hero { position: relative; overflow: hidden; display: flex; align-items: center; gap: 16px; width: 100%; text-align: left; padding: var(--pad-card); border-radius: var(--r-surface); margin-bottom: var(--gap-section); background: rgba(255,255,255,0.045); box-shadow: inset 0 0 0 1px var(--line); transition: transform 0.12s, box-shadow 0.15s; }
   .hero:hover { transform: translateY(-1px); }
   .hero:active { transform: scale(0.995); }
   .hero.armed { background: color-mix(in srgb, var(--success) 13%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--success) 42%, transparent); }
@@ -315,7 +315,7 @@
   @keyframes pulse { 0%,100% { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--error) 55%, transparent); } 50% { box-shadow: inset 0 0 0 2.5px var(--error); } }
 
   /* Glance ribbon */
-  .ribbon { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 18px; }
+  .ribbon { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: var(--gap-section); }
   .rib { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 13px 8px; border-radius: 14px; background: rgba(255,255,255,0.04); }
   .rib:hover { background: rgba(255,255,255,0.075); }
   .ri { font-size: 18px; }
@@ -326,7 +326,7 @@
   .rv small { font-size: 10px; color: var(--dim); font-weight: 700; letter-spacing: 0; margin-left: .14em; }
   .rl { font-size: 10px; color: var(--muted); font-weight: 700; }
 
-  .sec { margin-bottom: 18px; }
+  .sec { margin-bottom: var(--gap-section); }
   .sec.card { padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); }
   .sh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
   .st { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
@@ -368,7 +368,7 @@
   .menu button:hover { background: rgba(255,255,255,0.08); color: var(--text); }
 
   /* Two-column controls */
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 18px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: var(--gap-section); }
   @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
   .ctrls { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
   .ctrl, .ltile { position: relative; display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 13px; background: rgba(255,255,255,0.045); text-align: left; }

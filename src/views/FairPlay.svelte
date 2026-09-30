@@ -115,12 +115,13 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .hdr { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; }
+  .hdr { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
+  .hdr > div { min-width: 0; }
   .hdr h2 { font-size: 20px; font-weight: 800; margin: 0; }
   .hdr p { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; max-width: 52ch; }
   .addbtn { padding: 9px 15px; border-radius: 11px; background: rgba(255,255,255,0.06); color: var(--text-2); font-size: 13px; font-weight: 600; flex: none; }
   .addbtn:hover { background: rgba(255,255,255,0.1); color: var(--text); }
-  .card { background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; padding: 18px; }
+  .card { background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: var(--r-surface); padding: var(--pad-card); }
   .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
 
   .track { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: rgba(255,255,255,0.06); gap: 2px; }
@@ -140,7 +141,7 @@
   .save { margin-left: auto; padding: 10px 18px; border-radius: 11px; background: var(--grad, var(--acc)); color: #05070c; font-weight: 700; font-size: 13px; }
 
   .list { display: flex; flex-direction: column; gap: 10px; }
-  .rcard { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 15px; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-left: 3px solid var(--c); }
+  .rcard { display: flex; align-items: center; gap: 14px; padding: 14px var(--pad-card) 14px calc(var(--pad-card) - 3px); border-radius: var(--r-surface); background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-left: 3px solid var(--c); }
   .owner { flex: none; width: 74px; text-align: center; font-size: 11.5px; font-weight: 800; color: var(--c); background: color-mix(in srgb, var(--c) 14%, transparent); border-radius: 10px; padding: 8px 4px; }
   .body { flex: 1; min-width: 0; }
   .title { font-size: 14px; font-weight: 700; color: var(--text); }

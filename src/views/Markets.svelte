@@ -133,7 +133,6 @@
   .chg { font-size: 15px; font-weight: 700; margin-left: 4px; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
   .lb { font-size: 13px; color: var(--muted-2); font-weight: 600; }
-  .pad { padding: 20px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
   .grid5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
   @media (max-width: 640px) { .grid5 { grid-template-columns: repeat(2, 1fr); } }

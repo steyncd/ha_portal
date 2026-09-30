@@ -183,7 +183,7 @@
 
   .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
   @media (max-width: 860px) { .cols { grid-template-columns: 1fr; } }
-  .card { padding: 18px; border-radius: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 14px; }
+  .card { padding: var(--pad-card); border-radius: var(--r-surface); background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); margin-bottom: 14px; }
   .ch { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
   .ct { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
   .cs { font-size: 11px; color: var(--muted-2); font-style: italic; }

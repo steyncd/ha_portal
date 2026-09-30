@@ -220,7 +220,6 @@
   .big { font-size: 30px; font-weight: 800; margin-top: 6px; }
   .u { font-size: 14px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
-  .pad { padding: 20px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
   .int { font-size: 12px; font-weight: 700; color: var(--acc); }
   .tod { display: flex; align-items: flex-end; gap: 16px; height: 130px; }

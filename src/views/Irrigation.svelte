@@ -120,12 +120,11 @@
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
   .stopall { padding: 10px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: var(--text); font-size: 12.5px; font-weight: 600; }
   .stopall:hover { background: rgba(255, 255, 255, 0.1); }
-  .banner { padding: 14px 18px; border-radius: 16px; font-size: 13px; color: var(--text); background: linear-gradient(180deg, color-mix(in srgb, var(--success) 10%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 22%, transparent); }
+  .banner { padding: 14px var(--pad-card); border-radius: 16px; font-size: 13px; color: var(--text); background: linear-gradient(180deg, color-mix(in srgb, var(--success) 10%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--success) 22%, transparent); }
   .banner.rain { background: linear-gradient(180deg, color-mix(in srgb, var(--water) 14%, transparent), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--water) 30%, transparent); }
   .banner.manual { background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02)); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1); }
   .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
-  .pad { padding: 20px; }
   .rh { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
   .rt { margin-top: 16px; }
   .rtrow { display: flex; justify-content: space-between; margin-bottom: 9px; }

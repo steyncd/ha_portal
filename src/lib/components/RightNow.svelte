@@ -110,7 +110,7 @@
 </div>
 
 <style>
-  .rn { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 16px; border-radius: var(--r-card, 18px); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 40px -28px #000; }
+  .rn { display: flex; align-items: center; gap: 12px; margin-bottom: var(--gap-section); padding: 12px var(--pad-card); border-radius: var(--r-card, 18px); background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.025)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.1), 0 18px 40px -28px #000; }
   .pic { font-size: 20px; flex: none; }
   .ttl { font-size: 13.5px; font-weight: 700; color: var(--text); flex: none; }
   .chips { display: flex; flex-wrap: wrap; gap: 7px; flex: 1; min-width: 0; }

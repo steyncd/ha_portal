@@ -59,7 +59,7 @@
 </div>
 
 <style>
-  .rs { padding: 16px; border-radius: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); }
+  .rs { padding: var(--pad-card); border-radius: 16px; background: rgba(255,255,255,0.03); box-shadow: inset 0 0 0 1px var(--line); }
   .sh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
   .st { font-size: 11px; font-weight: 700; letter-spacing: 0.09em; text-transform: uppercase; color: var(--muted); }
   .cnt { font-size: 11px; color: var(--muted-2); }

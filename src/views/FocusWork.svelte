@@ -215,8 +215,8 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; }
-  .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 16px 18px; }
+  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: var(--r-surface); }
+  .status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 16px var(--pad-card); }
   .curapp { font-size: 13px; font-weight: 600; color: var(--text-2, var(--muted)); }
   .dstatus { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
   .dstats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
@@ -228,7 +228,6 @@
   .t { padding: 16px 18px; border-radius: 16px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); }
   .tv { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
   .tk { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  .pad { padding: 20px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
   .lb { font-size: 13px; font-weight: 700; }
   .sub { font-size: 12px; color: var(--muted); }

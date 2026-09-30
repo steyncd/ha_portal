@@ -467,8 +467,13 @@
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
   .wide { grid-column: 1 / -1; }
   .note { font-size: 11.5px; color: var(--muted-2); margin-top: 10px; }
-  .pad { padding: 18px; }
-  .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
+  /* The plan header carries three things — the title, the overlay toggle and
+     the outdoor readout — and in a ~360px column they were being squeezed into
+     one nowrap row, which wrapped the title to three lines against the toggle.
+     Wrapping lets the readout drop to its own line instead. Two-item .rh rows
+     that already fit are unaffected. */
+  .rh { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 10px; margin-bottom: 12px; }
+  .rh > .lb { min-width: 0; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .sub { font-size: 12px; color: var(--dim); }
   .plan { position: relative; width: 100%; aspect-ratio: 18600 / 14800; border-radius: 14px; background: rgba(255, 255, 255, 0.03); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08); overflow: hidden; }

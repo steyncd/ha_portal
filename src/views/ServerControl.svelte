@@ -97,7 +97,7 @@
 
 <style>
   .wrap { display: flex; flex-direction: column; gap: 14px; max-width: 720px; margin: 0 auto; width: 100%; }
-  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; padding: 18px; }
+  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: var(--r-surface); padding: var(--pad-card); }
   .card.danger { border-color: color-mix(in srgb, var(--danger, #ff5a5a) 40%, transparent); }
   .ch { margin-bottom: 4px; }
   .lb { font-size: 12px; color: var(--muted); font-weight: 700; }

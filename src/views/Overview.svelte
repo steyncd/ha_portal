@@ -322,7 +322,7 @@
 </div>
 
 <style>
-  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 16px; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: var(--gap-section); }
   h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
   .actions { position: relative; display: flex; gap: 9px; flex-shrink: 0; }

@@ -372,7 +372,7 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .profile { padding: 22px 24px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  .profile { padding: 22px var(--pad-card); display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
   .av { width: 64px; height: 64px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #07131c; }
   .pn { font-size: 22px; font-weight: 800; }
   .ps { font-size: 13px; color: var(--text-2); margin-top: 3px; }
@@ -408,7 +408,6 @@
   .scd.dim { color: var(--muted-2); font-weight: 500; }
   .two { display: grid; grid-template-columns: 1.25fr 1fr; gap: 14px; }
   @media (max-width: 820px) { .two { grid-template-columns: 1fr; } }
-  .pad { padding: 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
   .sub { font-size: 12px; color: var(--dim); }
   /* today so far */

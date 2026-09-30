@@ -221,7 +221,7 @@
 </div>
 
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 0 auto; width: 100%; height: calc(100vh - 220px); min-height: 360px; }
+  .wrap { display: flex; flex-direction: column; gap: var(--gap-section); max-width: 720px; margin: 0 auto; width: 100%; height: calc(100vh - 220px); min-height: 360px; }
 
   .modes { display: flex; gap: 6px; padding: 4px; border-radius: var(--r-ctl); background: var(--s1); box-shadow: inset 0 0 0 1px var(--line); }
   .mode { flex: 1; padding: 8px 12px; border-radius: 8px; background: transparent; color: var(--mut); font-size: 12.5px; font-weight: 700; }

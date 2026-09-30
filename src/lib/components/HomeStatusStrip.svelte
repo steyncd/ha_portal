@@ -72,7 +72,7 @@
 {/if}
 
 <style>
-  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin-bottom: var(--gap-section); }
   .tile { display: flex; align-items: center; gap: 12px; background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 16px; padding: 14px 16px; }
   .tile.warn { border-color: color-mix(in srgb, var(--warn, #f5a623) 55%, transparent); background: color-mix(in srgb, var(--warn, #f5a623) 12%, transparent); }
   .ico { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: rgba(255, 255, 255, 0.06); color: var(--acc); flex: none; }

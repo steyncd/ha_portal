@@ -177,13 +177,12 @@
 {/if}
 
 <style>
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--gap-section); }
   .card {
     background: rgba(255, 255, 255, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 20px;
-    padding: 20px;
-    backdrop-filter: var(--glass-blur);
+    border-radius: var(--r-surface);
+    padding: var(--pad-card);
   }
   .hero { grid-column: 1 / -1; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
 

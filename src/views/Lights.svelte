@@ -113,7 +113,7 @@
   .u { font-size: 15px; color: var(--dim); font-weight: 700; letter-spacing: 0; margin-left: .14em; }
   .alloff { flex-shrink: 0; padding: 11px 16px; border-radius: 12px; background: rgba(255, 255, 255, 0.06); color: var(--text-2); font-size: 12.5px; font-weight: 600; }
   .alloff:hover { background: rgba(255, 255, 255, 0.1); color: var(--text); }
-  .scenes { padding: 16px 18px; }
+  .scenes { padding: 16px var(--pad-card); }
   .srow { display: flex; flex-wrap: wrap; gap: 10px; }
   .scene { display: flex; align-items: center; gap: 8px; padding: 10px 15px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); font-size: 13px; font-weight: 600; }
   .scene:hover { background: color-mix(in srgb, var(--brand) 20%, transparent); }

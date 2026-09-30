@@ -83,7 +83,7 @@
 </div>
 
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 0 auto; width: 100%; }
+  .wrap { display: flex; flex-direction: column; gap: var(--gap-section); max-width: 720px; margin: 0 auto; width: 100%; }
   .bar { display: flex; align-items: center; gap: 12px; }
   .search { flex: 1; padding: 11px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); color: var(--text); font-size: 14px; }
   .count { font-size: 12px; color: var(--muted); white-space: nowrap; }

@@ -172,15 +172,15 @@
 </div>
 
 <style>
-  .board { display: flex; flex-direction: column; gap: 16px; }
+  .board { display: flex; flex-direction: column; gap: var(--gap-section); }
   .bh h1 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--tx); margin: 0; }
   .bsub { font-size: 12.5px; color: var(--mut); margin: 4px 0 0; }
 
-  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+  .cols { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--gap-section); align-items: start; }
   @media (max-width: 1180px) {
     .cols { grid-template-columns: minmax(0, 1fr); }
   }
-  .main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+  .main { min-width: 0; display: flex; flex-direction: column; gap: var(--gap-section); }
 
   /* Fixed 4 columns — see the comment in the markup. */
   .stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
@@ -191,7 +191,7 @@
     align-items: flex-start;
     text-align: left;
     gap: 0;
-    padding: 14px 15px;
+    padding: var(--pad-card);
     border-radius: var(--r-surface);
     background: var(--s1);
     min-width: 0;
@@ -204,7 +204,7 @@
   .s-n { font-size: 11.5px; color: var(--mut); margin-top: 3px; }
   .s-n.warn { color: var(--warn); }
 
-  .list { background: var(--s1); border-radius: var(--r-surface); padding: 14px 15px; }
+  .list { background: var(--s1); border-radius: var(--r-surface); padding: var(--pad-card); }
   .lh { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
   .list h2 { font-size: 13px; font-weight: 700; color: var(--tx); margin: 0; }
   /* States the effect rather than asserting it. */
@@ -242,7 +242,7 @@
   .r-v { flex: none; font-size: 13px; font-weight: 700; color: var(--tx2); font-variant-numeric: tabular-nums; }
   .row.warn .r-v { color: var(--warn); }
 
-  .note { background: var(--s1); border-radius: var(--r-surface); padding: 15px 16px; }
+  .note { background: var(--s1); border-radius: var(--r-surface); padding: var(--pad-card); }
   .n-body { font-size: 13px; color: var(--tx2); line-height: 1.55; margin: 0; text-wrap: pretty; }
   .n-folded { font-size: 11.5px; color: var(--mut); line-height: 1.5; margin: 11px 0 0; text-wrap: pretty; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }

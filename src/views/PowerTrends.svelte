@@ -296,7 +296,7 @@
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
 
-  .ctrls { padding: 16px 18px; }
+  .ctrls { padding: 16px var(--pad-card); }
   .crow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; }
   .crow.dates { margin-top: 12px; }
   .fld { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
@@ -324,7 +324,6 @@
   .u { font-size: 14px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
-  .pad { padding: 18px 20px; }
   .rh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .empty { padding: 40px 0; text-align: center; color: var(--dim); font-size: 13px; }
 

@@ -76,7 +76,6 @@
   .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
 
-  .pad { padding: 20px 22px; }
   .ah { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
   .at { display: flex; align-items: center; gap: 11px; min-width: 0; }
   .aic { width: 34px; height: 34px; flex-shrink: 0; border-radius: 10px; display: grid; place-items: center; font-size: 16px; background: var(--soft); box-shadow: inset 0 0 0 1px var(--line); }

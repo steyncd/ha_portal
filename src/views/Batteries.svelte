@@ -154,11 +154,11 @@
 </div>
 
 <style>
-  .col { display: flex; flex-direction: column; gap: 16px; }
+  .col { display: flex; flex-direction: column; gap: var(--gap-section); }
   .hdr h2 { font-size: 20px; font-weight: 800; margin: 0; }
   .hdr p { font-size: 12.5px; color: var(--muted); margin: 4px 0 0; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: 18px; padding: 18px; }
+  .card { background: var(--card, rgba(255, 255, 255, 0.04)); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); border-radius: var(--r-surface); padding: var(--pad-card); }
   .card.dim { opacity: 0.62; }
   .card.stale { opacity: 0.7; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--warning) 30%, transparent); }
   .stalepill { color: var(--warning); }

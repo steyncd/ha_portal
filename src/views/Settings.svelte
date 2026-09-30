@@ -668,7 +668,6 @@
   .tb.active { background: var(--grad); color: #fff; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28); }
   .agrid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; }
   @media (max-width: 640px) { .agrid { grid-template-columns: 1fr; } }
-  .pad { padding: 22px; }
   .acct { display: flex; align-items: center; gap: 15px; }
   .aav { width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; background: var(--grad); display: grid; place-items: center; font-size: 18px; font-weight: 800; color: #0b1017; }
   .ainfo { flex: 1; min-width: 0; }

@@ -117,7 +117,7 @@
 </div>
 
 <style>
-  .wrap { display: flex; flex-direction: column; gap: 12px; max-width: 720px; margin: 0 auto; width: 100%; }
+  .wrap { display: flex; flex-direction: column; gap: var(--gap-section); max-width: 720px; margin: 0 auto; width: 100%; }
   .search { padding: 11px 14px; border-radius: 12px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); color: var(--text); font-size: 14px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
   .chip { padding: 6px 12px; border-radius: 999px; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line, rgba(255, 255, 255, 0.08)); color: var(--muted); font-size: 12.5px; font-weight: 600; }

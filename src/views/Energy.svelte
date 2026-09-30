@@ -345,7 +345,7 @@
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
 
-  .hero { position: relative; overflow: hidden; padding: 22px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+  .hero { position: relative; overflow: hidden; padding: 22px var(--pad-card); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
   .heroglow { position: absolute; inset: 0; background: radial-gradient(420px 200px at 12% 120%, color-mix(in srgb, var(--solar) 20%, transparent), transparent 70%); pointer-events: none; }
   .hmain { position: relative; }
   .hbig { font-size: 52px; font-weight: 800; letter-spacing: -2px; line-height: 0.9; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -369,7 +369,6 @@
   .big { font-size: 30px; font-weight: 800; letter-spacing: -1px; margin-top: 6px; }
   .u { font-size: 15px; color: var(--dim); letter-spacing: 0; margin-left: .14em; }
   .sub { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
-  .pad { padding: 20px 22px; }
   .rh { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
   .seeall { font-size: 12px; color: var(--acc2); font-weight: 600; }
   .seeall:hover { color: var(--acc); }

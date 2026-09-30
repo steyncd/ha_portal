@@ -234,9 +234,9 @@
   .ri { font-size: 26px; }
   .rt { font-size: 14.5px; font-weight: 700; }
   .rs { font-size: 12px; color: var(--muted); margin-top: 2px; }
-  .graddrow { display: flex; gap: 8px; margin: 12px 0 14px; }
+  .graddrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 14px; }
   .graddrow select { padding: 10px 12px; border-radius: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--text); font-size: 13px; flex: none; }
-  .graddrow input { flex: 1; padding: 10px 13px; border-radius: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--text); font-size: 13px; }
+  .graddrow input { flex: 1; min-width: 6em; padding: 10px 13px; border-radius: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--text); font-size: 13px; }
   .glist { display: flex; flex-direction: column; gap: 6px; }
   .grow { display: flex; align-items: baseline; gap: 11px; padding: 9px 12px; border-radius: 10px; background: rgba(255,255,255,0.03); }
   .gwho { font-size: 11.5px; font-weight: 800; color: var(--acc2, var(--acc)); flex: none; width: 60px; }
@@ -244,7 +244,7 @@
   .gdate { font-size: 10.5px; color: var(--muted); }
   .two { display: grid; grid-template-columns: 1.3fr 1fr; gap: 14px; }
   @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
-  .card { position: relative; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; padding: 18px; overflow: hidden; }
+  .card { position: relative; background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: var(--r-surface); padding: var(--pad-card); overflow: hidden; }
   .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .sub { font-size: 12px; color: var(--dim); }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 12px; }
@@ -256,7 +256,7 @@
   .note { font-size: 11.5px; color: var(--muted); font-style: italic; }
 
   .addrow { display: flex; gap: 8px; margin: 12px 0 14px; }
-  .addrow input { flex: 1; padding: 10px 13px; border-radius: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--text); font-size: 13px; }
+  .addrow input { flex: 1; min-width: 0; padding: 10px 13px; border-radius: 11px; background: rgba(255,255,255,0.05); border: 1px solid var(--line, rgba(255,255,255,0.08)); color: var(--text); font-size: 13px; }
   .addbtn { padding: 10px 16px; border-radius: 11px; background: var(--grad, var(--acc)); color: #05070c; font-weight: 700; font-size: 13px; }
   .plist { display: flex; flex-direction: column; gap: 8px; }
   .prow { display: flex; align-items: center; gap: 11px; padding: 11px 13px; border-radius: 13px; background: rgba(255,255,255,0.03); }

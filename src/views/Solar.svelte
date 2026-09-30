@@ -95,7 +95,6 @@
   .col { display: flex; flex-direction: column; gap: 14px; max-width: 1180px; margin: 0 auto; }
   .head h1 { margin: 0; font-size: 27px; font-weight: 800; letter-spacing: -0.7px; background: var(--title-grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .head p { margin: 5px 0 0; color: var(--dim); font-size: 13px; }
-  .pad { padding: 20px 22px; }
   .rh { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 14px; }
   .lb { font-size: 11px; font-weight: 700; color: var(--muted); }
   .sub { font-size: 12px; color: var(--dim); }

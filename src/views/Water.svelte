@@ -159,7 +159,7 @@
 
 <style>
   .col { display: flex; flex-direction: column; gap: 14px; }
-  .hero { padding: 20px 24px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; overflow: hidden; }
+  .hero { padding: 20px var(--pad-card); display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; position: relative; overflow: hidden; }
   .hero::after { content: ""; position: absolute; inset: 0; background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--water) 16%, transparent), transparent 70%); pointer-events: none; }
   .hero.low::after { background: radial-gradient(360px 160px at 8% 130%, color-mix(in srgb, var(--error) 18%, transparent), transparent 70%); }
   .hleft { position: relative; }
@@ -182,7 +182,6 @@
   .gv { font-size: 15px; font-weight: 700; }
   .sub { font-size: 12px; color: var(--dim); margin-top: 3px; }
   .right { display: flex; flex-direction: column; gap: 14px; }
-  .pad { padding: 18px; }
   .pgrid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
   .ptile { display: flex; flex-direction: column; gap: 4px; padding: 15px; border-radius: 14px; background: rgba(255, 255, 255, 0.045); text-align: left; }
   .ptile.on { background: var(--soft); box-shadow: inset 0 0 0 1.5px var(--line); }

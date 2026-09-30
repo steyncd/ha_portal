@@ -657,4 +657,14 @@
   @media (max-width: 820px) {
     .body { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   }
+  /* Phone gutter. 20px of page padding plus 20px of card padding spent 80px of a
+     375px screen before the first character; 16px is the standard phone gutter
+     and matches --pad-card's own step-down, so the page edge and the card edge
+     stay in proportion. The header steps down with the body or the view title
+     stops lining up with the content under it. */
+  @media (max-width: 640px) {
+    .body { padding-left: 16px; padding-right: 16px; }
+    header { padding-left: 16px; padding-right: 16px; }
+    .guestbar { margin-left: 16px; margin-right: 16px; }
+  }
 </style>

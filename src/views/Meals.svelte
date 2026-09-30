@@ -117,8 +117,7 @@
 <style>
   .grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 14px; align-items: start; }
   @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
-  .card { background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: 18px; }
-  .pad { padding: 18px; }
+  .card { background: var(--card, rgba(255,255,255,0.04)); border: 1px solid var(--line, rgba(255,255,255,0.08)); border-radius: var(--r-surface); }
   .rh { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
   .lb { font-size: 13px; font-weight: 700; color: var(--text-2); }
   .sub { font-size: 12px; color: var(--dim); }

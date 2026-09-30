@@ -374,7 +374,7 @@
     align-items: flex-start;
     text-align: left;
     gap: 0;
-    padding: 15px 16px;
+    padding: var(--pad-card);
     border-radius: var(--r-surface);
     background: var(--s1);
     min-width: 0;
