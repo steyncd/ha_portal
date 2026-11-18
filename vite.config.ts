@@ -54,6 +54,10 @@ export default defineConfig({
           // eager firebase chunk so it loads lazily with the push flow.
           if (id.includes("firebase/messaging") || id.includes("@firebase/messaging")) return "firebase-messaging";
           if (id.includes("node_modules/firebase") || id.includes("node_modules/@firebase")) return "firebase";
+          // three.js is only reached through the House model view. Its own chunk
+          // means it downloads with that view alone, and its hash only changes
+          // when three does — an app deploy does not make anyone fetch it again.
+          if (id.includes("node_modules/three/")) return "three";
         },
       },
     },

@@ -20,7 +20,7 @@ export type ViewId =
   | "usage" | "markets" | "solar" | "settings"
   // Spokes: routed and deep-linkable, never in the rail.
   | "batteries" | "energydetail" | "medetail" | "devices" | "automations" | "assist" | "focus" | "server"
-  | "waterdetail" | "diagnostics" | "roomsdetail";
+  | "waterdetail" | "diagnostics" | "roomsdetail" | "model";
 
 export type NavGroup = "" | "Energy" | "Water" | "Climate" | "Safety" | "Home" | "You" | "Bottom";
 
@@ -77,7 +77,7 @@ export const NAV: NavItem[] = [
     // Appliances, Devices, Automations and System all answer "what is in this
     // house and is it working" — you look for the dishwasher where the
     // dishwasher is, not on a page about money.
-    collapsed: ["lights", "appliances", "devices", "automations", "system"],
+    collapsed: ["lights", "appliances", "devices", "automations", "system", "model"],
     collapsedNote:
       "The inventory of the house. The floor plan already knows which room a light is in, so Lights stopped being a list of switches with no places attached — and a metered appliance, a device, the automation that drives it and the box it all runs on are the same question asked four ways.",
   },
@@ -116,6 +116,9 @@ export const NAV: NavItem[] = [
   { id: "timeline", name: "Timeline", icon: "🕒", ic: "clock", group: "Bottom", color: "var(--acc)" },
   { id: "lights", name: "Lights", icon: "💡", ic: "bulb", group: "Bottom", color: "var(--energy)" },
   { id: "roomsdetail", name: "Floor plan", icon: "🚪", ic: "door", group: "Bottom", color: "var(--climate)" },
+  // The same plan in three dimensions. Folded under Rooms because it IS the
+  // plan — one drawing, more questions asked of it.
+  { id: "model", name: "House model", icon: "🏡", ic: "home", group: "Bottom", color: "var(--climate)" },
   { id: "vitality", name: "Vitality", icon: "🌡️", ic: "waves", group: "Bottom", color: "var(--health)" },
   { id: "kids", name: "Kids", icon: "🧒", ic: "user", group: "Bottom", color: "var(--water)" },
   { id: "meals", name: "Meals", icon: "🍽️", ic: "pot", group: "Bottom", color: "var(--load)" },
