@@ -19,7 +19,7 @@ export type Instance = {
 
 export const INSTANCES: Instance[] = [
   // ── Rooms (8 sensor-bearing; the plan has 14 including the ones with nothing
-  //    in them, which stay in Rooms.svelte's PLAN because they still need drawing)
+  //    in them, which stay in the PLAN in plan.ts because they still need drawing)
   {
     template: "room", id: "study", name: "Study",
     slots: {

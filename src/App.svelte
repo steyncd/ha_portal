@@ -28,6 +28,7 @@
     irrigation: () => import("./views/Irrigation.svelte"),
     climate: () => import("./views/RoomsHub.svelte"),
     roomsdetail: () => import("./views/Rooms.svelte"),
+    model: () => import("./views/Model.svelte"),
     appliances: () => import("./views/Appliances.svelte"),
     // Was SecurityHub — a read-only board. The Security page must be the one with
     // arm/disarm and the 32 zones with bypass, not a summary that links to it.
@@ -66,7 +67,7 @@
   };
   // Per-view props (most take none).
   const viewProps = (id: string): Record<string, unknown> => {
-    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "now", "overview", "powertrends", "security", "securitydetail", "usage", "water"].includes(id)) return { onnav: go };
+    if (["climate", "diagnostics", "energy", "energydetail", "home", "household", "insights", "me", "model", "now", "overview", "powertrends", "security", "securitydetail", "usage", "water"].includes(id)) return { onnav: go };
     if (id === "settings") return { ontv: () => (tv = true) };
     return {};
   };
